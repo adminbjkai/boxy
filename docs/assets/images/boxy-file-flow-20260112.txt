@@ -1,0 +1,5 @@
+**Refining Diagram Conception**
+
+\n\n
+
+I'm focused on the "Boxy File Flow" diagram now. I've begun to consider the visual style; a blueprint aesthetic seems promising. The hand-drawn aspect is proving challenging to define precisely, but I'm aiming for clean lines and a readable presentation. The light background is chosen.
