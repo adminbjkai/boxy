@@ -16,6 +16,9 @@ Boxy is a lightweight file sharing UI with real-time updates, drag-and-drop uplo
 - WebSocket `/ws` fan-out broadcasts upload/rename/move/delete events to active clients.
 - Actix Web service reads/writes the `./uploads` filesystem (volume-mountable in Docker). See `docs/ARCHITECTURE.md` for details.
 
+## Docs
+- UI walkthrough with live screenshots: `docs/UI_WALKTHROUGH.md`
+
 ## Run locally
 ```bash
 BOX_PORT=8086              # HTTP port (default 8086)

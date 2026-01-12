@@ -1,6 +1,7 @@
 /target
 /node_modules
 /uploads
+/uploads_docs
 /_ai_images
 /dist
 npm-debug.log*
