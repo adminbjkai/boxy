@@ -1638,8 +1638,16 @@
             if (isDir) {
                 navigate(path);
             } else {
-                // Open file in new tab for preview
-                window.open(`/api/download?path=${encodeURIComponent(path)}`, '_blank');
+                // Open file in new tab for preview using temporary link
+                // This is more reliable than window.open across browsers
+                const url = `/api/download?path=${encodeURIComponent(path)}`;
+                const link = document.createElement('a');
+                link.href = url;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             }
         }
 
@@ -2179,7 +2187,10 @@
         }
 
         function escapeAttr(str) {
-            return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            return str
+                .replace(/\\/g, '\\\\')  // Escape backslashes first
+                .replace(/'/g, "\\'")    // Escape single quotes for JS strings
+                .replace(/"/g, '&quot;'); // Escape double quotes for HTML attributes
         }
 
         // Drag & Drop zone
