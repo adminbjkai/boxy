@@ -1,0 +1,3 @@
+**Designing a Blueprint**
+
+I'm focused on creating a diagram based on the user's request. I've broken down the instructions, understanding the need for a 16:9 layout, the title "Boxy Request Flow," and the desired style: a clean, flat vector blueprint on a light background. My current task is deconstructing the system's components to represent them clearly.

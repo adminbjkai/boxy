@@ -11,6 +11,7 @@ Boxy is a lightweight file sharing UI with real-time updates, drag-and-drop uplo
 ## Architecture & flow
 ![Boxy architecture](docs/assets/images/boxy-architecture-20260112.png)
 ![Boxy file flow](docs/assets/images/boxy-file-flow-20260112.png)
+- ![Boxy request flow](docs/assets/images/boxy-request-flow-20260112.png)
 - Browser UI calls REST endpoints for listing, uploads, folder ops, moves, deletes, downloads, and health checks.
 - WebSocket `/ws` fan-out broadcasts upload/rename/move/delete events to active clients.
 - Actix Web service reads/writes the `./uploads` filesystem (volume-mountable in Docker). See `docs/ARCHITECTURE.md` for details.
