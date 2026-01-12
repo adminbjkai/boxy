@@ -1,16 +1,19 @@
-use actix_multipart::Multipart;
 use actix_files::NamedFile;
-use actix_web::{middleware::Compress, web, App, HttpRequest, HttpResponse, HttpServer, Result};
+use actix_multipart::Multipart;
+use actix_web::{
+    middleware::{Compress, Logger},
+    web, App, HttpRequest, HttpResponse, HttpServer, Result,
+};
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::env;
+use std::path::{Path, PathBuf};
 use tokio::io::AsyncWriteExt;
 use tokio::sync::broadcast;
 
-const UPLOAD_DIR: &str = "./uploads";
-const PORT: u16 = 8086;
-const MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 200; // 200 MB
+const DEFAULT_UPLOAD_DIR: &str = "./uploads";
+const DEFAULT_PORT: u16 = 8086;
+const DEFAULT_MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 200; // 200 MB
 
 #[derive(Clone, Serialize, Deserialize)]
 struct FileEntry {
@@ -26,7 +29,38 @@ struct WsMessage {
     path: String,
 }
 
-type Broadcaster = Arc<broadcast::Sender<String>>;
+type Broadcaster = broadcast::Sender<String>;
+
+#[derive(Clone)]
+struct AppState {
+    broadcaster: Broadcaster,
+    upload_dir: PathBuf,
+    max_upload_bytes: usize,
+}
+
+struct Settings {
+    upload_dir: PathBuf,
+    port: u16,
+    max_upload_bytes: usize,
+}
+
+impl Settings {
+    fn from_env() -> Self {
+        Self {
+            upload_dir: env::var("BOX_UPLOAD_DIR")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| PathBuf::from(DEFAULT_UPLOAD_DIR)),
+            port: env::var("BOX_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(DEFAULT_PORT),
+            max_upload_bytes: env::var("BOX_MAX_UPLOAD_BYTES")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(DEFAULT_MAX_UPLOAD_BYTES),
+        }
+    }
+}
 
 fn broadcast_update(tx: &Broadcaster, action: &str, path: &str) {
     let msg = serde_json::to_string(&WsMessage {
@@ -40,10 +74,10 @@ fn broadcast_update(tx: &Broadcaster, action: &str, path: &str) {
 async fn ws_handler(
     req: HttpRequest,
     stream: web::Payload,
-    tx: web::Data<Broadcaster>,
+    state: web::Data<AppState>,
 ) -> Result<HttpResponse> {
     let (res, mut session, mut msg_stream) = actix_ws::handle(&req, stream)?;
-    let mut rx = tx.subscribe();
+    let mut rx = state.broadcaster.subscribe();
 
     actix_web::rt::spawn(async move {
         loop {
@@ -77,21 +111,27 @@ struct PathQuery {
     path: Option<String>,
 }
 
-fn sanitize_path(path: &str) -> PathBuf {
-    let clean: String = path
-        .split('/')
-        .filter(|s| !s.is_empty() && *s != "." && *s != "..")
-        .collect::<Vec<_>>()
-        .join("/");
-    PathBuf::from(UPLOAD_DIR).join(clean)
+fn clean_relative_path(path: &str) -> PathBuf {
+    let mut clean = PathBuf::new();
+    for segment in path.split('/') {
+        if segment.is_empty() || segment == "." || segment == ".." {
+            continue;
+        }
+        clean.push(segment);
+    }
+    clean
 }
 
-async fn list_files(query: web::Query<PathQuery>) -> Result<HttpResponse> {
-    let base_path = query
-        .path
-        .as_ref()
-        .map(|p| sanitize_path(p))
-        .unwrap_or_else(|| PathBuf::from(UPLOAD_DIR));
+fn resolve_path(base: &Path, path: Option<&String>) -> PathBuf {
+    path.map(|p| base.join(clean_relative_path(p)))
+        .unwrap_or_else(|| base.to_path_buf())
+}
+
+async fn list_files(
+    state: web::Data<AppState>,
+    query: web::Query<PathQuery>,
+) -> Result<HttpResponse> {
+    let base_path = resolve_path(&state.upload_dir, query.path.as_ref());
 
     if !base_path.exists() {
         return Ok(HttpResponse::Ok().json(Vec::<FileEntry>::new()));
@@ -118,7 +158,9 @@ async fn list_files(query: web::Query<PathQuery>) -> Result<HttpResponse> {
     }
 
     entries.sort_by(|a, b| {
-        b.is_dir.cmp(&a.is_dir).then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+        b.is_dir
+            .cmp(&a.is_dir)
+            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
     });
 
     Ok(HttpResponse::Ok().json(entries))
@@ -127,13 +169,9 @@ async fn list_files(query: web::Query<PathQuery>) -> Result<HttpResponse> {
 async fn upload_file(
     mut payload: Multipart,
     query: web::Query<PathQuery>,
-    tx: web::Data<Broadcaster>,
+    state: web::Data<AppState>,
 ) -> Result<HttpResponse> {
-    let base_path = query
-        .path
-        .as_ref()
-        .map(|p| sanitize_path(p))
-        .unwrap_or_else(|| PathBuf::from(UPLOAD_DIR));
+    let base_path = resolve_path(&state.upload_dir, query.path.as_ref());
 
     tokio::fs::create_dir_all(&base_path).await?;
 
@@ -163,14 +201,14 @@ async fn upload_file(
             .map(|p| format!("{}/{}", p, final_name))
             .unwrap_or(final_name.clone());
 
-        broadcast_update(&tx, "upload", &rel_path);
+        broadcast_update(&state.broadcaster, "upload", &rel_path);
         uploaded.push(final_name);
     }
 
     Ok(HttpResponse::Ok().json(uploaded))
 }
 
-async fn get_unique_filename(base_path: &PathBuf, filename: &str) -> PathBuf {
+async fn get_unique_filename(base_path: &Path, filename: &str) -> PathBuf {
     let mut filepath = base_path.join(filename);
     if !filepath.exists() {
         return filepath;
@@ -206,13 +244,9 @@ struct CreateFolderReq {
 
 async fn create_folder(
     body: web::Json<CreateFolderReq>,
-    tx: web::Data<Broadcaster>,
+    state: web::Data<AppState>,
 ) -> Result<HttpResponse> {
-    let base = body
-        .path
-        .as_ref()
-        .map(|p| sanitize_path(p))
-        .unwrap_or_else(|| PathBuf::from(UPLOAD_DIR));
+    let base = resolve_path(&state.upload_dir, body.path.as_ref());
 
     let safe_name = body.name.replace(['/', '\\', '\0'], "_");
     let folder_path = base.join(&safe_name);
@@ -225,7 +259,7 @@ async fn create_folder(
         .map(|p| format!("{}/{}", p, safe_name))
         .unwrap_or(safe_name);
 
-    broadcast_update(&tx, "folder", &rel_path);
+    broadcast_update(&state.broadcaster, "folder", &rel_path);
 
     Ok(HttpResponse::Ok().json(serde_json::json!({"success": true})))
 }
@@ -243,16 +277,19 @@ struct RenameReq {
 
 async fn rename_item(
     body: web::Json<RenameReq>,
-    tx: web::Data<Broadcaster>,
+    state: web::Data<AppState>,
 ) -> Result<HttpResponse> {
-    let old_path = sanitize_path(&body.path);
+    let old_path = resolve_path(&state.upload_dir, Some(&body.path));
     let safe_name = body.new_name.replace(['/', '\\', '\0'], "_");
 
     if !old_path.exists() {
         return Err(actix_web::error::ErrorNotFound("Item not found"));
     }
 
-    let new_path = old_path.parent().unwrap().join(&safe_name);
+    let parent = old_path
+        .parent()
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("Invalid path for rename"))?;
+    let new_path = parent.join(&safe_name);
 
     if new_path.exists() {
         return Err(actix_web::error::ErrorConflict("Name already exists"));
@@ -260,7 +297,7 @@ async fn rename_item(
 
     tokio::fs::rename(&old_path, &new_path).await?;
 
-    broadcast_update(&tx, "rename", &body.path);
+    broadcast_update(&state.broadcaster, "rename", &body.path);
 
     Ok(HttpResponse::Ok().json(serde_json::json!({"success": true, "new_name": safe_name})))
 }
@@ -271,38 +308,36 @@ struct MoveReq {
     dest_dir: Option<String>,
 }
 
-async fn move_item(
-    body: web::Json<MoveReq>,
-    tx: web::Data<Broadcaster>,
-) -> Result<HttpResponse> {
-    let src_path = sanitize_path(&body.path);
-    let dest_base = body.dest_dir
-        .as_ref()
-        .map(|p| sanitize_path(p))
-        .unwrap_or_else(|| PathBuf::from(UPLOAD_DIR));
+async fn move_item(body: web::Json<MoveReq>, state: web::Data<AppState>) -> Result<HttpResponse> {
+    let src_path = resolve_path(&state.upload_dir, Some(&body.path));
+    let dest_base = resolve_path(&state.upload_dir, body.dest_dir.as_ref());
 
     if !src_path.exists() {
         return Err(actix_web::error::ErrorNotFound("Item not found"));
     }
 
-    let filename = src_path.file_name().unwrap();
+    let filename = src_path
+        .file_name()
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("Invalid path"))?;
     let dest_path = dest_base.join(filename);
 
     if dest_path.exists() {
-        return Err(actix_web::error::ErrorConflict("Item already exists in destination"));
+        return Err(actix_web::error::ErrorConflict(
+            "Item already exists in destination",
+        ));
     }
 
     tokio::fs::create_dir_all(&dest_base).await?;
     tokio::fs::rename(&src_path, &dest_path).await?;
 
-    broadcast_update(&tx, "move", &body.path);
+    broadcast_update(&state.broadcaster, "move", &body.path);
 
     Ok(HttpResponse::Ok().json(serde_json::json!({"success": true})))
 }
 
-async fn list_all_folders() -> Result<HttpResponse> {
+async fn list_all_folders(state: web::Data<AppState>) -> Result<HttpResponse> {
     let mut folders = vec![String::from("/")];
-    collect_folders(PathBuf::from(UPLOAD_DIR), String::new(), &mut folders).await;
+    collect_folders(state.upload_dir.clone(), String::new(), &mut folders).await;
     Ok(HttpResponse::Ok().json(folders))
 }
 
@@ -328,9 +363,9 @@ async fn collect_folders(path: PathBuf, prefix: String, folders: &mut Vec<String
 
 async fn delete_item(
     body: web::Json<DeleteReq>,
-    tx: web::Data<Broadcaster>,
+    state: web::Data<AppState>,
 ) -> Result<HttpResponse> {
-    let filepath = sanitize_path(&body.path);
+    let filepath = resolve_path(&state.upload_dir, Some(&body.path));
 
     if filepath.exists() {
         if filepath.is_dir() {
@@ -338,18 +373,22 @@ async fn delete_item(
         } else {
             tokio::fs::remove_file(&filepath).await?;
         }
-        broadcast_update(&tx, "delete", &body.path);
+        broadcast_update(&state.broadcaster, "delete", &body.path);
     }
 
     Ok(HttpResponse::Ok().json(serde_json::json!({"success": true})))
 }
 
-async fn download_file(query: web::Query<PathQuery>) -> Result<NamedFile> {
-    let path = query.path.as_ref().ok_or_else(|| {
-        actix_web::error::ErrorBadRequest("path required")
-    })?;
+async fn download_file(
+    state: web::Data<AppState>,
+    query: web::Query<PathQuery>,
+) -> Result<NamedFile> {
+    let path = query
+        .path
+        .as_ref()
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("path required"))?;
 
-    let filepath = sanitize_path(path);
+    let filepath = resolve_path(&state.upload_dir, Some(path));
 
     if !filepath.exists() || filepath.is_dir() {
         return Err(actix_web::error::ErrorNotFound("File not found"));
@@ -368,9 +407,7 @@ async fn download_file(query: web::Query<PathQuery>) -> Result<NamedFile> {
     let cd = actix_web::http::header::ContentDisposition {
         disposition: actix_web::http::header::DispositionType::Attachment,
         parameters: vec![actix_web::http::header::DispositionParam::Filename(
-            actix_web::http::header::Charset::Ext("UTF-8".to_string()),
-            None,
-            filename.as_bytes().to_vec(),
+            filename.to_string(),
         )],
     };
 
@@ -389,17 +426,30 @@ async fn healthcheck() -> Result<HttpResponse> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    tokio::fs::create_dir_all(UPLOAD_DIR).await?;
+    env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
+
+    let settings = Settings::from_env();
+    tokio::fs::create_dir_all(&settings.upload_dir).await?;
 
     let (tx, _) = broadcast::channel::<String>(100);
-    let tx = Arc::new(tx);
+    let state = AppState {
+        broadcaster: tx,
+        upload_dir: settings.upload_dir.clone(),
+        max_upload_bytes: settings.max_upload_bytes,
+    };
 
-    println!("Boxy running on http://0.0.0.0:{}", PORT);
+    println!(
+        "Boxy running on http://0.0.0.0:{} (uploads at {})",
+        settings.port,
+        state.upload_dir.to_string_lossy()
+    );
 
     HttpServer::new(move || {
+        let app_state = state.clone();
         App::new()
-            .app_data(web::Data::new(tx.clone()))
-            .app_data(web::PayloadConfig::new(MAX_UPLOAD_BYTES))
+            .app_data(web::Data::new(app_state.clone()))
+            .app_data(web::PayloadConfig::new(app_state.max_upload_bytes))
+            .wrap(Logger::default())
             .wrap(Compress::default())
             .route("/", web::get().to(serve_index))
             .route("/ws", web::get().to(ws_handler))
@@ -413,7 +463,7 @@ async fn main() -> std::io::Result<()> {
             .route("/api/download", web::get().to(download_file))
             .route("/api/health", web::get().to(healthcheck))
     })
-    .bind(("0.0.0.0", PORT))?
+    .bind(("0.0.0.0", settings.port))?
     .run()
     .await
 }

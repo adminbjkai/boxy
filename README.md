@@ -1,6 +1,6 @@
 # Boxy
 
-Boxy is a lightweight file sharing UI with real-time updates, drag-and-drop uploads, and basic file management (create, rename, move, delete).
+Boxy is a lightweight file sharing UI with real-time updates, drag-and-drop uploads, and basic file management (create, rename, move, delete). Rust/Actix backend, static HTML frontend, WebSocket fan-out for live events.
 
 ## Features
 - Drag-and-drop and clipboard uploads
@@ -8,17 +8,21 @@ Boxy is a lightweight file sharing UI with real-time updates, drag-and-drop uplo
 - Live updates via WebSocket
 - Search and sort client-side
 
-## Architecture
-![Boxy architecture](docs/assets/images/boxy-architecture-full-20260112.png)
+## Architecture & flow
+![Boxy architecture](docs/assets/images/boxy-architecture-20260112.png)
+![Boxy file flow](docs/assets/images/boxy-file-flow-20260112.png)
 - Browser UI calls REST endpoints for listing, uploads, folder ops, moves, deletes, downloads, and health checks.
-- WebSocket /ws fan-out broadcasts upload/rename/move/delete events to active clients.
-- Actix Web service reads/writes the `./uploads` filesystem (volume-mountable in Docker).
+- WebSocket `/ws` fan-out broadcasts upload/rename/move/delete events to active clients.
+- Actix Web service reads/writes the `./uploads` filesystem (volume-mountable in Docker). See `docs/ARCHITECTURE.md` for details.
 
 ## Run locally
 ```bash
+BOX_PORT=8086              # HTTP port (default 8086)
+BOX_UPLOAD_DIR=./uploads   # upload root (default ./uploads)
+BOX_MAX_UPLOAD_BYTES=209715200  # max upload size in bytes (default 200MB)
 cargo run
 ```
-Then open `http://localhost:8086`.
+Then open `http://localhost:8086` (or your overridden port).
 
 ## Endpoints
 - `GET /` static UI
