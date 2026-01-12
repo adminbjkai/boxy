@@ -835,6 +835,102 @@
             font-weight: 500;
         }
 
+        /* Selection Action Bar */
+        .selection-bar {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 8px 32px var(--shadow-lg);
+            z-index: 100;
+            opacity: 0;
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .selection-bar.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .selection-count {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+            padding-right: 16px;
+            border-right: 1px solid var(--border);
+        }
+
+        .selection-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .selection-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            background: var(--bg-tertiary);
+            color: var(--text);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all var(--transition);
+        }
+
+        .selection-btn:hover {
+            background: var(--border);
+        }
+
+        .selection-btn.danger {
+            color: var(--danger);
+        }
+
+        .selection-btn.danger:hover {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: white;
+        }
+
+        .selection-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .selection-clear {
+            padding: 8px;
+            border: none;
+            background: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+        }
+
+        .selection-clear:hover {
+            background: var(--bg-tertiary);
+            color: var(--text);
+        }
+
+        .selection-clear svg {
+            width: 18px;
+            height: 18px;
+        }
+
         /* Toast */
         .toast {
             position: fixed;
@@ -1051,6 +1147,30 @@
 
     <div class="toast" id="toast"></div>
 
+    <!-- Selection Action Bar -->
+    <div class="selection-bar" id="selectionBar">
+        <span class="selection-count" id="selectionCount">0 selected</span>
+        <div class="selection-actions">
+            <button class="selection-btn" onclick="showBulkMoveModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+                Move
+            </button>
+            <button class="selection-btn danger" onclick="bulkDelete()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                Delete
+            </button>
+        </div>
+        <button class="selection-clear" onclick="clearSelection()" title="Clear selection">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+    </div>
+
     <div class="upload-progress" id="uploadProgress">
         <h4>Uploading...</h4>
         <div class="progress-bar">
@@ -1070,6 +1190,8 @@
         let viewMode = localStorage.getItem('viewMode') || 'grid';
         let listSortCol = localStorage.getItem('listSortCol') || 'name';
         let listSortDir = localStorage.getItem('listSortDir') || 'asc';
+        let selectedFiles = new Set();
+        let lastSelectedIndex = -1;
 
         // Theme
         function toggleTheme() {
@@ -1278,7 +1400,7 @@
                      ondragover="handleDragOver(event)"
                      ondragleave="handleDragLeave(event)"
                      ondrop="handleDrop(event)">
-                    <div class="file-item-content" onclick="handleClick(event, '${escapedPath}', ${f.is_dir})">
+                    <div class="file-item-content" onclick="handleItemClick(event, '${escapedPath}', ${f.is_dir})" ondblclick="handleItemDblClick(event, '${escapedPath}', ${f.is_dir})">
                         <div class="file-icon${hasThumb ? ' has-thumb' : ''}">${getFileIconHtml(f.name, f.is_dir, fullPath)}</div>
                         <div class="file-name">${escapeHtml(f.name)}</div>
                         ${typeColumn}
@@ -1286,15 +1408,28 @@
                         ${dateColumn}
                     </div>
                     <div class="file-actions">
+                        ${!f.is_dir ? `
+                        <button class="file-action-btn" onclick="event.stopPropagation(); copyFileUrl('${escapedPath}')" title="Copy URL">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                            </svg>
+                        </button>
+                        <button class="file-action-btn" onclick="event.stopPropagation(); downloadFile('${escapedPath}')" title="Download">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                            </svg>
+                        </button>
+                        ` : ''}
+                        <button class="file-action-btn" onclick="event.stopPropagation(); showMoveModal('${escapedPath}')" title="Move">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </button>
                         <button class="file-action-btn" onclick="event.stopPropagation(); showRenameModal('${escapedPath}', '${escapedName}')" title="Rename">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                            </svg>
-                        </button>
-                        <button class="file-action-btn" onclick="event.stopPropagation(); showMoveModal('${escapedPath}')" title="Move">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M5 12h14M12 5l7 7-7 7"/>
                             </svg>
                         </button>
                         <button class="file-action-btn delete" onclick="event.stopPropagation(); deleteItem('${escapedPath}')" title="Delete">
@@ -1307,6 +1442,9 @@
             `}).join('');
 
             grid.innerHTML = tableHeader + rows + tableFooter;
+
+            // Maintain visual selection state after re-render
+            updateSelectionUI();
         }
 
         const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'];
@@ -1416,6 +1554,95 @@
             renderFiles(allFiles);
         }
 
+        // Selection functions
+        function updateSelectionUI() {
+            const count = selectedFiles.size;
+            const bar = document.getElementById('selectionBar');
+            const countEl = document.getElementById('selectionCount');
+
+            if (count > 0) {
+                bar.classList.add('show');
+                countEl.textContent = `${count} file${count === 1 ? '' : 's'} selected`;
+            } else {
+                bar.classList.remove('show');
+            }
+
+            // Update visual selection state on items
+            document.querySelectorAll('.file-item').forEach(item => {
+                if (selectedFiles.has(item.dataset.path)) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+
+        function clearSelection() {
+            selectedFiles.clear();
+            lastSelectedIndex = -1;
+            updateSelectionUI();
+        }
+
+        function toggleSelection(path) {
+            if (selectedFiles.has(path)) {
+                selectedFiles.delete(path);
+            } else {
+                selectedFiles.add(path);
+            }
+            updateSelectionUI();
+        }
+
+        function selectRange(startIndex, endIndex) {
+            const items = document.querySelectorAll('.file-item');
+            const start = Math.min(startIndex, endIndex);
+            const end = Math.max(startIndex, endIndex);
+
+            for (let i = start; i <= end; i++) {
+                if (items[i]) {
+                    selectedFiles.add(items[i].dataset.path);
+                }
+            }
+            updateSelectionUI();
+        }
+
+        function getItemIndex(path) {
+            const items = document.querySelectorAll('.file-item');
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].dataset.path === path) return i;
+            }
+            return -1;
+        }
+
+        function handleItemClick(e, path, isDir) {
+            const isMeta = e.metaKey || e.ctrlKey;
+            const isShift = e.shiftKey;
+            const index = getItemIndex(path);
+
+            if (isShift && lastSelectedIndex >= 0) {
+                // Shift+click: select range
+                selectRange(lastSelectedIndex, index);
+            } else if (isMeta) {
+                // Ctrl/Cmd+click: toggle selection
+                toggleSelection(path);
+                lastSelectedIndex = index;
+            } else {
+                // Regular click: select only this item
+                selectedFiles.clear();
+                selectedFiles.add(path);
+                lastSelectedIndex = index;
+                updateSelectionUI();
+            }
+        }
+
+        function handleItemDblClick(e, path, isDir) {
+            if (isDir) {
+                navigate(path);
+            } else {
+                // Open file in new tab for preview
+                window.open(`/api/download?path=${encodeURIComponent(path)}`, '_blank');
+            }
+        }
+
         function handleClick(e, path, isDir) {
             if (isDir) {
                 navigate(path);
@@ -1467,22 +1694,43 @@
 
             const destDir = target.dataset.path;
 
-            const res = await fetch('/api/move', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ path: sourcePath, dest_dir: destDir })
-            });
-
-            if (res.ok) {
+            // If dragged item is part of selection, move all selected files
+            if (selectedFiles.has(sourcePath) && selectedFiles.size > 1) {
+                let successCount = 0;
+                for (const path of selectedFiles) {
+                    // Don't move target folder into itself
+                    if (path === destDir) continue;
+                    const res = await fetch('/api/move', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ path, dest_dir: destDir })
+                    });
+                    if (res.ok) successCount++;
+                }
+                clearSelection();
                 loadFiles();
-                showToast(`Moved to ${target.dataset.name}`);
+                showToast(`Moved ${successCount} item${successCount === 1 ? '' : 's'} to ${target.dataset.name}`);
             } else {
-                showToast('Move failed');
+                // Move single file
+                const res = await fetch('/api/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: sourcePath, dest_dir: destDir })
+                });
+
+                if (res.ok) {
+                    clearSelection();
+                    loadFiles();
+                    showToast(`Moved to ${target.dataset.name}`);
+                } else {
+                    showToast('Move failed');
+                }
             }
         }
 
         function navigate(path) {
             currentPath = path;
+            clearSelection();
             loadFiles();
         }
 
@@ -1557,7 +1805,16 @@
         }
 
         function downloadFile(path) {
-            window.location.href = `/api/download?path=${encodeURIComponent(path)}`;
+            window.location.href = `/api/download?path=${encodeURIComponent(path)}&download=1`;
+        }
+
+        function copyFileUrl(path) {
+            const url = `${window.location.origin}/api/download?path=${encodeURIComponent(path)}`;
+            navigator.clipboard.writeText(url).then(() => {
+                showToast('URL copied to clipboard');
+            }).catch(() => {
+                showToast('Failed to copy URL');
+            });
         }
 
         async function deleteItem(path) {
@@ -1569,6 +1826,61 @@
                 body: JSON.stringify({ path })
             });
             loadFiles();
+        }
+
+        // Bulk operations
+        async function bulkDelete() {
+            const count = selectedFiles.size;
+            if (count === 0) return;
+
+            if (!confirm(`Delete ${count} selected item${count === 1 ? '' : 's'}?`)) return;
+
+            for (const path of selectedFiles) {
+                await fetch('/api/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path })
+                });
+            }
+
+            clearSelection();
+            loadFiles();
+            showToast(`Deleted ${count} item${count === 1 ? '' : 's'}`);
+        }
+
+        function showBulkMoveModal() {
+            if (selectedFiles.size === 0) return;
+
+            document.getElementById('moveModal').classList.add('active');
+            document.getElementById('movePath').value = '__bulk__';
+            document.getElementById('moveDestination').value = '';
+            updateSelectedPathDisplay('');
+
+            fetch('/api/folders')
+                .then(res => res.json())
+                .then(folders => {
+                    folderTreeData = buildFolderTree(folders);
+                    expandedFolders = new Set();
+                    folderTreeData.forEach(f => expandedFolders.add(f.path));
+                    renderFolderTree();
+                });
+        }
+
+        async function bulkMove(destDir) {
+            const count = selectedFiles.size;
+            if (count === 0) return;
+
+            for (const path of selectedFiles) {
+                await fetch('/api/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path, dest_dir: destDir || null })
+                });
+            }
+
+            clearSelection();
+            loadFiles();
+            showToast(`Moved ${count} item${count === 1 ? '' : 's'}`);
         }
 
         // Folder Modal
@@ -1761,6 +2073,13 @@
             const path = document.getElementById('movePath').value;
             const destDir = document.getElementById('moveDestination').value;
 
+            // Check if this is a bulk move
+            if (path === '__bulk__') {
+                closeMoveModal();
+                await bulkMove(destDir);
+                return;
+            }
+
             const res = await fetch('/api/move', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1945,6 +2264,22 @@
                     modal.classList.remove('active');
                 }
             });
+        });
+
+        // Click on empty space to deselect
+        document.querySelector('.main').addEventListener('click', (e) => {
+            // Only deselect if clicking directly on main, file-grid, file-table, or empty areas
+            const target = e.target;
+            const isEmptyArea = target.classList.contains('main') ||
+                                target.classList.contains('file-grid') ||
+                                target.classList.contains('file-table') ||
+                                target.classList.contains('file-table-body') ||
+                                target.classList.contains('drop-zone') ||
+                                target.classList.contains('empty-state');
+
+            if (isEmptyArea && selectedFiles.size > 0) {
+                clearSelection();
+            }
         });
 
         // Init
