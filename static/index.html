@@ -173,6 +173,23 @@
         .breadcrumb-sep { color: var(--border); }
 
         .toolbar-actions { display: flex; gap: 8px; }
+
+        .view-toggle {
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+        }
+
+        .view-toggle:hover { background: var(--bg-tertiary); color: var(--text); }
+        .view-toggle svg { width: 18px; height: 18px; }
         .toolbar-search {
             display: flex;
             align-items: center;
@@ -323,6 +340,30 @@
             color: var(--text-secondary);
         }
 
+        /* Thumbnail */
+        .file-thumb {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 6px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .file-thumb.loaded {
+            opacity: 1;
+        }
+
+        .file-icon.has-thumb {
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .file-list .file-icon.has-thumb {
+            border-radius: 4px;
+        }
+
         /* Icon Colors */
         .icon-folder { color: var(--folder); }
         .icon-image { color: #e91e63; }
@@ -351,6 +392,188 @@
             font-size: 11px;
             color: var(--text-secondary);
             margin-top: 4px;
+        }
+
+        /* List View Table */
+        .file-table {
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .file-table-header {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            gap: 12px;
+        }
+
+        .file-table-header .col {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            margin: -4px -8px;
+            border-radius: 4px;
+            transition: all var(--transition);
+            user-select: none;
+        }
+
+        .file-table-header .col:hover {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .file-table-header .col.sorted {
+            color: var(--accent);
+        }
+
+        .file-table-header .sort-arrow {
+            width: 12px;
+            height: 12px;
+            opacity: 0;
+            transition: all var(--transition);
+        }
+
+        .file-table-header .col.sorted .sort-arrow {
+            opacity: 1;
+        }
+
+        .file-table-header .col.sorted.desc .sort-arrow {
+            transform: rotate(180deg);
+        }
+
+        .file-table-header .col-icon {
+            width: 32px;
+            flex-shrink: 0;
+        }
+
+        .file-table-header .col-name {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-table-header .col-type {
+            width: 100px;
+            flex-shrink: 0;
+        }
+
+        .file-table-header .col-size {
+            width: 80px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .file-table-header .col-date {
+            width: 140px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .file-table-header .col-actions {
+            width: 116px;
+            flex-shrink: 0;
+        }
+
+        .file-table-body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .file-table .file-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 0;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .file-table .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-table .file-item:hover {
+            background: var(--bg-tertiary);
+            box-shadow: none;
+        }
+
+        .file-table .file-item-content {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .file-table .file-icon {
+            width: 32px;
+            height: 32px;
+            margin: 0;
+            flex-shrink: 0;
+        }
+
+        .file-table .file-icon svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        .file-table .file-name {
+            flex: 1;
+            min-width: 0;
+            max-height: none;
+            -webkit-line-clamp: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-table .file-type {
+            font-size: 12px;
+            color: var(--text-secondary);
+            width: 100px;
+            flex-shrink: 0;
+        }
+
+        .file-table .file-meta {
+            margin-top: 0;
+            width: 80px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .file-table .file-date {
+            font-size: 12px;
+            color: var(--text-secondary);
+            width: 140px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .file-table .file-actions {
+            position: static;
+            opacity: 0;
+            transform: none;
+            background: none;
+            padding: 0;
+            margin-left: 8px;
+            pointer-events: none;
+        }
+
+        .file-table .file-item:hover .file-actions {
+            opacity: 1;
+            pointer-events: auto;
         }
 
         /* File Actions - Bottom Bar */
@@ -715,12 +938,24 @@
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
                 <input type="text" id="searchInput" placeholder="Search files">
+                <select id="filterSelect">
+                    <option value="all">All</option>
+                    <option value="images">Images</option>
+                    <option value="documents">Documents</option>
+                    <option value="code">Code</option>
+                    <option value="media">Audio/Video</option>
+                </select>
                 <select id="sortSelect">
                     <option value="name">Name</option>
                     <option value="size">Size</option>
                     <option value="modified">Modified</option>
                 </select>
             </div>
+            <button class="view-toggle" id="viewToggle" onclick="toggleView()" title="Toggle view">
+                <svg id="viewIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                </svg>
+            </button>
             <div class="toolbar-actions">
                 <button class="btn" onclick="document.getElementById('fileInput').click()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -831,6 +1066,10 @@
         let allFiles = [];
         let filterQuery = '';
         let sortMode = 'name';
+        let filterType = localStorage.getItem('filterType') || 'all';
+        let viewMode = localStorage.getItem('viewMode') || 'grid';
+        let listSortCol = localStorage.getItem('listSortCol') || 'name';
+        let listSortDir = localStorage.getItem('listSortDir') || 'asc';
 
         // Theme
         function toggleTheme() {
@@ -996,10 +1235,36 @@
             }
 
             empty.style.display = 'none';
-            grid.innerHTML = visible.map((f, index) => {
+            grid.className = viewMode === 'list' ? 'file-table' : 'file-grid';
+
+            const sortArrow = `<svg class="sort-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg>`;
+
+            const colClass = (col) => `col col-${col}${listSortCol === col ? ' sorted' : ''}${listSortCol === col && listSortDir === 'desc' ? ' desc' : ''}`;
+
+            const tableHeader = viewMode === 'list' ? `
+                <div class="file-table-header">
+                    <div class="col-icon"></div>
+                    <div class="${colClass('name')}" onclick="sortByColumn('name')">Name ${sortArrow}</div>
+                    <div class="${colClass('type')}" onclick="sortByColumn('type')">Type ${sortArrow}</div>
+                    <div class="${colClass('size')}" onclick="sortByColumn('size')">Size ${sortArrow}</div>
+                    <div class="${colClass('modified')}" onclick="sortByColumn('modified')">Date Modified ${sortArrow}</div>
+                    <div class="col-actions"></div>
+                </div>
+                <div class="file-table-body">
+            ` : '';
+
+            const tableFooter = viewMode === 'list' ? '</div>' : '';
+
+            const rows = visible.map((f, index) => {
                 const fullPath = currentPath ? currentPath + '/' + f.name : f.name;
                 const escapedPath = escapeAttr(fullPath);
                 const escapedName = escapeAttr(f.name);
+                const dateStr = f.modified ? formatDate(f.modified) : '';
+                const hasThumb = !f.is_dir && isImageFile(f.name);
+                const fileType = getFileType(f.name, f.is_dir);
+
+                const typeColumn = viewMode === 'list' ? `<div class="file-type">${fileType}</div>` : '';
+                const dateColumn = viewMode === 'list' ? `<div class="file-date">${dateStr}</div>` : '';
 
                 return `
                 <div class="file-item"
@@ -1014,9 +1279,11 @@
                      ondragleave="handleDragLeave(event)"
                      ondrop="handleDrop(event)">
                     <div class="file-item-content" onclick="handleClick(event, '${escapedPath}', ${f.is_dir})">
-                        <div class="file-icon">${getFileIcon(f.name, f.is_dir)}</div>
+                        <div class="file-icon${hasThumb ? ' has-thumb' : ''}">${getFileIconHtml(f.name, f.is_dir, fullPath)}</div>
                         <div class="file-name">${escapeHtml(f.name)}</div>
-                        <div class="file-meta">${f.is_dir ? 'Folder' : formatSize(f.size)}</div>
+                        ${typeColumn}
+                        <div class="file-meta">${f.is_dir ? '—' : formatSize(f.size)}</div>
+                        ${dateColumn}
                     </div>
                     <div class="file-actions">
                         <button class="file-action-btn" onclick="event.stopPropagation(); showRenameModal('${escapedPath}', '${escapedName}')" title="Rename">
@@ -1038,6 +1305,57 @@
                     </div>
                 </div>
             `}).join('');
+
+            grid.innerHTML = tableHeader + rows + tableFooter;
+        }
+
+        const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'];
+
+        function isImageFile(name) {
+            const ext = name.split('.').pop().toLowerCase();
+            return IMAGE_EXTENSIONS.includes(ext);
+        }
+
+        function getFileIconHtml(name, isDir, fullPath) {
+            if (!isDir && isImageFile(name)) {
+                const thumbUrl = `/api/download?path=${encodeURIComponent(fullPath)}`;
+                const fallbackIcon = getFileIcon(name, false).replace(/"/g, '&quot;');
+                return `<img class="file-thumb" src="${thumbUrl}" loading="lazy" onload="this.classList.add('loaded')" onerror="handleThumbError(this, '${fallbackIcon}')">`;
+            }
+            return getFileIcon(name, isDir);
+        }
+
+        function handleThumbError(img, fallbackIcon) {
+            const container = img.parentElement;
+            container.classList.remove('has-thumb');
+            container.innerHTML = decodeHtmlEntities(fallbackIcon);
+        }
+
+        function decodeHtmlEntities(str) {
+            const txt = document.createElement('textarea');
+            txt.innerHTML = str;
+            return txt.value;
+        }
+
+        function getFileCategory(name) {
+            const ext = name.split('.').pop().toLowerCase();
+            const images = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico', 'bmp'];
+            const documents = ['pdf', 'doc', 'docx', 'txt', 'rtf', 'odt', 'xls', 'xlsx', 'csv', 'ppt', 'pptx'];
+            const code = ['js', 'ts', 'jsx', 'tsx', 'html', 'css', 'json', 'py', 'rs', 'go', 'java', 'c', 'cpp', 'h', 'php', 'rb', 'sh', 'yml', 'yaml', 'xml', 'sql', 'md'];
+            const media = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a'];
+
+            if (images.includes(ext)) return 'images';
+            if (documents.includes(ext)) return 'documents';
+            if (code.includes(ext)) return 'code';
+            if (media.includes(ext)) return 'media';
+            return 'other';
+        }
+
+        function getFileType(name, isDir) {
+            if (isDir) return 'Folder';
+            const ext = name.split('.').pop().toLowerCase();
+            if (ext === name.toLowerCase()) return 'File';
+            return ext.toUpperCase();
         }
 
         function applyFilters(files) {
@@ -1047,14 +1365,55 @@
                 filtered = filtered.filter(f => f.name.toLowerCase().includes(q));
             }
 
+            if (filterType !== 'all') {
+                filtered = filtered.filter(f => f.is_dir || getFileCategory(f.name) === filterType);
+            }
+
             const compare = (a, b) => {
+                // Folders always first
                 if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1;
+
+                // Use list sort settings when in list view
+                if (viewMode === 'list') {
+                    const dir = listSortDir === 'asc' ? 1 : -1;
+                    let result = 0;
+
+                    switch (listSortCol) {
+                        case 'name':
+                            result = a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+                            break;
+                        case 'type':
+                            result = getFileType(a.name, a.is_dir).localeCompare(getFileType(b.name, b.is_dir));
+                            break;
+                        case 'size':
+                            result = (a.size || 0) - (b.size || 0);
+                            break;
+                        case 'modified':
+                            result = (a.modified || 0) - (b.modified || 0);
+                            break;
+                    }
+                    return result * dir;
+                }
+
+                // Grid view uses toolbar sort
                 if (sortMode === 'size') return (b.size || 0) - (a.size || 0);
                 if (sortMode === 'modified') return (b.modified || 0) - (a.modified || 0);
                 return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
             };
 
             return filtered.slice().sort(compare);
+        }
+
+        function sortByColumn(col) {
+            if (listSortCol === col) {
+                listSortDir = listSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                listSortCol = col;
+                listSortDir = 'asc';
+            }
+            localStorage.setItem('listSortCol', listSortCol);
+            localStorage.setItem('listSortDir', listSortDir);
+            renderFiles(allFiles);
         }
 
         function handleClick(e, path, isDir) {
@@ -1158,7 +1517,17 @@
             const fill = document.getElementById('progressFill');
             progress.classList.add('show');
 
+            // Collect original modification times
+            const mtimes = {};
+            for (const file of files) {
+                if (file.lastModified) {
+                    mtimes[file.name] = file.lastModified;
+                }
+            }
+
             const formData = new FormData();
+            // Send mtimes first so backend can read it before processing files
+            formData.append('mtimes', new Blob([JSON.stringify(mtimes)], { type: 'application/json' }));
             for (const file of files) {
                 formData.append('files', file, file.name);
             }
@@ -1450,6 +1819,40 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
 
+        function formatDate(timestamp) {
+            const date = new Date(timestamp * 1000);
+            const now = new Date();
+            const diff = now - date;
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+            if (days === 0) {
+                return 'Today ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } else if (days === 1) {
+                return 'Yesterday';
+            } else if (days < 7) {
+                return date.toLocaleDateString([], { weekday: 'short' });
+            }
+            return date.toLocaleDateString([], { month: 'short', day: 'numeric', year: now.getFullYear() !== date.getFullYear() ? 'numeric' : undefined });
+        }
+
+        function toggleView() {
+            viewMode = viewMode === 'grid' ? 'list' : 'grid';
+            localStorage.setItem('viewMode', viewMode);
+            updateViewIcon();
+            renderFiles(allFiles);
+        }
+
+        function updateViewIcon() {
+            const icon = document.getElementById('viewIcon');
+            if (viewMode === 'grid') {
+                // Show grid icon (current view is grid, clicking will switch to list)
+                icon.innerHTML = '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>';
+            } else {
+                // Show list icon (current view is list, clicking will switch to grid)
+                icon.innerHTML = '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>';
+            }
+        }
+
         function escapeHtml(str) {
             const div = document.createElement('div');
             div.textContent = str;
@@ -1498,6 +1901,12 @@
             renderFiles(allFiles);
         });
 
+        document.getElementById('filterSelect').addEventListener('change', (e) => {
+            filterType = e.target.value;
+            localStorage.setItem('filterType', filterType);
+            renderFiles(allFiles);
+        });
+
         // Paste from clipboard
         document.addEventListener('paste', async (e) => {
             const items = e.clipboardData.items;
@@ -1539,6 +1948,8 @@
         });
 
         // Init
+        document.getElementById('filterSelect').value = filterType;
+        updateViewIcon();
         connectWS();
         loadFiles();
     </script>

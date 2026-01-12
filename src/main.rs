@@ -176,9 +176,24 @@ async fn upload_file(
     tokio::fs::create_dir_all(&base_path).await?;
 
     let mut uploaded = Vec::new();
+    let mut mtimes: std::collections::HashMap<String, u64> = std::collections::HashMap::new();
 
     while let Some(item) = payload.next().await {
         let mut field = item?;
+        let field_name = field.name().map(|s| s.to_string()).unwrap_or_default();
+
+        // Check if this is the mtimes metadata field
+        if field_name == "mtimes" {
+            let mut bytes = Vec::new();
+            while let Some(chunk) = field.next().await {
+                bytes.extend_from_slice(&chunk?);
+            }
+            if let Ok(parsed) = serde_json::from_slice::<std::collections::HashMap<String, u64>>(&bytes) {
+                mtimes = parsed;
+            }
+            continue;
+        }
+
         let filename = field
             .content_disposition()
             .and_then(|cd| cd.get_filename().map(|s| s.to_string()))
@@ -193,6 +208,12 @@ async fn upload_file(
         while let Some(chunk) = field.next().await {
             let data = chunk?;
             file.write_all(&data).await?;
+        }
+
+        // Preserve original modification time if provided
+        if let Some(&mtime_ms) = mtimes.get(&filename) {
+            let mtime = filetime::FileTime::from_unix_time((mtime_ms / 1000) as i64, ((mtime_ms % 1000) * 1_000_000) as u32);
+            let _ = filetime::set_file_mtime(&filepath, mtime);
         }
 
         let rel_path = query
