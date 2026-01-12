@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boxy - File Sharing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #f3f1ed;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #ece9e3;
+            --border: #d8d2c9;
+            --text: #1a1a1a;
+            --text-secondary: #6d6d6d;
+            --accent: #2f6df6;
+            --accent-hover: #2a61d9;
+            --danger: #ff3b30;
+            --success: #34c759;
+            --shadow: rgba(0,0,0,0.08);
+            --shadow-lg: rgba(0,0,0,0.12);
+            --folder: #64b5f6;
+            --transition: 0.2s ease;
+            --warm: #f6c28b;
+        }
+
+        [data-theme="dark"] {
+            --bg: #161719;
+            --bg-secondary: #212327;
+            --bg-tertiary: #2b2f35;
+            --border: #343944;
+            --text: #f4f2ee;
+            --text-secondary: #a2a5ad;
+            --shadow: rgba(0,0,0,0.3);
+            --shadow-lg: rgba(0,0,0,0.4);
+            --warm: #6a4c2f;
+        }
+
+        body {
+            font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+            background: radial-gradient(1200px 600px at -10% -10%, rgba(246, 194, 139, 0.4), transparent 60%),
+                        radial-gradient(800px 500px at 110% -10%, rgba(47, 109, 246, 0.2), transparent 60%),
+                        var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            transition: background var(--transition), color var(--transition);
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: linear-gradient(120deg, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.01) 40%, transparent 60%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 20px;
+            font-weight: 600;
+            font-family: 'Fraunces', serif;
+        }
+
+        .logo svg { width: 26px; height: 26px; color: var(--accent); }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--danger);
+            transition: background var(--transition);
+        }
+
+        .status-dot.connected { background: var(--success); }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            border: none;
+            background: var(--bg-tertiary);
+            color: var(--text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+        }
+
+        .theme-toggle:hover { background: var(--border); }
+        .theme-toggle svg { width: 20px; height: 20px; }
+
+        /* Main Layout */
+        .main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex: 1;
+            min-width: 200px;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+
+        .breadcrumb-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all var(--transition);
+        }
+
+        .breadcrumb-item:hover { background: var(--bg-tertiary); color: var(--text); }
+        .breadcrumb-item.active { color: var(--text); font-weight: 500; }
+        .breadcrumb-sep { color: var(--border); }
+
+        .toolbar-actions { display: flex; gap: 8px; }
+        .toolbar-search {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 12px;
+            box-shadow: 0 1px 3px var(--shadow);
+        }
+
+        .toolbar-search input, .toolbar-search select {
+            border: none;
+            background: transparent;
+            color: var(--text);
+            font-size: 13px;
+            outline: none;
+        }
+
+        .toolbar-search input {
+            width: 180px;
+        }
+
+        .toolbar-search select {
+            padding-left: 10px;
+            border-left: 1px solid var(--border);
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            background: var(--bg-secondary);
+            color: var(--text);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all var(--transition);
+            box-shadow: 0 1px 3px var(--shadow);
+        }
+
+        .btn:hover { background: var(--bg-tertiary); }
+        .btn svg { width: 16px; height: 16px; }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover { background: var(--accent-hover); }
+
+        /* Drop Zone */
+        .drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            text-align: center;
+            margin-bottom: 24px;
+            transition: all var(--transition);
+            background: var(--bg-secondary);
+            animation: fadeUp 0.5s ease;
+        }
+
+        .drop-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(0, 113, 227, 0.05);
+        }
+
+        .drop-zone-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 12px;
+            color: var(--text-secondary);
+        }
+
+        .drop-zone p { color: var(--text-secondary); font-size: 14px; }
+
+        /* File Grid */
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .file-item {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 16px 12px 44px;
+            cursor: pointer;
+            transition: all var(--transition);
+            position: relative;
+            text-align: center;
+            border: 2px solid transparent;
+            user-select: none;
+            overflow: hidden;
+            animation: fadeUp 0.4s ease both;
+        }
+
+        .file-item:hover {
+            background: var(--bg-tertiary);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .file-item-content {
+            cursor: pointer;
+        }
+
+        .file-item.drag-over {
+            border-color: var(--accent);
+            background: rgba(0, 113, 227, 0.1);
+        }
+
+        .file-item.dragging {
+            opacity: 0.5;
+            transform: scale(0.95);
+        }
+
+        .file-item.selected {
+            border-color: var(--accent);
+            background: rgba(0, 113, 227, 0.08);
+        }
+
+        /* File Icons */
+        .file-icon {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .file-icon svg { width: 48px; height: 48px; }
+
+        .file-icon-ext {
+            position: absolute;
+            bottom: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            background: var(--bg-tertiary);
+            padding: 2px 5px;
+            border-radius: 3px;
+            color: var(--text-secondary);
+        }
+
+        /* Icon Colors */
+        .icon-folder { color: var(--folder); }
+        .icon-image { color: #e91e63; }
+        .icon-pdf { color: #f44336; }
+        .icon-doc { color: #2196f3; }
+        .icon-sheet { color: #4caf50; }
+        .icon-code { color: #ff9800; }
+        .icon-video { color: #9c27b0; }
+        .icon-audio { color: #00bcd4; }
+        .icon-archive { color: #795548; }
+        .icon-file { color: var(--text-secondary); }
+
+        .file-name {
+            font-size: 12px;
+            font-weight: 500;
+            word-break: break-word;
+            line-height: 1.3;
+            max-height: 2.6em;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .file-meta {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* File Actions - Bottom Bar */
+        .file-actions {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            padding: 8px;
+            background: linear-gradient(to top, var(--bg-secondary) 60%, transparent);
+            border-radius: 0 0 10px 10px;
+            opacity: 0;
+            transform: translateY(4px);
+            transition: all var(--transition);
+            pointer-events: none;
+        }
+
+        .file-item:hover .file-actions {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .file-action-btn {
+            width: 36px;
+            height: 32px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+            box-shadow: 0 2px 6px var(--shadow);
+        }
+
+        .file-action-btn:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .file-action-btn.delete:hover {
+            background: var(--danger);
+            border-color: var(--danger);
+        }
+
+        .file-action-btn svg { width: 16px; height: 16px; }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 24px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 16px;
+            opacity: 0.4;
+        }
+
+        .empty-state p { font-size: 15px; }
+        .list-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Modals */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal.active { display: flex; }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 24px;
+            width: 100%;
+            max-width: 400px;
+            margin: 16px;
+            box-shadow: 0 20px 60px var(--shadow-lg);
+        }
+
+        .modal h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .modal input, .modal select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+            margin-bottom: 16px;
+            background: var(--bg);
+            color: var(--text);
+            transition: border-color var(--transition);
+        }
+
+        .modal input:focus, .modal select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .modal label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        /* Move Modal Tree */
+        .move-modal-content {
+            max-width: 480px;
+        }
+
+        .folder-tree {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+        }
+
+        .tree-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: all var(--transition);
+            border-bottom: 1px solid var(--border);
+            gap: 8px;
+        }
+
+        .tree-item:last-child { border-bottom: none; }
+
+        .tree-item:hover { background: var(--bg-tertiary); }
+
+        .tree-item.selected {
+            background: rgba(0, 113, 227, 0.12);
+            color: var(--accent);
+        }
+
+        .tree-item.selected .tree-folder-icon { color: var(--accent); }
+
+        .tree-item-indent {
+            display: flex;
+            align-items: center;
+        }
+
+        .tree-indent {
+            width: 20px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--border);
+        }
+
+        .tree-indent::before {
+            content: '';
+            width: 1px;
+            height: 100%;
+            background: var(--border);
+        }
+
+        .tree-toggle {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .tree-toggle svg {
+            width: 14px;
+            height: 14px;
+            transition: transform var(--transition);
+        }
+
+        .tree-toggle.expanded svg { transform: rotate(90deg); }
+        .tree-toggle.empty { visibility: hidden; }
+
+        .tree-folder-icon {
+            width: 20px;
+            height: 20px;
+            color: var(--folder);
+            flex-shrink: 0;
+        }
+
+        .tree-folder-name {
+            font-size: 14px;
+            font-weight: 500;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tree-path {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .selected-path {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .selected-path svg {
+            width: 16px;
+            height: 16px;
+            color: var(--folder);
+            flex-shrink: 0;
+        }
+
+        .selected-path span {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--bg-secondary);
+            color: var(--text);
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s;
+            z-index: 200;
+            box-shadow: 0 8px 32px var(--shadow-lg);
+            border: 1px solid var(--border);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Upload Progress */
+        .upload-progress {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            min-width: 300px;
+            box-shadow: 0 8px 32px var(--shadow-lg);
+            display: none;
+        }
+
+        .upload-progress.show { display: block; }
+        .upload-progress h4 { font-size: 14px; margin-bottom: 10px; }
+
+        .progress-bar {
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.3s;
+            border-radius: 3px;
+        }
+
+        #fileInput { display: none; }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 768px) {
+            .main { padding: 16px; }
+            .file-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+            .file-item { padding: 12px 8px; }
+            .file-icon { width: 44px; height: 44px; }
+            .file-icon svg { width: 40px; height: 40px; }
+            .drop-zone { padding: 24px 16px; }
+            .header { padding: 12px 16px; }
+            .toolbar-search input { width: 140px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/>
+            </svg>
+            Boxy
+        </div>
+        <div class="header-actions">
+            <div class="status">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Connecting...</span>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">
+                <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="toolbar">
+            <nav class="breadcrumb" id="breadcrumb"></nav>
+            <div class="toolbar-search">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Search files">
+                <select id="sortSelect">
+                    <option value="name">Name</option>
+                    <option value="size">Size</option>
+                    <option value="modified">Modified</option>
+                </select>
+            </div>
+            <div class="toolbar-actions">
+                <button class="btn" onclick="document.getElementById('fileInput').click()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                    </svg>
+                    Upload
+                </button>
+                <button class="btn" onclick="showNewFolderModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2zM12 11v6M9 14h6"/>
+                    </svg>
+                    New Folder
+                </button>
+            </div>
+        </div>
+
+        <div class="drop-zone" id="dropZone">
+            <svg class="drop-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+            </svg>
+            <p>Drop files here, click Upload, or paste from clipboard</p>
+        </div>
+
+        <div class="list-meta" id="listMeta"></div>
+        <div class="file-grid" id="fileGrid"></div>
+        <div class="empty-state" id="emptyState" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+            <p>This folder is empty</p>
+        </div>
+
+        <input type="file" id="fileInput" multiple>
+    </main>
+
+    <!-- New Folder Modal -->
+    <div class="modal" id="folderModal">
+        <div class="modal-content">
+            <h3>New Folder</h3>
+            <input type="text" id="folderName" placeholder="Folder name">
+            <div class="modal-actions">
+                <button class="btn" onclick="closeFolderModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="createFolder()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rename Modal -->
+    <div class="modal" id="renameModal">
+        <div class="modal-content">
+            <h3>Rename</h3>
+            <input type="text" id="renameName" placeholder="New name">
+            <input type="hidden" id="renamePath">
+            <div class="modal-actions">
+                <button class="btn" onclick="closeRenameModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="renameItem()">Rename</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Move Modal -->
+    <div class="modal" id="moveModal">
+        <div class="modal-content move-modal-content">
+            <h3>Move to folder</h3>
+            <div class="selected-path" id="selectedPathDisplay">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/>
+                </svg>
+                <span>/ (Root)</span>
+            </div>
+            <div class="folder-tree" id="folderTree"></div>
+            <input type="hidden" id="movePath">
+            <input type="hidden" id="moveDestination" value="">
+            <div class="modal-actions">
+                <button class="btn" onclick="closeMoveModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="moveItem()">Move here</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paste Modal -->
+    <div class="modal" id="pasteModal">
+        <div class="modal-content">
+            <h3>Save pasted file</h3>
+            <label>Enter filename</label>
+            <input type="text" id="pasteName" placeholder="filename.png">
+            <div class="modal-actions">
+                <button class="btn" onclick="closePasteModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmPaste()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="upload-progress" id="uploadProgress">
+        <h4>Uploading...</h4>
+        <div class="progress-bar">
+            <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentPath = '';
+        let ws = null;
+        let pendingPasteFile = null;
+        let draggedItem = null;
+        let allFiles = [];
+        let filterQuery = '';
+        let sortMode = 'name';
+
+        // Theme
+        function toggleTheme() {
+            const html = document.documentElement;
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            localStorage.setItem('theme', isDark ? 'light' : 'dark');
+            updateThemeIcon();
+        }
+
+        function updateThemeIcon() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            document.getElementById('themeIcon').innerHTML = isDark
+                ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+                : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+        }
+
+        // Initialize theme
+        const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeIcon();
+
+        // File type icons
+        function getFileIcon(name, isDir) {
+            if (isDir) {
+                return `<svg class="icon-folder" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/>
+                </svg>`;
+            }
+
+            const ext = name.split('.').pop().toLowerCase();
+            const icons = {
+                // Images
+                png: { icon: 'image', class: 'icon-image' },
+                jpg: { icon: 'image', class: 'icon-image' },
+                jpeg: { icon: 'image', class: 'icon-image' },
+                gif: { icon: 'image', class: 'icon-image' },
+                svg: { icon: 'image', class: 'icon-image' },
+                webp: { icon: 'image', class: 'icon-image' },
+                ico: { icon: 'image', class: 'icon-image' },
+                bmp: { icon: 'image', class: 'icon-image' },
+                // PDF
+                pdf: { icon: 'pdf', class: 'icon-pdf' },
+                // Documents
+                doc: { icon: 'doc', class: 'icon-doc' },
+                docx: { icon: 'doc', class: 'icon-doc' },
+                txt: { icon: 'doc', class: 'icon-doc' },
+                rtf: { icon: 'doc', class: 'icon-doc' },
+                odt: { icon: 'doc', class: 'icon-doc' },
+                // Spreadsheets
+                xls: { icon: 'sheet', class: 'icon-sheet' },
+                xlsx: { icon: 'sheet', class: 'icon-sheet' },
+                csv: { icon: 'sheet', class: 'icon-sheet' },
+                // Code
+                js: { icon: 'code', class: 'icon-code' },
+                ts: { icon: 'code', class: 'icon-code' },
+                jsx: { icon: 'code', class: 'icon-code' },
+                tsx: { icon: 'code', class: 'icon-code' },
+                html: { icon: 'code', class: 'icon-code' },
+                css: { icon: 'code', class: 'icon-code' },
+                json: { icon: 'code', class: 'icon-code' },
+                py: { icon: 'code', class: 'icon-code' },
+                rs: { icon: 'code', class: 'icon-code' },
+                go: { icon: 'code', class: 'icon-code' },
+                java: { icon: 'code', class: 'icon-code' },
+                c: { icon: 'code', class: 'icon-code' },
+                cpp: { icon: 'code', class: 'icon-code' },
+                h: { icon: 'code', class: 'icon-code' },
+                php: { icon: 'code', class: 'icon-code' },
+                rb: { icon: 'code', class: 'icon-code' },
+                sh: { icon: 'code', class: 'icon-code' },
+                yml: { icon: 'code', class: 'icon-code' },
+                yaml: { icon: 'code', class: 'icon-code' },
+                xml: { icon: 'code', class: 'icon-code' },
+                sql: { icon: 'code', class: 'icon-code' },
+                md: { icon: 'code', class: 'icon-code' },
+                // Video
+                mp4: { icon: 'video', class: 'icon-video' },
+                mov: { icon: 'video', class: 'icon-video' },
+                avi: { icon: 'video', class: 'icon-video' },
+                mkv: { icon: 'video', class: 'icon-video' },
+                webm: { icon: 'video', class: 'icon-video' },
+                wmv: { icon: 'video', class: 'icon-video' },
+                // Audio
+                mp3: { icon: 'audio', class: 'icon-audio' },
+                wav: { icon: 'audio', class: 'icon-audio' },
+                flac: { icon: 'audio', class: 'icon-audio' },
+                aac: { icon: 'audio', class: 'icon-audio' },
+                ogg: { icon: 'audio', class: 'icon-audio' },
+                m4a: { icon: 'audio', class: 'icon-audio' },
+                // Archives
+                zip: { icon: 'archive', class: 'icon-archive' },
+                rar: { icon: 'archive', class: 'icon-archive' },
+                '7z': { icon: 'archive', class: 'icon-archive' },
+                tar: { icon: 'archive', class: 'icon-archive' },
+                gz: { icon: 'archive', class: 'icon-archive' },
+            };
+
+            const iconData = icons[ext] || { icon: 'file', class: 'icon-file' };
+            const showExt = !icons[ext] && ext.length <= 5;
+
+            const svgPaths = {
+                image: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+                pdf: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
+                doc: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>',
+                sheet: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="12" y1="9" x2="12" y2="21"/>',
+                code: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="10 12 8 14 10 16"/><polyline points="14 12 16 14 14 16"/>',
+                video: '<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>',
+                audio: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+                archive: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
+                file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'
+            };
+
+            return `<svg class="${iconData.class}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                ${svgPaths[iconData.icon]}
+            </svg>${showExt ? `<span class="file-icon-ext">${ext}</span>` : ''}`;
+        }
+
+        // WebSocket
+        function connectWS() {
+            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+            ws.onopen = () => {
+                document.getElementById('statusDot').classList.add('connected');
+                document.getElementById('statusText').textContent = 'Live';
+            };
+
+            ws.onclose = () => {
+                document.getElementById('statusDot').classList.remove('connected');
+                document.getElementById('statusText').textContent = 'Reconnecting...';
+                setTimeout(connectWS, 2000);
+            };
+
+            ws.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                loadFiles();
+                const actions = { delete: 'Deleted', upload: 'Added', folder: 'Created', rename: 'Renamed', move: 'Moved' };
+                showToast(`${actions[data.action] || 'Updated'}: ${data.path.split('/').pop()}`);
+            };
+        }
+
+        async function loadFiles() {
+            const url = currentPath ? `/api/files?path=${encodeURIComponent(currentPath)}` : '/api/files';
+            const res = await fetch(url);
+            allFiles = await res.json();
+            renderFiles(allFiles);
+            updateBreadcrumb();
+        }
+
+        function renderFiles(files) {
+            const grid = document.getElementById('fileGrid');
+            const empty = document.getElementById('emptyState');
+            const meta = document.getElementById('listMeta');
+
+            const visible = applyFilters(files);
+            meta.textContent = `${visible.length} item${visible.length === 1 ? '' : 's'} • ${currentPath ? '/' + currentPath : '/'}`;
+
+            if (visible.length === 0) {
+                grid.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+
+            empty.style.display = 'none';
+            grid.innerHTML = visible.map((f, index) => {
+                const fullPath = currentPath ? currentPath + '/' + f.name : f.name;
+                const escapedPath = escapeAttr(fullPath);
+                const escapedName = escapeAttr(f.name);
+
+                return `
+                <div class="file-item"
+                     data-path="${escapedPath}"
+                     data-name="${escapedName}"
+                     data-is-dir="${f.is_dir}"
+                     style="animation-delay: ${index * 20}ms"
+                     draggable="true"
+                     ondragstart="handleDragStart(event)"
+                     ondragend="handleDragEnd(event)"
+                     ondragover="handleDragOver(event)"
+                     ondragleave="handleDragLeave(event)"
+                     ondrop="handleDrop(event)">
+                    <div class="file-item-content" onclick="handleClick(event, '${escapedPath}', ${f.is_dir})">
+                        <div class="file-icon">${getFileIcon(f.name, f.is_dir)}</div>
+                        <div class="file-name">${escapeHtml(f.name)}</div>
+                        <div class="file-meta">${f.is_dir ? 'Folder' : formatSize(f.size)}</div>
+                    </div>
+                    <div class="file-actions">
+                        <button class="file-action-btn" onclick="event.stopPropagation(); showRenameModal('${escapedPath}', '${escapedName}')" title="Rename">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                        </button>
+                        <button class="file-action-btn" onclick="event.stopPropagation(); showMoveModal('${escapedPath}')" title="Move">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                        <button class="file-action-btn delete" onclick="event.stopPropagation(); deleteItem('${escapedPath}')" title="Delete">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function applyFilters(files) {
+            let filtered = files;
+            if (filterQuery) {
+                const q = filterQuery.toLowerCase();
+                filtered = filtered.filter(f => f.name.toLowerCase().includes(q));
+            }
+
+            const compare = (a, b) => {
+                if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1;
+                if (sortMode === 'size') return (b.size || 0) - (a.size || 0);
+                if (sortMode === 'modified') return (b.modified || 0) - (a.modified || 0);
+                return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+            };
+
+            return filtered.slice().sort(compare);
+        }
+
+        function handleClick(e, path, isDir) {
+            if (isDir) {
+                navigate(path);
+            } else {
+                downloadFile(path);
+            }
+        }
+
+        // Drag and drop to folders
+        function handleDragStart(e) {
+            draggedItem = e.target.closest('.file-item');
+            draggedItem.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', draggedItem.dataset.path);
+        }
+
+        function handleDragEnd(e) {
+            if (draggedItem) {
+                draggedItem.classList.remove('dragging');
+                draggedItem = null;
+            }
+            document.querySelectorAll('.file-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            const target = e.target.closest('.file-item');
+            if (target && target.dataset.isDir === 'true' && target !== draggedItem) {
+                target.classList.add('drag-over');
+                e.dataTransfer.dropEffect = 'move';
+            }
+        }
+
+        function handleDragLeave(e) {
+            const target = e.target.closest('.file-item');
+            if (target) target.classList.remove('drag-over');
+        }
+
+        async function handleDrop(e) {
+            e.preventDefault();
+            const target = e.target.closest('.file-item');
+            if (!target) return;
+            target.classList.remove('drag-over');
+
+            if (target.dataset.isDir !== 'true') return;
+
+            const sourcePath = e.dataTransfer.getData('text/plain');
+            if (!sourcePath || sourcePath === target.dataset.path) return;
+
+            const destDir = target.dataset.path;
+
+            const res = await fetch('/api/move', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: sourcePath, dest_dir: destDir })
+            });
+
+            if (res.ok) {
+                loadFiles();
+                showToast(`Moved to ${target.dataset.name}`);
+            } else {
+                showToast('Move failed');
+            }
+        }
+
+        function navigate(path) {
+            currentPath = path;
+            loadFiles();
+        }
+
+        function updateBreadcrumb() {
+            const bc = document.getElementById('breadcrumb');
+            const parts = currentPath ? currentPath.split('/') : [];
+
+            let html = `<a class="breadcrumb-item ${parts.length === 0 ? 'active' : ''}" onclick="navigate('')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                Home
+            </a>`;
+
+            let path = '';
+            for (let i = 0; i < parts.length; i++) {
+                path += (i > 0 ? '/' : '') + parts[i];
+                const p = path;
+                const isLast = i === parts.length - 1;
+                html += `<span class="breadcrumb-sep">/</span>
+                    <a class="breadcrumb-item ${isLast ? 'active' : ''}" onclick="navigate('${p}')">${escapeHtml(parts[i])}</a>`;
+            }
+
+            bc.innerHTML = html;
+        }
+
+        async function uploadFiles(files) {
+            if (files.length === 0) return;
+
+            const progress = document.getElementById('uploadProgress');
+            const fill = document.getElementById('progressFill');
+            progress.classList.add('show');
+
+            const formData = new FormData();
+            for (const file of files) {
+                formData.append('files', file, file.name);
+            }
+
+            const url = currentPath ? `/api/upload?path=${encodeURIComponent(currentPath)}` : '/api/upload';
+
+            const xhr = new XMLHttpRequest();
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    fill.style.width = (e.loaded / e.total * 100) + '%';
+                }
+            };
+            xhr.onload = () => {
+                progress.classList.remove('show');
+                fill.style.width = '0%';
+                if (xhr.status === 200) {
+                    loadFiles();
+                    showToast('Upload complete');
+                }
+            };
+            xhr.onerror = () => {
+                progress.classList.remove('show');
+                showToast('Upload failed');
+            };
+            xhr.open('POST', url);
+            xhr.send(formData);
+        }
+
+        function downloadFile(path) {
+            window.location.href = `/api/download?path=${encodeURIComponent(path)}`;
+        }
+
+        async function deleteItem(path) {
+            if (!confirm(`Delete "${path.split('/').pop()}"?`)) return;
+
+            await fetch('/api/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path })
+            });
+            loadFiles();
+        }
+
+        // Folder Modal
+        function showNewFolderModal() {
+            document.getElementById('folderModal').classList.add('active');
+            document.getElementById('folderName').value = '';
+            setTimeout(() => document.getElementById('folderName').focus(), 100);
+        }
+
+        function closeFolderModal() {
+            document.getElementById('folderModal').classList.remove('active');
+        }
+
+        async function createFolder() {
+            const name = document.getElementById('folderName').value.trim();
+            if (!name) return;
+
+            await fetch('/api/folder', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, path: currentPath || null })
+            });
+
+            closeFolderModal();
+            loadFiles();
+        }
+
+        // Rename Modal
+        function showRenameModal(path, currentName) {
+            document.getElementById('renameModal').classList.add('active');
+            document.getElementById('renamePath').value = path;
+            document.getElementById('renameName').value = currentName;
+            setTimeout(() => {
+                const input = document.getElementById('renameName');
+                input.focus();
+                input.select();
+            }, 100);
+        }
+
+        function closeRenameModal() {
+            document.getElementById('renameModal').classList.remove('active');
+        }
+
+        async function renameItem() {
+            const path = document.getElementById('renamePath').value;
+            const newName = document.getElementById('renameName').value.trim();
+            if (!newName) return;
+
+            const res = await fetch('/api/rename', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path, new_name: newName })
+            });
+
+            if (res.ok) {
+                closeRenameModal();
+                loadFiles();
+            } else {
+                showToast('Rename failed');
+            }
+        }
+
+        // Move Modal with Tree View
+        let folderTreeData = [];
+        let expandedFolders = new Set();
+
+        async function showMoveModal(path) {
+            document.getElementById('moveModal').classList.add('active');
+            document.getElementById('movePath').value = path;
+            document.getElementById('moveDestination').value = '';
+            updateSelectedPathDisplay('');
+
+            const res = await fetch('/api/folders');
+            const folders = await res.json();
+            folderTreeData = buildFolderTree(folders);
+            expandedFolders = new Set();
+            // Auto-expand first level
+            folderTreeData.forEach(f => expandedFolders.add(f.path));
+            renderFolderTree();
+        }
+
+        function buildFolderTree(folders) {
+            const tree = [];
+            const map = {};
+
+            // Sort folders by path
+            folders.sort((a, b) => a.localeCompare(b));
+
+            folders.forEach(path => {
+                if (path === '/') {
+                    return; // Root is shown separately
+                }
+
+                const parts = path.split('/');
+                const name = parts[parts.length - 1];
+                const parentPath = parts.slice(0, -1).join('/');
+
+                const node = { name, path, children: [], depth: parts.length - 1 };
+                map[path] = node;
+
+                if (parentPath && map[parentPath]) {
+                    map[parentPath].children.push(node);
+                } else {
+                    tree.push(node);
+                }
+            });
+
+            return tree;
+        }
+
+        function renderFolderTree() {
+            const container = document.getElementById('folderTree');
+            const selectedPath = document.getElementById('moveDestination').value;
+
+            let html = `
+                <div class="tree-item ${selectedPath === '' ? 'selected' : ''}" onclick="selectMoveDestination('')">
+                    <div class="tree-toggle empty"></div>
+                    <svg class="tree-folder-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                        <polyline points="9 22 9 12 15 12 15 22" fill="none" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <span class="tree-folder-name">Root</span>
+                    <span class="tree-path">/</span>
+                </div>
+            `;
+
+            html += renderTreeNodes(folderTreeData, selectedPath, 0);
+            container.innerHTML = html;
+        }
+
+        function renderTreeNodes(nodes, selectedPath, depth) {
+            let html = '';
+
+            nodes.forEach(node => {
+                const hasChildren = node.children && node.children.length > 0;
+                const isExpanded = expandedFolders.has(node.path);
+                const isSelected = selectedPath === node.path;
+
+                html += `
+                    <div class="tree-item ${isSelected ? 'selected' : ''}"
+                         style="padding-left: ${12 + depth * 20}px"
+                         onclick="selectMoveDestination('${escapeAttr(node.path)}')">
+                        <div class="tree-toggle ${hasChildren ? (isExpanded ? 'expanded' : '') : 'empty'}"
+                             onclick="event.stopPropagation(); toggleFolderExpand('${escapeAttr(node.path)}')">
+                            ${hasChildren ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"/>
+                            </svg>` : ''}
+                        </div>
+                        <svg class="tree-folder-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/>
+                        </svg>
+                        <span class="tree-folder-name">${escapeHtml(node.name)}</span>
+                    </div>
+                `;
+
+                if (hasChildren && isExpanded) {
+                    html += renderTreeNodes(node.children, selectedPath, depth + 1);
+                }
+            });
+
+            return html;
+        }
+
+        function toggleFolderExpand(path) {
+            if (expandedFolders.has(path)) {
+                expandedFolders.delete(path);
+            } else {
+                expandedFolders.add(path);
+            }
+            renderFolderTree();
+        }
+
+        function selectMoveDestination(path) {
+            document.getElementById('moveDestination').value = path;
+            updateSelectedPathDisplay(path);
+            renderFolderTree();
+        }
+
+        function updateSelectedPathDisplay(path) {
+            const display = document.getElementById('selectedPathDisplay');
+            const displayPath = path === '' ? '/ (Root)' : '/' + path;
+            display.querySelector('span').textContent = displayPath;
+        }
+
+        function closeMoveModal() {
+            document.getElementById('moveModal').classList.remove('active');
+        }
+
+        async function moveItem() {
+            const path = document.getElementById('movePath').value;
+            const destDir = document.getElementById('moveDestination').value;
+
+            const res = await fetch('/api/move', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path, dest_dir: destDir || null })
+            });
+
+            if (res.ok) {
+                closeMoveModal();
+                loadFiles();
+            } else {
+                showToast('Move failed');
+            }
+        }
+
+        // Paste Modal
+        function showPasteModal(file) {
+            pendingPasteFile = file;
+            const ext = file.type.split('/')[1] || 'png';
+            const defaultName = `image_${new Date().toISOString().slice(0,19).replace(/[T:]/g, '-')}.${ext}`;
+
+            document.getElementById('pasteModal').classList.add('active');
+            document.getElementById('pasteName').value = defaultName;
+            setTimeout(() => {
+                const input = document.getElementById('pasteName');
+                input.focus();
+                input.select();
+            }, 100);
+        }
+
+        function closePasteModal() {
+            document.getElementById('pasteModal').classList.remove('active');
+            pendingPasteFile = null;
+        }
+
+        function confirmPaste() {
+            const name = document.getElementById('pasteName').value.trim();
+            if (!name || !pendingPasteFile) return;
+
+            const newFile = new File([pendingPasteFile], name, { type: pendingPasteFile.type });
+            uploadFiles([newFile]);
+            closePasteModal();
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function escapeAttr(str) {
+            return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        }
+
+        // Drag & Drop zone
+        const dropZone = document.getElementById('dropZone');
+
+        ['dragenter', 'dragover'].forEach(e => {
+            dropZone.addEventListener(e, (ev) => {
+                ev.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(e => {
+            dropZone.addEventListener(e, (ev) => {
+                ev.preventDefault();
+                dropZone.classList.remove('dragover');
+            });
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) uploadFiles(files);
+        });
+
+        // File input
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            uploadFiles(e.target.files);
+            e.target.value = '';
+        });
+
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            filterQuery = e.target.value.trim();
+            renderFiles(allFiles);
+        });
+
+        document.getElementById('sortSelect').addEventListener('change', (e) => {
+            sortMode = e.target.value;
+            renderFiles(allFiles);
+        });
+
+        // Paste from clipboard
+        document.addEventListener('paste', async (e) => {
+            const items = e.clipboardData.items;
+
+            for (const item of items) {
+                if (item.kind === 'file') {
+                    const file = item.getAsFile();
+                    if (file) {
+                        if (file.type.startsWith('image/')) {
+                            showPasteModal(file);
+                        } else {
+                            uploadFiles([file]);
+                        }
+                        return;
+                    }
+                }
+            }
+        });
+
+        // Modal keyboard handling
+        document.querySelectorAll('.modal input').forEach(input => {
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    const modal = e.target.closest('.modal');
+                    modal.querySelector('.btn-primary').click();
+                }
+                if (e.key === 'Escape') {
+                    e.target.closest('.modal').classList.remove('active');
+                }
+            });
+        });
+
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal')) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+
+        // Init
+        connectWS();
+        loadFiles();
+    </script>
+</body>
+</html>
