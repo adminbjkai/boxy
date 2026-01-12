@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo *)",
+      "Bash(npm *)",
+      "Bash(npx *)"
+    ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[SKILL REMINDER] Check .claude/skills/ for project patterns. Available: project-guide, ui-patterns, quality-checklist'"
+          }
+        ]
+      }
+    ]
+  }
+}
