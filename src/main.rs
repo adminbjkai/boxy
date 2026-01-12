@@ -1,4 +1,3 @@
-use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::{
     middleware::{Compress, Logger},
@@ -109,6 +108,7 @@ async fn ws_handler(
 #[derive(Deserialize)]
 struct PathQuery {
     path: Option<String>,
+    download: Option<bool>,
 }
 
 fn clean_relative_path(path: &str) -> PathBuf {
@@ -403,7 +403,7 @@ async fn delete_item(
 async fn download_file(
     state: web::Data<AppState>,
     query: web::Query<PathQuery>,
-) -> Result<NamedFile> {
+) -> Result<HttpResponse> {
     let path = query
         .path
         .as_ref()
@@ -415,24 +415,70 @@ async fn download_file(
         return Err(actix_web::error::ErrorNotFound("File not found"));
     }
 
-    let mut file = NamedFile::open_async(&filepath).await?;
     let filename = filepath
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("download");
 
-    let mime = mime_guess::from_path(&filepath).first_or_octet_stream();
-    file = file.set_content_type(mime);
-    file = file.use_last_modified(true);
-
-    let cd = actix_web::http::header::ContentDisposition {
-        disposition: actix_web::http::header::DispositionType::Attachment,
-        parameters: vec![actix_web::http::header::DispositionParam::Filename(
-            filename.to_string(),
-        )],
+    // Get correct MIME type - override for common previewable types
+    let ext = filepath.extension().and_then(|e| e.to_str()).unwrap_or("");
+    let content_type: String = match ext.to_lowercase().as_str() {
+        "pdf" => "application/pdf".to_string(),
+        "mp4" => "video/mp4".to_string(),
+        "webm" => "video/webm".to_string(),
+        "mp3" => "audio/mpeg".to_string(),
+        "wav" => "audio/wav".to_string(),
+        "ogg" => "audio/ogg".to_string(),
+        "txt" => "text/plain; charset=utf-8".to_string(),
+        "html" | "htm" => "text/html; charset=utf-8".to_string(),
+        "css" => "text/css; charset=utf-8".to_string(),
+        "js" => "text/javascript; charset=utf-8".to_string(),
+        "json" => "application/json; charset=utf-8".to_string(),
+        "xml" => "application/xml; charset=utf-8".to_string(),
+        "svg" => "image/svg+xml".to_string(),
+        "png" => "image/png".to_string(),
+        "jpg" | "jpeg" => "image/jpeg".to_string(),
+        "gif" => "image/gif".to_string(),
+        "webp" => "image/webp".to_string(),
+        "ico" => "image/x-icon".to_string(),
+        _ => mime_guess::from_path(&filepath)
+            .first_or_octet_stream()
+            .essence_str()
+            .to_string(),
     };
 
-    Ok(file.set_content_disposition(cd))
+    let file_content = tokio::fs::read(&filepath).await?;
+    let file_size = file_content.len();
+
+    let mut response = HttpResponse::Ok();
+
+    // Set Content-Type
+    response.insert_header(("Content-Type", content_type));
+
+    // Set Content-Length
+    response.insert_header(("Content-Length", file_size.to_string()));
+
+    // Prevent MIME sniffing - browser must use our Content-Type
+    response.insert_header(("X-Content-Type-Options", "nosniff"));
+
+    // Cache for 1 hour for preview, helps with repeated views
+    response.insert_header(("Cache-Control", "private, max-age=3600"));
+
+    // Set Content-Disposition: attachment for download, inline for preview
+    if query.download.unwrap_or(false) {
+        response.insert_header((
+            "Content-Disposition",
+            format!("attachment; filename=\"{}\"", filename.replace('"', "\\\""))
+        ));
+    } else {
+        // Explicit inline directive for preview - required by Edge for PDF viewing
+        response.insert_header((
+            "Content-Disposition",
+            format!("inline; filename=\"{}\"", filename.replace('"', "\\\""))
+        ));
+    }
+
+    Ok(response.body(file_content))
 }
 
 async fn serve_index() -> Result<HttpResponse> {
