@@ -7,6 +7,11 @@ Boxy is a lightweight file sharing UI with real-time updates, drag-and-drop uplo
 - Folder navigation, move, rename, delete
 - Live updates via WebSocket
 - Search and sort client-side
+- File type filtering (All, Images, Documents, Code, Audio/Video)
+- Grid/list view toggle with persistent preference
+- Image thumbnails with lazy loading in both views
+- Sortable table columns in list view (Name, Type, Size, Date Modified)
+- Preserved original file modification dates on upload
 
 ## Architecture & flow
 ![Boxy architecture](docs/assets/images/boxy-architecture-20260112.png)
