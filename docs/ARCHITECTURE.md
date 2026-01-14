@@ -25,13 +25,14 @@ Boxy is a lightweight file sharing UI built with Rust/Actix, serving a static we
 - `GET /` – static UI
 - `GET /ws` – WebSocket broadcast channel
 - `GET /api/files?path=...` – list items in folder
-- `POST /api/upload?path=...` – multipart upload
+- `GET /api/search?q=...` – recursive file search by name
+- `POST /api/upload?path=...` – multipart upload (supports nested paths for folder uploads)
 - `POST /api/folder` – create folder `{ name, path? }`
 - `POST /api/rename` – rename `{ path, new_name }`
 - `POST /api/move` – move `{ path, dest_dir? }`
 - `POST /api/delete` – delete `{ path }`
 - `GET /api/folders` – list all folders for move dialog
-- `GET /api/download?path=...` – download file
+- `GET /api/download?path=...` – download/preview file
 - `GET /api/health` – healthcheck
 
 ## Notes on implementation

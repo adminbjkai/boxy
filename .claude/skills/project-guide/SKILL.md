@@ -68,9 +68,10 @@ broadcast_update(&state.broadcaster, "upload", &path);
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | GET | `/api/files?path=` | List directory |
+| GET | `/api/search?q=` | Recursive file search |
 | GET | `/api/folders` | All folder paths |
-| GET | `/api/download?path=` | Download file |
-| POST | `/api/upload?path=` | Upload (multipart) |
+| GET | `/api/download?path=` | Download/preview file |
+| POST | `/api/upload?path=` | Upload (multipart, supports folders) |
 | POST | `/api/folder` | Create folder |
 | POST | `/api/rename` | Rename item |
 | POST | `/api/move` | Move item |
