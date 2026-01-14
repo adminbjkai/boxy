@@ -199,9 +199,18 @@ async fn upload_file(
             .and_then(|cd| cd.get_filename().map(|s| s.to_string()))
             .unwrap_or_else(|| format!("file_{}", uuid::Uuid::new_v4()));
 
-        let safe_name = filename.replace(['/', '\\', '\0'], "_");
-        let filepath = get_unique_filename(&base_path, &safe_name).await;
-        let final_name = filepath.file_name().unwrap().to_string_lossy().to_string();
+        // Support nested paths for folder uploads - clean each segment
+        let clean_path = clean_relative_path(&filename);
+        let filepath = base_path.join(&clean_path);
+
+        // Create parent directories if needed (for folder uploads)
+        if let Some(parent) = filepath.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
+
+        // Handle filename conflicts
+        let filepath = get_unique_filepath(&filepath).await;
+        let final_name = clean_path.to_string_lossy().to_string();
 
         let mut file = tokio::fs::File::create(&filepath).await?;
 
@@ -229,19 +238,17 @@ async fn upload_file(
     Ok(HttpResponse::Ok().json(uploaded))
 }
 
-async fn get_unique_filename(base_path: &Path, filename: &str) -> PathBuf {
-    let mut filepath = base_path.join(filename);
-    if !filepath.exists() {
-        return filepath;
+async fn get_unique_filepath(original: &Path) -> PathBuf {
+    if !original.exists() {
+        return original.to_path_buf();
     }
 
-    let stem = std::path::Path::new(filename)
+    let parent = original.parent().unwrap_or(Path::new(""));
+    let stem = original
         .file_stem()
         .and_then(|s| s.to_str())
-        .unwrap_or(filename);
-    let ext = std::path::Path::new(filename)
-        .extension()
-        .and_then(|s| s.to_str());
+        .unwrap_or("file");
+    let ext = original.extension().and_then(|s| s.to_str());
 
     let mut counter = 1;
     loop {
@@ -249,7 +256,7 @@ async fn get_unique_filename(base_path: &Path, filename: &str) -> PathBuf {
             Some(e) => format!("{}_{}.{}", stem, counter, e),
             None => format!("{}_{}", stem, counter),
         };
-        filepath = base_path.join(&new_name);
+        let filepath = parent.join(&new_name);
         if !filepath.exists() {
             return filepath;
         }
@@ -376,6 +383,92 @@ async fn collect_folders(path: PathBuf, prefix: String, folders: &mut Vec<String
                     };
                     folders.push(full_path.clone());
                     collect_folders(entry.path(), full_path, folders).await;
+                }
+            }
+        }
+    }
+}
+
+#[derive(Clone, Serialize)]
+struct SearchResult {
+    name: String,
+    path: String,
+    is_dir: bool,
+    size: u64,
+    modified: u64,
+}
+
+#[derive(Deserialize)]
+struct SearchQuery {
+    q: String,
+}
+
+async fn search_files(
+    state: web::Data<AppState>,
+    query: web::Query<SearchQuery>,
+) -> Result<HttpResponse> {
+    let search_term = query.q.to_lowercase();
+    if search_term.is_empty() {
+        return Ok(HttpResponse::Ok().json(Vec::<SearchResult>::new()));
+    }
+
+    let mut results = Vec::new();
+    collect_search_results(
+        state.upload_dir.clone(),
+        String::new(),
+        &search_term,
+        &mut results,
+    )
+    .await;
+
+    // Sort: folders first, then by name
+    results.sort_by(|a, b| {
+        b.is_dir
+            .cmp(&a.is_dir)
+            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+    });
+
+    Ok(HttpResponse::Ok().json(results))
+}
+
+#[async_recursion::async_recursion]
+async fn collect_search_results(
+    path: PathBuf,
+    prefix: String,
+    search_term: &str,
+    results: &mut Vec<SearchResult>,
+) {
+    if let Ok(mut dir) = tokio::fs::read_dir(&path).await {
+        while let Ok(Some(entry)) = dir.next_entry().await {
+            if let Ok(meta) = entry.metadata().await {
+                let name = entry.file_name().to_string_lossy().to_string();
+                let full_path = if prefix.is_empty() {
+                    name.clone()
+                } else {
+                    format!("{}/{}", prefix, name)
+                };
+
+                // Check if name matches search term
+                if name.to_lowercase().contains(search_term) {
+                    let modified = meta
+                        .modified()
+                        .ok()
+                        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                        .map(|d| d.as_secs())
+                        .unwrap_or(0);
+
+                    results.push(SearchResult {
+                        name,
+                        path: full_path.clone(),
+                        is_dir: meta.is_dir(),
+                        size: meta.len(),
+                        modified,
+                    });
+                }
+
+                // Recurse into directories
+                if meta.is_dir() {
+                    collect_search_results(entry.path(), full_path, search_term, results).await;
                 }
             }
         }
@@ -528,6 +621,7 @@ async fn main() -> std::io::Result<()> {
             .route("/api/move", web::post().to(move_item))
             .route("/api/folders", web::get().to(list_all_folders))
             .route("/api/download", web::get().to(download_file))
+            .route("/api/search", web::get().to(search_files))
             .route("/api/health", web::get().to(healthcheck))
     })
     .bind(("0.0.0.0", settings.port))?

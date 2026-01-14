@@ -145,12 +145,27 @@
             flex-wrap: wrap;
         }
 
+        /* Sticky Navigation Bar */
+        .nav-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 10px 16px;
+            margin: 0 -24px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 57px;
+            z-index: 40;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
         .breadcrumb {
             display: flex;
             align-items: center;
             gap: 4px;
-            flex: 1;
-            min-width: 200px;
             font-size: 14px;
             overflow-x: auto;
         }
@@ -171,6 +186,12 @@
         .breadcrumb-item:hover { background: var(--bg-tertiary); color: var(--text); }
         .breadcrumb-item.active { color: var(--text); font-weight: 500; }
         .breadcrumb-sep { color: var(--border); }
+
+        .nav-meta {
+            font-size: 13px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
 
         .toolbar-actions { display: flex; gap: 8px; }
 
@@ -313,6 +334,15 @@
         .file-item.selected {
             border-color: var(--accent);
             background: rgba(0, 113, 227, 0.08);
+        }
+
+        .file-item.focused {
+            outline: 2px solid var(--accent);
+            outline-offset: -2px;
+        }
+
+        .file-item.focused.selected {
+            outline-color: var(--accent);
         }
 
         /* File Icons */
@@ -482,7 +512,7 @@
         }
 
         .file-table-header .col-actions {
-            width: 116px;
+            width: 196px;
             flex-shrink: 0;
         }
 
@@ -569,6 +599,9 @@
             padding: 0;
             margin-left: 8px;
             pointer-events: none;
+            min-width: 196px;
+            flex-shrink: 0;
+            justify-content: flex-end;
         }
 
         .file-table .file-item:hover .file-actions {
@@ -644,13 +677,149 @@
         }
 
         .empty-state p { font-size: 15px; }
-        .list-meta {
+
+        /* Global Search */
+        .global-search {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 150;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 10vh;
+        }
+
+        .global-search.active { display: flex; }
+
+        .global-search-panel {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 16px;
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px var(--shadow-lg);
+            overflow: hidden;
+        }
+
+        .global-search-input-wrap {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
-            font-size: 13px;
+            gap: 12px;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .global-search-input-wrap svg {
+            width: 20px;
+            height: 20px;
             color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .global-search-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 16px;
+            color: var(--text);
+            outline: none;
+        }
+
+        .global-search-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .global-search-hint {
+            font-size: 12px;
+            color: var(--text-secondary);
+            padding: 8px 20px;
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .global-search-hint kbd {
+            background: var(--bg-secondary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            border: 1px solid var(--border);
+        }
+
+        .global-search-results {
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+
+        .search-result-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: all var(--transition);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .search-result-item:last-child { border-bottom: none; }
+        .search-result-item:hover { background: var(--bg-tertiary); }
+        .search-result-item.focused { background: var(--bg-tertiary); }
+
+        .search-result-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .search-result-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .search-result-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .search-result-name {
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .search-result-path {
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .search-result-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .search-no-results {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .search-no-results svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 12px;
+            opacity: 0.5;
         }
 
         /* Modals */
@@ -1001,6 +1170,7 @@
             .drop-zone { padding: 24px 16px; }
             .header { padding: 12px 16px; }
             .toolbar-search input { width: 140px; }
+            .nav-bar { margin: 0 -16px 16px; top: 57px; }
         }
     </style>
 </head>
@@ -1027,7 +1197,6 @@
 
     <main class="main">
         <div class="toolbar">
-            <nav class="breadcrumb" id="breadcrumb"></nav>
             <div class="toolbar-search">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"></circle>
@@ -1050,6 +1219,12 @@
             <button class="view-toggle" id="viewToggle" onclick="toggleView()" title="Toggle view">
                 <svg id="viewIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                </svg>
+            </button>
+            <button class="view-toggle" onclick="openGlobalSearch()" title="Search all files (/)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
             </button>
             <div class="toolbar-actions">
@@ -1075,7 +1250,10 @@
             <p>Drop files here, click Upload, or paste from clipboard</p>
         </div>
 
-        <div class="list-meta" id="listMeta"></div>
+        <div class="nav-bar">
+            <nav class="breadcrumb" id="breadcrumb"></nav>
+            <div class="nav-meta" id="navMeta"></div>
+        </div>
         <div class="file-grid" id="fileGrid"></div>
         <div class="empty-state" id="emptyState" style="display:none">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -1178,6 +1356,25 @@
         </div>
     </div>
 
+    <!-- Global Search -->
+    <div class="global-search" id="globalSearch">
+        <div class="global-search-panel">
+            <div class="global-search-input-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" class="global-search-input" id="globalSearchInput" placeholder="Search all files..." autocomplete="off">
+            </div>
+            <div class="global-search-hint">
+                <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+                <span><kbd>Enter</kbd> Open</span>
+                <span><kbd>Esc</kbd> Close</span>
+            </div>
+            <div class="global-search-results" id="globalSearchResults"></div>
+        </div>
+    </div>
+
     <script>
         let currentPath = '';
         let ws = null;
@@ -1192,6 +1389,7 @@
         let listSortDir = localStorage.getItem('listSortDir') || 'asc';
         let selectedFiles = new Set();
         let lastSelectedIndex = -1;
+        let focusedIndex = -1;
 
         // Theme
         function toggleTheme() {
@@ -1338,6 +1536,7 @@
             const url = currentPath ? `/api/files?path=${encodeURIComponent(currentPath)}` : '/api/files';
             const res = await fetch(url);
             allFiles = await res.json();
+            focusedIndex = -1;
             renderFiles(allFiles);
             updateBreadcrumb();
         }
@@ -1345,10 +1544,10 @@
         function renderFiles(files) {
             const grid = document.getElementById('fileGrid');
             const empty = document.getElementById('emptyState');
-            const meta = document.getElementById('listMeta');
+            const meta = document.getElementById('navMeta');
 
             const visible = applyFilters(files);
-            meta.textContent = `${visible.length} item${visible.length === 1 ? '' : 's'} • ${currentPath ? '/' + currentPath : '/'}`;
+            meta.textContent = `${visible.length} item${visible.length === 1 ? '' : 's'}`;
 
             if (visible.length === 0) {
                 grid.innerHTML = '';
@@ -1766,18 +1965,98 @@
             bc.innerHTML = html;
         }
 
-        async function uploadFiles(files) {
+        // Folder upload utilities using webkitGetAsEntry API
+        async function readEntryAsFile(entry) {
+            return new Promise((resolve, reject) => {
+                entry.file(resolve, reject);
+            });
+        }
+
+        async function readDirectoryEntries(dirEntry) {
+            return new Promise((resolve, reject) => {
+                const reader = dirEntry.createReader();
+                const entries = [];
+
+                function readBatch() {
+                    reader.readEntries((batch) => {
+                        if (batch.length === 0) {
+                            resolve(entries);
+                        } else {
+                            entries.push(...batch);
+                            readBatch(); // Continue reading (directories may have >100 entries)
+                        }
+                    }, reject);
+                }
+                readBatch();
+            });
+        }
+
+        async function collectFilesFromEntry(entry, basePath = '') {
+            const files = [];
+            const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
+
+            if (entry.isFile) {
+                try {
+                    const file = await readEntryAsFile(entry);
+                    // Create new File with relative path as name
+                    const fileWithPath = new File([file], relativePath, {
+                        type: file.type,
+                        lastModified: file.lastModified
+                    });
+                    files.push(fileWithPath);
+                } catch (e) {
+                    console.warn('Could not read file:', relativePath, e);
+                }
+            } else if (entry.isDirectory) {
+                const entries = await readDirectoryEntries(entry);
+                for (const childEntry of entries) {
+                    const childFiles = await collectFilesFromEntry(childEntry, relativePath);
+                    files.push(...childFiles);
+                }
+            }
+            return files;
+        }
+
+        async function processDataTransferItems(items) {
+            const files = [];
+            const entries = [];
+
+            // First, get all entries (must be done synchronously before items expire)
+            for (const item of items) {
+                if (item.kind === 'file') {
+                    const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+                    if (entry) {
+                        entries.push(entry);
+                    } else {
+                        // Fallback for browsers without webkitGetAsEntry
+                        const file = item.getAsFile();
+                        if (file) files.push(file);
+                    }
+                }
+            }
+
+            // Process entries (can be async)
+            for (const entry of entries) {
+                const entryFiles = await collectFilesFromEntry(entry);
+                files.push(...entryFiles);
+            }
+
+            return files;
+        }
+
+        async function uploadFiles(files, relativePaths = null) {
             if (files.length === 0) return;
 
             const progress = document.getElementById('uploadProgress');
             const fill = document.getElementById('progressFill');
             progress.classList.add('show');
 
-            // Collect original modification times
+            // Collect original modification times using relative paths
             const mtimes = {};
             for (const file of files) {
+                const path = file.name; // File.name contains the relative path for folder uploads
                 if (file.lastModified) {
-                    mtimes[file.name] = file.lastModified;
+                    mtimes[path] = file.lastModified;
                 }
             }
 
@@ -1801,7 +2080,8 @@
                 fill.style.width = '0%';
                 if (xhr.status === 200) {
                     loadFiles();
-                    showToast('Upload complete');
+                    const count = files.length;
+                    showToast(`Uploaded ${count} file${count === 1 ? '' : 's'}`);
                 }
             };
             xhr.onerror = () => {
@@ -2210,14 +2490,26 @@
             });
         });
 
-        dropZone.addEventListener('drop', (e) => {
-            const files = e.dataTransfer.files;
+        dropZone.addEventListener('drop', async (e) => {
+            // Use webkitGetAsEntry for folder support
+            const files = await processDataTransferItems(e.dataTransfer.items);
             if (files.length > 0) uploadFiles(files);
         });
 
         // File input
         document.getElementById('fileInput').addEventListener('change', (e) => {
-            uploadFiles(e.target.files);
+            const fileList = e.target.files;
+            // Convert to array and preserve webkitRelativePath for folder uploads
+            const files = Array.from(fileList).map(file => {
+                if (file.webkitRelativePath) {
+                    return new File([file], file.webkitRelativePath, {
+                        type: file.type,
+                        lastModified: file.lastModified
+                    });
+                }
+                return file;
+            });
+            uploadFiles(files);
             e.target.value = '';
         });
 
@@ -2237,22 +2529,21 @@
             renderFiles(allFiles);
         });
 
-        // Paste from clipboard
+        // Paste from clipboard (supports folders via webkitGetAsEntry)
         document.addEventListener('paste', async (e) => {
             const items = e.clipboardData.items;
 
-            for (const item of items) {
-                if (item.kind === 'file') {
-                    const file = item.getAsFile();
-                    if (file) {
-                        if (file.type.startsWith('image/')) {
-                            showPasteModal(file);
-                        } else {
-                            uploadFiles([file]);
-                        }
-                        return;
-                    }
-                }
+            // Use webkitGetAsEntry to detect folders
+            const files = await processDataTransferItems(items);
+
+            if (files.length === 0) return;
+
+            // Single image without path (not from folder): show naming modal
+            if (files.length === 1 && files[0].type.startsWith('image/') && !files[0].name.includes('/')) {
+                showPasteModal(files[0]);
+            } else {
+                // Multiple files, folder contents, or non-image: upload directly
+                uploadFiles(files);
             }
         });
 
@@ -2290,6 +2581,271 @@
 
             if (isEmptyArea && selectedFiles.size > 0) {
                 clearSelection();
+            }
+        });
+
+        // Keyboard Navigation
+        function updateFocusUI() {
+            document.querySelectorAll('.file-item.focused').forEach(el => el.classList.remove('focused'));
+            const items = document.querySelectorAll('.file-item');
+            if (focusedIndex >= 0 && focusedIndex < items.length) {
+                items[focusedIndex].classList.add('focused');
+                items[focusedIndex].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
+
+        function getGridColumns() {
+            const grid = document.getElementById('fileGrid');
+            if (viewMode === 'list') return 1;
+            const gridStyle = getComputedStyle(grid);
+            const columns = gridStyle.gridTemplateColumns.split(' ').length;
+            return columns || 1;
+        }
+
+        function moveFocus(delta) {
+            const items = document.querySelectorAll('.file-item');
+            if (items.length === 0) return;
+
+            if (focusedIndex < 0) {
+                focusedIndex = 0;
+            } else {
+                focusedIndex = Math.max(0, Math.min(items.length - 1, focusedIndex + delta));
+            }
+            updateFocusUI();
+        }
+
+        function handleKeyboardNav(e) {
+            // Skip if in input/modal
+            if (e.target.matches('input, textarea, select') ||
+                document.querySelector('.modal.active') ||
+                document.getElementById('globalSearch').classList.contains('active')) {
+                return;
+            }
+
+            const items = document.querySelectorAll('.file-item');
+            const cols = getGridColumns();
+
+            switch (e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    moveFocus(viewMode === 'list' ? 1 : cols);
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    moveFocus(viewMode === 'list' ? -1 : -cols);
+                    break;
+                case 'ArrowRight':
+                    if (viewMode === 'grid') {
+                        e.preventDefault();
+                        moveFocus(1);
+                    }
+                    break;
+                case 'ArrowLeft':
+                    if (viewMode === 'grid') {
+                        e.preventDefault();
+                        moveFocus(-1);
+                    }
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    if (focusedIndex >= 0 && focusedIndex < items.length) {
+                        const path = items[focusedIndex].dataset.path;
+                        toggleSelection(path);
+                        lastSelectedIndex = focusedIndex;
+                    }
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    if (focusedIndex >= 0 && focusedIndex < items.length) {
+                        const item = items[focusedIndex];
+                        const path = item.dataset.path;
+                        const isDir = item.dataset.isDir === 'true';
+                        handleItemDblClick(e, path, isDir);
+                    }
+                    break;
+                case 'Backspace':
+                    e.preventDefault();
+                    if (currentPath) {
+                        const parts = currentPath.split('/');
+                        parts.pop();
+                        navigate(parts.join('/'));
+                    }
+                    break;
+                case 'Escape':
+                    e.preventDefault();
+                    clearSelection();
+                    focusedIndex = -1;
+                    updateFocusUI();
+                    break;
+                case 'a':
+                    if (e.metaKey || e.ctrlKey) {
+                        e.preventDefault();
+                        items.forEach(item => selectedFiles.add(item.dataset.path));
+                        updateSelectionUI();
+                    }
+                    break;
+                case '/':
+                case 'f':
+                    if (e.key === '/' || (e.key === 'f' && (e.metaKey || e.ctrlKey))) {
+                        e.preventDefault();
+                        openGlobalSearch();
+                    }
+                    break;
+                case '0':
+                    if (selectedFiles.size > 0) {
+                        e.preventDefault();
+                        bulkDelete();
+                    }
+                    break;
+            }
+        }
+
+        document.addEventListener('keydown', handleKeyboardNav);
+
+        // Global Search
+        let globalSearchResults = [];
+        let globalSearchFocusIndex = -1;
+        let searchDebounceTimer = null;
+
+        function openGlobalSearch() {
+            document.getElementById('globalSearch').classList.add('active');
+            document.getElementById('globalSearchInput').value = '';
+            document.getElementById('globalSearchResults').innerHTML = '';
+            globalSearchResults = [];
+            globalSearchFocusIndex = -1;
+            setTimeout(() => document.getElementById('globalSearchInput').focus(), 50);
+        }
+
+        function closeGlobalSearch() {
+            document.getElementById('globalSearch').classList.remove('active');
+            document.getElementById('globalSearchInput').value = '';
+        }
+
+        async function performGlobalSearch(query) {
+            if (!query.trim()) {
+                document.getElementById('globalSearchResults').innerHTML = '';
+                globalSearchResults = [];
+                globalSearchFocusIndex = -1;
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                globalSearchResults = await res.json();
+                renderGlobalSearchResults();
+            } catch (err) {
+                console.error('Search failed:', err);
+            }
+        }
+
+        function renderGlobalSearchResults() {
+            const container = document.getElementById('globalSearchResults');
+
+            if (globalSearchResults.length === 0) {
+                container.innerHTML = `
+                    <div class="search-no-results">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <p>No files found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = globalSearchResults.map((result, index) => {
+                const icon = getFileIcon(result.name, result.is_dir);
+                const parentPath = result.path.includes('/')
+                    ? '/' + result.path.substring(0, result.path.lastIndexOf('/'))
+                    : '/';
+                const focusedClass = index === globalSearchFocusIndex ? 'focused' : '';
+
+                return `
+                    <div class="search-result-item ${focusedClass}"
+                         data-path="${escapeAttr(result.path)}"
+                         data-is-dir="${result.is_dir}"
+                         onclick="openSearchResult('${escapeAttr(result.path)}', ${result.is_dir})">
+                        <div class="search-result-icon">${icon}</div>
+                        <div class="search-result-info">
+                            <div class="search-result-name">${escapeHtml(result.name)}</div>
+                            <div class="search-result-path">${escapeHtml(parentPath)}</div>
+                        </div>
+                        <div class="search-result-meta">${result.is_dir ? 'Folder' : formatSize(result.size)}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openSearchResult(path, isDir) {
+            closeGlobalSearch();
+            if (isDir) {
+                navigate(path);
+            } else {
+                // Navigate to parent folder and highlight file
+                const parts = path.split('/');
+                const filename = parts.pop();
+                const parentPath = parts.join('/');
+                currentPath = parentPath;
+                loadFiles().then(() => {
+                    // Select and focus the file
+                    selectedFiles.clear();
+                    selectedFiles.add(path);
+                    updateSelectionUI();
+                    focusedIndex = getItemIndex(path);
+                    updateFocusUI();
+                });
+            }
+        }
+
+        function updateGlobalSearchFocus() {
+            document.querySelectorAll('.search-result-item').forEach((el, i) => {
+                el.classList.toggle('focused', i === globalSearchFocusIndex);
+            });
+            const focused = document.querySelector('.search-result-item.focused');
+            if (focused) focused.scrollIntoView({ block: 'nearest' });
+        }
+
+        document.getElementById('globalSearchInput').addEventListener('input', (e) => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                performGlobalSearch(e.target.value);
+            }, 150);
+        });
+
+        document.getElementById('globalSearchInput').addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    if (globalSearchResults.length > 0) {
+                        globalSearchFocusIndex = Math.min(globalSearchFocusIndex + 1, globalSearchResults.length - 1);
+                        updateGlobalSearchFocus();
+                    }
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    if (globalSearchResults.length > 0) {
+                        globalSearchFocusIndex = Math.max(globalSearchFocusIndex - 1, 0);
+                        updateGlobalSearchFocus();
+                    }
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    if (globalSearchFocusIndex >= 0 && globalSearchFocusIndex < globalSearchResults.length) {
+                        const result = globalSearchResults[globalSearchFocusIndex];
+                        openSearchResult(result.path, result.is_dir);
+                    }
+                    break;
+                case 'Escape':
+                    e.preventDefault();
+                    closeGlobalSearch();
+                    break;
+            }
+        });
+
+        document.getElementById('globalSearch').addEventListener('click', (e) => {
+            if (e.target.id === 'globalSearch') {
+                closeGlobalSearch();
             }
         });
 
