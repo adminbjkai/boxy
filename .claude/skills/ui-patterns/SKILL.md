@@ -16,18 +16,27 @@ alwaysApply: false
 ### Theme Variables
 ```css
 :root {
-    --bg: #f8fafc;
-    --text: #1e293b;
-    --accent: #3b82f6;
-    --border: #e2e8f0;
-    --hover: #f1f5f9;
-    --shadow: 0 1px 3px rgba(0,0,0,0.1);
+    --bg: #f3f1ed;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #ece9e3;
+    --border: #d8d2c9;
+    --text: #1a1a1a;
+    --text-secondary: #6d6d6d;
+    --accent: #2f6df6;
+    --accent-hover: #2a61d9;
+    --danger: #ff3b30;
+    --success: #34c759;
+    --shadow: rgba(0,0,0,0.08);
+    --transition: 0.2s ease;
 }
 
 [data-theme="dark"] {
-    --bg: #0f172a;
-    --text: #f1f5f9;
-    /* ... */
+    --bg: #161719;
+    --bg-secondary: #212327;
+    --bg-tertiary: #2b2f35;
+    --border: #343944;
+    --text: #f4f2ee;
+    --text-secondary: #a2a5ad;
 }
 ```
 
@@ -88,8 +97,9 @@ let focusedIndex = -1;     // Keyboard navigation
 
 ### WebSocket Handler
 ```javascript
-function connectWebSocket() {
-    ws = new WebSocket(`ws://${location.host}/ws`);
+function connectWS() {
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${protocol}//${location.host}/ws`);
 
     ws.onmessage = (e) => {
         const { action, path } = JSON.parse(e.data);

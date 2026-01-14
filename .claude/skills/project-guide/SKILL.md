@@ -71,6 +71,7 @@ broadcast_update(&state.broadcaster, "upload", &path);
 | GET | `/api/search?q=` | Recursive file search |
 | GET | `/api/folders` | All folder paths |
 | GET | `/api/download?path=` | Download/preview file |
+| GET | `/api/health` | Healthcheck |
 | POST | `/api/upload?path=` | Upload (multipart, supports folders) |
 | POST | `/api/folder` | Create folder |
 | POST | `/api/rename` | Rename item |
