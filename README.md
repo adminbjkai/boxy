@@ -3,14 +3,16 @@
 Boxy is a lightweight file sharing UI with real-time updates, drag-and-drop uploads, and basic file management (create, rename, move, delete). Rust/Actix backend, static HTML frontend, WebSocket fan-out for live events.
 
 ## Features
-- Drag-and-drop and clipboard uploads
+- Drag-and-drop, clipboard paste, and folder uploads
 - Folder navigation, move, rename, delete
+- Multi-select with Ctrl/Cmd+click, Shift+click, bulk operations
 - Live updates via WebSocket
-- Search and sort client-side
+- Global search across all files (recursive)
 - File type filtering (All, Images, Documents, Code, Audio/Video)
 - Grid/list view toggle with persistent preference
 - Image thumbnails with lazy loading in both views
 - Sortable table columns in list view (Name, Type, Size, Date Modified)
+- Keyboard navigation (arrows, space, enter, backspace, escape)
 - Preserved original file modification dates on upload
 
 ## Architecture & flow
@@ -36,13 +38,14 @@ Then open `http://localhost:8086` (or your overridden port).
 ## Endpoints
 - `GET /` static UI
 - `GET /api/files?path=...` list files
-- `POST /api/upload?path=...` upload multipart files
+- `GET /api/search?q=...` search all files recursively
+- `POST /api/upload?path=...` upload multipart files (supports nested paths for folders)
 - `POST /api/folder` create folder
 - `POST /api/rename` rename item
 - `POST /api/move` move item
 - `POST /api/delete` delete item
 - `GET /api/folders` list folders for move dialog
-- `GET /api/download?path=...` download file
+- `GET /api/download?path=...` download/preview file
 - `GET /api/health` healthcheck
 
 ## Playwright browser tests

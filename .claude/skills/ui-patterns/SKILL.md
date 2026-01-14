@@ -82,6 +82,8 @@ let allFiles = [];         // Full file list
 let filterQuery = '';      // Search filter
 let sortMode = 'name';     // Sort criterion
 let draggedItem = null;    // Drag context
+let selectedFiles = new Set();  // Multi-select
+let focusedIndex = -1;     // Keyboard navigation
 ```
 
 ### WebSocket Handler
@@ -112,7 +114,10 @@ function escapeHtml(str) {
 }
 
 function escapeAttr(str) {
-    return str.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    return str
+        .replace(/\\/g, '\\\\')   // Escape backslashes first
+        .replace(/'/g, "\\'")     // Escape single quotes for JS
+        .replace(/"/g, '&quot;'); // Escape double quotes for HTML
 }
 
 // Always escape user content in templates
