@@ -37,6 +37,7 @@ Then open `http://localhost:8086` (or your overridden port).
 
 ## Endpoints
 - `GET /` static UI
+- `GET /ws` WebSocket for live updates
 - `GET /api/files?path=...` list files
 - `GET /api/search?q=...` search all files recursively
 - `POST /api/upload?path=...` upload multipart files (supports nested paths for folders)
