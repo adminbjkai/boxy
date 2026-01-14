@@ -16,7 +16,7 @@ test('creates a folder and shows it in the grid', async ({ page }) => {
   await page.getByRole('button', { name: 'New Folder' }).click();
   await page.locator('#folderName').fill('e2e-folder');
   await page.getByRole('button', { name: 'Create' }).click();
-  await expect(page.getByText('e2e-folder')).toBeVisible();
+  await expect(page.locator('.file-name', { hasText: 'e2e-folder' })).toBeVisible();
 });
 
 test('uploads a file and finds it with search', async ({ page }, testInfo) => {
@@ -26,8 +26,8 @@ test('uploads a file and finds it with search', async ({ page }, testInfo) => {
   await writeFixture(filePath, 'hello from playwright');
 
   await page.setInputFiles('#fileInput', filePath);
-  await expect(page.getByText('example.txt')).toBeVisible();
+  await expect(page.locator('.file-name', { hasText: 'example.txt' })).toBeVisible();
 
   await page.locator('#searchInput').fill('example');
-  await expect(page.getByText('example.txt')).toBeVisible();
+  await expect(page.locator('.file-name', { hasText: 'example.txt' })).toBeVisible();
 });
