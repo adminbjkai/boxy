@@ -13,6 +13,9 @@ use tokio::sync::broadcast;
 const DEFAULT_UPLOAD_DIR: &str = "./uploads";
 const DEFAULT_PORT: u16 = 8086;
 const DEFAULT_MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 200; // 200 MB
+const EDITABLE_EXTENSIONS: &[&str] = &[
+    "txt", "csv", "py", "json", "md", "rs", "js", "html", "css", "toml", "yaml", "yml",
+];
 
 #[derive(Clone, Serialize, Deserialize)]
 struct FileEntry {
@@ -127,11 +130,48 @@ fn resolve_path(base: &Path, path: Option<&String>) -> PathBuf {
         .unwrap_or_else(|| base.to_path_buf())
 }
 
+/// Safely resolve a path, ensuring it stays within the base directory.
+/// Returns None if the resolved path escapes the base directory (e.g., via symlinks).
+fn resolve_path_safe(base: &Path, path: Option<&String>) -> Option<PathBuf> {
+    let resolved = resolve_path(base, path);
+
+    // If the path doesn't exist yet, we can't canonicalize it.
+    // Check the parent directory instead, and verify the final component is safe.
+    if !resolved.exists() {
+        // For non-existent paths, check that parent is within base
+        if let Some(parent) = resolved.parent() {
+            if parent.exists() {
+                let parent_canonical = parent.canonicalize().ok()?;
+                let base_canonical = base.canonicalize().ok()?;
+                if parent_canonical.starts_with(&base_canonical) {
+                    return Some(resolved);
+                }
+            } else {
+                // Parent doesn't exist either - this is fine for create operations
+                // as long as the logical path is within base
+                return Some(resolved);
+            }
+        }
+        return None;
+    }
+
+    // For existing paths, canonicalize and verify
+    let canonical = resolved.canonicalize().ok()?;
+    let base_canonical = base.canonicalize().ok()?;
+
+    if canonical.starts_with(&base_canonical) {
+        Some(resolved)
+    } else {
+        None
+    }
+}
+
 async fn list_files(
     state: web::Data<AppState>,
     query: web::Query<PathQuery>,
 ) -> Result<HttpResponse> {
-    let base_path = resolve_path(&state.upload_dir, query.path.as_ref());
+    let base_path = resolve_path_safe(&state.upload_dir, query.path.as_ref())
+        .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
 
     if !base_path.exists() {
         return Ok(HttpResponse::Ok().json(Vec::<FileEntry>::new()));
@@ -171,7 +211,8 @@ async fn upload_file(
     query: web::Query<PathQuery>,
     state: web::Data<AppState>,
 ) -> Result<HttpResponse> {
-    let base_path = resolve_path(&state.upload_dir, query.path.as_ref());
+    let base_path = resolve_path_safe(&state.upload_dir, query.path.as_ref())
+        .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
 
     tokio::fs::create_dir_all(&base_path).await?;
 
@@ -274,7 +315,8 @@ async fn create_folder(
     body: web::Json<CreateFolderReq>,
     state: web::Data<AppState>,
 ) -> Result<HttpResponse> {
-    let base = resolve_path(&state.upload_dir, body.path.as_ref());
+    let base = resolve_path_safe(&state.upload_dir, body.path.as_ref())
+        .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
 
     let safe_name = body.name.replace(['/', '\\', '\0'], "_");
     let folder_path = base.join(&safe_name);
@@ -307,7 +349,8 @@ async fn rename_item(
     body: web::Json<RenameReq>,
     state: web::Data<AppState>,
 ) -> Result<HttpResponse> {
-    let old_path = resolve_path(&state.upload_dir, Some(&body.path));
+    let old_path = resolve_path_safe(&state.upload_dir, Some(&body.path))
+        .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
     let safe_name = body.new_name.replace(['/', '\\', '\0'], "_");
 
     if !old_path.exists() {
@@ -337,8 +380,10 @@ struct MoveReq {
 }
 
 async fn move_item(body: web::Json<MoveReq>, state: web::Data<AppState>) -> Result<HttpResponse> {
-    let src_path = resolve_path(&state.upload_dir, Some(&body.path));
-    let dest_base = resolve_path(&state.upload_dir, body.dest_dir.as_ref());
+    let src_path = resolve_path_safe(&state.upload_dir, Some(&body.path))
+        .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
+    let dest_base = resolve_path_safe(&state.upload_dir, body.dest_dir.as_ref())
+        .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid destination path"))?;
 
     if !src_path.exists() {
         return Err(actix_web::error::ErrorNotFound("Item not found"));
@@ -479,7 +524,8 @@ async fn delete_item(
     body: web::Json<DeleteReq>,
     state: web::Data<AppState>,
 ) -> Result<HttpResponse> {
-    let filepath = resolve_path(&state.upload_dir, Some(&body.path));
+    let filepath = resolve_path_safe(&state.upload_dir, Some(&body.path))
+        .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
 
     if filepath.exists() {
         if filepath.is_dir() {
@@ -493,6 +539,118 @@ async fn delete_item(
     Ok(HttpResponse::Ok().json(serde_json::json!({"success": true})))
 }
 
+fn is_editable_extension(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| EDITABLE_EXTENSIONS.contains(&e.to_lowercase().as_str()))
+        .unwrap_or(false)
+}
+
+async fn get_content(
+    state: web::Data<AppState>,
+    query: web::Query<PathQuery>,
+) -> Result<HttpResponse> {
+    let path = query
+        .path
+        .as_ref()
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("path required"))?;
+
+    let filepath = resolve_path_safe(&state.upload_dir, Some(path))
+        .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
+
+    if !filepath.exists() || filepath.is_dir() {
+        return Err(actix_web::error::ErrorNotFound("File not found"));
+    }
+
+    if !is_editable_extension(&filepath) {
+        return Err(actix_web::error::ErrorBadRequest("File type not editable"));
+    }
+
+    let content = tokio::fs::read_to_string(&filepath).await.map_err(|e| {
+        if e.kind() == std::io::ErrorKind::InvalidData {
+            actix_web::error::ErrorBadRequest("File is not valid UTF-8 text")
+        } else {
+            actix_web::error::ErrorInternalServerError(e)
+        }
+    })?;
+
+    Ok(HttpResponse::Ok()
+        .content_type("text/plain; charset=utf-8")
+        .body(content))
+}
+
+#[derive(Deserialize)]
+struct SaveContentReq {
+    path: String,
+    content: String,
+}
+
+async fn save_content(
+    body: web::Json<SaveContentReq>,
+    state: web::Data<AppState>,
+) -> Result<HttpResponse> {
+    let filepath = resolve_path_safe(&state.upload_dir, Some(&body.path))
+        .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
+
+    if !filepath.exists() || filepath.is_dir() {
+        return Err(actix_web::error::ErrorNotFound("File not found"));
+    }
+
+    if !is_editable_extension(&filepath) {
+        return Err(actix_web::error::ErrorBadRequest("File type not editable"));
+    }
+
+    tokio::fs::write(&filepath, &body.content).await?;
+
+    broadcast_update(&state.broadcaster, "edit", &body.path);
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({"success": true})))
+}
+
+#[derive(Deserialize)]
+struct NewFileReq {
+    path: Option<String>,
+    filename: String,
+}
+
+async fn create_new_file(
+    body: web::Json<NewFileReq>,
+    state: web::Data<AppState>,
+) -> Result<HttpResponse> {
+    // Validate filename has an editable extension
+    let filename = body.filename.replace(['/', '\\', '\0'], "_");
+    let filepath_check = Path::new(&filename);
+
+    if !is_editable_extension(filepath_check) {
+        return Err(actix_web::error::ErrorBadRequest("Invalid file extension"));
+    }
+
+    let base = resolve_path_safe(&state.upload_dir, body.path.as_ref())
+        .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
+    let filepath = base.join(&filename);
+
+    // Prevent overwriting existing files
+    if filepath.exists() {
+        return Err(actix_web::error::ErrorConflict("File already exists"));
+    }
+
+    // Ensure parent directory exists
+    tokio::fs::create_dir_all(&base).await?;
+
+    // Create empty file
+    tokio::fs::write(&filepath, "").await?;
+
+    let rel_path = body
+        .path
+        .as_ref()
+        .map(|p| format!("{}/{}", p, filename))
+        .unwrap_or(filename.clone());
+
+    broadcast_update(&state.broadcaster, "upload", &rel_path);
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({"success": true, "path": rel_path})))
+}
+
 async fn download_file(
     state: web::Data<AppState>,
     query: web::Query<PathQuery>,
@@ -502,7 +660,8 @@ async fn download_file(
         .as_ref()
         .ok_or_else(|| actix_web::error::ErrorBadRequest("path required"))?;
 
-    let filepath = resolve_path(&state.upload_dir, Some(path));
+    let filepath = resolve_path_safe(&state.upload_dir, Some(path))
+        .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
 
     if !filepath.exists() || filepath.is_dir() {
         return Err(actix_web::error::ErrorNotFound("File not found"));
@@ -622,6 +781,9 @@ async fn main() -> std::io::Result<()> {
             .route("/api/folders", web::get().to(list_all_folders))
             .route("/api/download", web::get().to(download_file))
             .route("/api/search", web::get().to(search_files))
+            .route("/api/content", web::get().to(get_content))
+            .route("/api/content", web::post().to(save_content))
+            .route("/api/newfile", web::post().to(create_new_file))
             .route("/api/health", web::get().to(healthcheck))
     })
     .bind(("0.0.0.0", settings.port))?

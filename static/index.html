@@ -26,6 +26,11 @@
             --folder: #64b5f6;
             --transition: 0.2s ease;
             --warm: #f6c28b;
+            /* Standardized radii */
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --radius-xl: 18px;
         }
 
         [data-theme="dark"] {
@@ -115,10 +120,10 @@
         .theme-toggle {
             width: 40px;
             height: 40px;
-            border-radius: 10px;
-            border: none;
-            background: var(--bg-tertiary);
-            color: var(--text);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -126,7 +131,11 @@
             transition: all var(--transition);
         }
 
-        .theme-toggle:hover { background: var(--border); }
+        .theme-toggle:hover {
+            background: var(--bg-tertiary);
+            color: var(--text);
+            border-color: var(--text-secondary);
+        }
         .theme-toggle svg { width: 20px; height: 20px; }
 
         /* Main Layout */
@@ -177,14 +186,14 @@
             color: var(--text-secondary);
             text-decoration: none;
             padding: 6px 10px;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
             white-space: nowrap;
             transition: all var(--transition);
         }
 
         .breadcrumb-item:hover { background: var(--bg-tertiary); color: var(--text); }
-        .breadcrumb-item.active { color: var(--text); font-weight: 500; }
+        .breadcrumb-item.active { color: var(--text); font-weight: 500; background: var(--bg-tertiary); }
         .breadcrumb-sep { color: var(--border); }
 
         .nav-meta {
@@ -196,12 +205,12 @@
         .toolbar-actions { display: flex; gap: 8px; }
 
         .view-toggle {
-            width: 36px;
-            height: 36px;
+            width: 38px;
+            height: 38px;
             border: 1px solid var(--border);
             background: var(--bg-secondary);
             color: var(--text-secondary);
-            border-radius: 8px;
+            border-radius: var(--radius-md);
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -209,7 +218,11 @@
             transition: all var(--transition);
         }
 
-        .view-toggle:hover { background: var(--bg-tertiary); color: var(--text); }
+        .view-toggle:hover {
+            background: var(--bg-tertiary);
+            color: var(--text);
+            border-color: var(--text-secondary);
+        }
         .view-toggle svg { width: 18px; height: 18px; }
         .toolbar-search {
             display: flex;
@@ -217,9 +230,8 @@
             gap: 10px;
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 8px 12px;
-            box-shadow: 0 1px 3px var(--shadow);
+            border-radius: var(--radius-md);
+            padding: 8px 14px;
         }
 
         .toolbar-search input, .toolbar-search select {
@@ -241,10 +253,10 @@
 
         .btn {
             padding: 10px 16px;
-            border: none;
+            border: 1px solid var(--border);
             background: var(--bg-secondary);
             color: var(--text);
-            border-radius: 8px;
+            border-radius: var(--radius-md);
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
@@ -252,26 +264,32 @@
             align-items: center;
             gap: 6px;
             transition: all var(--transition);
-            box-shadow: 0 1px 3px var(--shadow);
         }
 
-        .btn:hover { background: var(--bg-tertiary); }
+        .btn:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--text-secondary);
+        }
         .btn svg { width: 16px; height: 16px; }
 
         .btn-primary {
             background: var(--accent);
             color: white;
+            border-color: var(--accent);
         }
 
-        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+        }
 
         /* Drop Zone */
         .drop-zone {
             border: 2px dashed var(--border);
-            border-radius: 16px;
-            padding: 32px;
+            border-radius: var(--radius-lg);
+            padding: 28px;
             text-align: center;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             transition: all var(--transition);
             background: var(--bg-secondary);
             animation: fadeUp 0.5s ease;
@@ -279,7 +297,7 @@
 
         .drop-zone.dragover {
             border-color: var(--accent);
-            background: rgba(0, 113, 227, 0.05);
+            background: rgba(47, 109, 246, 0.06);
         }
 
         .drop-zone-icon {
@@ -295,18 +313,18 @@
         .file-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 12px;
+            gap: 14px;
         }
 
         .file-item {
             background: var(--bg-secondary);
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             padding: 16px 12px 44px;
             cursor: pointer;
             transition: all var(--transition);
             position: relative;
             text-align: center;
-            border: 2px solid transparent;
+            border: 1px solid var(--border);
             user-select: none;
             overflow: hidden;
             animation: fadeUp 0.4s ease both;
@@ -314,7 +332,8 @@
 
         .file-item:hover {
             background: var(--bg-tertiary);
-            box-shadow: 0 4px 12px var(--shadow);
+            border-color: var(--text-secondary);
+            box-shadow: 0 4px 16px var(--shadow);
         }
 
         .file-item-content {
@@ -323,26 +342,26 @@
 
         .file-item.drag-over {
             border-color: var(--accent);
-            background: rgba(0, 113, 227, 0.1);
+            background: rgba(47, 109, 246, 0.08);
         }
 
         .file-item.dragging {
             opacity: 0.5;
-            transform: scale(0.95);
+            transform: scale(0.97);
         }
 
         .file-item.selected {
             border-color: var(--accent);
-            background: rgba(0, 113, 227, 0.08);
+            background: rgba(47, 109, 246, 0.06);
         }
 
         .file-item.focused {
-            outline: 2px solid var(--accent);
-            outline-offset: -2px;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(47, 109, 246, 0.2);
         }
 
         .file-item.focused.selected {
-            outline-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(47, 109, 246, 0.3);
         }
 
         /* File Icons */
@@ -429,7 +448,7 @@
             display: flex;
             flex-direction: column;
             background: var(--bg-secondary);
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             border: 1px solid var(--border);
             overflow: hidden;
         }
@@ -634,25 +653,23 @@
         }
 
         .file-action-btn {
-            width: 36px;
-            height: 32px;
+            width: 34px;
+            height: 30px;
             border: 1px solid var(--border);
             background: var(--bg-secondary);
             color: var(--text-secondary);
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all var(--transition);
-            box-shadow: 0 2px 6px var(--shadow);
         }
 
         .file-action-btn:hover {
             background: var(--accent);
             border-color: var(--accent);
             color: white;
-            transform: scale(1.05);
         }
 
         .file-action-btn.delete:hover {
@@ -660,7 +677,7 @@
             border-color: var(--danger);
         }
 
-        .file-action-btn svg { width: 16px; height: 16px; }
+        .file-action-btn svg { width: 15px; height: 15px; }
 
         /* Empty State */
         .empty-state {
@@ -698,7 +715,8 @@
             max-width: 600px;
             margin: 0 16px;
             background: var(--bg-secondary);
-            border-radius: 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
             box-shadow: 0 20px 60px var(--shadow-lg);
             overflow: hidden;
         }
@@ -838,7 +856,8 @@
 
         .modal-content {
             background: var(--bg-secondary);
-            border-radius: 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
             padding: 24px;
             width: 100%;
             max-width: 400px;
@@ -856,7 +875,7 @@
             width: 100%;
             padding: 12px 14px;
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: var(--radius-md);
             font-size: 14px;
             margin-bottom: 16px;
             background: var(--bg);
@@ -867,6 +886,7 @@
         .modal input:focus, .modal select:focus {
             outline: none;
             border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(47, 109, 246, 0.1);
         }
 
         .modal label {
@@ -887,10 +907,947 @@
             max-width: 480px;
         }
 
+        /* Edit Modal */
+        .edit-modal-content {
+            max-width: 80vw;
+            width: 900px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .edit-modal-content h3 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .edit-modal-content h3 code {
+            font-family: 'Space Grotesk', monospace;
+            font-size: 14px;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            padding: 4px 8px;
+            border-radius: 4px;
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .edit-textarea {
+            flex: 1;
+            min-height: 400px;
+            max-height: 60vh;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--bg);
+            color: var(--text);
+            resize: vertical;
+            tab-size: 4;
+            margin-bottom: 16px;
+        }
+
+        .edit-textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(47, 109, 246, 0.1);
+        }
+
+        .edit-modal-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .edit-status {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* New File Modal */
+        .new-file-input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .new-file-input-group input {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        .new-file-input-group select {
+            width: auto;
+            min-width: 100px;
+            margin-bottom: 0;
+        }
+
+        .edit-status.saving {
+            color: var(--accent);
+        }
+
+        .edit-status.error {
+            color: var(--danger);
+        }
+
+        /* Tab Navigation */
+        .tab-bar {
+            display: flex;
+            gap: 4px;
+            margin-left: 24px;
+        }
+
+        .tab-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: var(--radius-md);
+            transition: all var(--transition);
+        }
+
+        .tab-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text);
+            border-color: var(--border);
+        }
+
+        .tab-btn.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .tab-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* View Containers */
+        .view-container {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .view-container.active {
+            display: flex;
+        }
+
+        /* Tasks View */
+        .tasks-view {
+            padding: 0;
+        }
+
+        .tasks-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 24px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Board Selector */
+        .board-selector {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .board-selector select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            min-width: 140px;
+            transition: all var(--transition);
+        }
+
+        .board-selector select:hover {
+            border-color: var(--text-secondary);
+        }
+
+        .board-selector select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(47, 109, 246, 0.1);
+        }
+
+        .board-menu {
+            position: relative;
+        }
+
+        .board-menu-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: var(--radius-md);
+            transition: all var(--transition);
+        }
+
+        .board-menu-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text);
+        }
+
+        .board-menu-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .board-menu-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 4px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: 0 4px 12px var(--shadow);
+            min-width: 160px;
+            z-index: 100;
+            overflow: hidden;
+        }
+
+        .board-menu-dropdown.active {
+            display: block;
+        }
+
+        .board-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 10px 14px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            font-size: 13px;
+            cursor: pointer;
+            text-align: left;
+            transition: background var(--transition);
+        }
+
+        .board-menu-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .board-menu-item.danger {
+            color: var(--danger);
+        }
+
+        .board-menu-item.danger:hover {
+            background: rgba(244, 67, 54, 0.1);
+        }
+
+        .board-menu-item:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .board-menu-item svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .tasks-toolbar-search {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .tasks-toolbar-search svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            color: var(--text-secondary);
+        }
+
+        .tasks-toolbar-search input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        .tasks-toolbar-search input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(47, 109, 246, 0.1);
+        }
+
+        .tasks-filter-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tasks-filter-group select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .tasks-filter-group select:hover {
+            border-color: var(--text-secondary);
+        }
+
+        .tasks-filter-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(47, 109, 246, 0.1);
+        }
+
+        .tasks-view-toggle {
+            display: flex;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            padding: 3px;
+        }
+
+        .tasks-view-btn {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: calc(var(--radius-md) - 3px);
+            transition: all var(--transition);
+        }
+
+        .tasks-view-btn.active {
+            background: var(--bg-secondary);
+            color: var(--text);
+            box-shadow: 0 1px 3px var(--shadow);
+        }
+
+        .tasks-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        /* Kanban Board */
+        .kanban-container {
+            display: none;
+            flex: 1;
+            overflow-x: auto;
+            padding: 24px;
+            gap: 16px;
+        }
+
+        .kanban-container.active {
+            display: flex;
+        }
+
+        .kanban-column {
+            flex: 0 0 300px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 200px);
+        }
+
+        .kanban-column.collapsed {
+            flex: 0 0 48px;
+        }
+
+        .kanban-column.collapsed .kanban-column-content,
+        .kanban-column.collapsed .kanban-add-task {
+            display: none;
+        }
+
+        .kanban-column.drag-over {
+            background: var(--bg-tertiary);
+            box-shadow: inset 0 0 0 2px var(--accent);
+        }
+
+        .kanban-column-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+        }
+
+        .kanban-column-title {
+            font-weight: 600;
+            font-size: 14px;
+            flex: 1;
+        }
+
+        .kanban-column-count {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .kanban-column-actions {
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity var(--transition);
+        }
+
+        .kanban-column-header:hover .kanban-column-actions {
+            opacity: 1;
+        }
+
+        .kanban-column-btn {
+            padding: 4px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all var(--transition);
+        }
+
+        .kanban-column-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text);
+        }
+
+        .kanban-column-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .kanban-column-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .kanban-add-task {
+            padding: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .kanban-add-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            padding: 10px;
+            border: 1px dashed var(--border);
+            border-radius: var(--radius-md);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .kanban-add-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(47, 109, 246, 0.04);
+        }
+
+        .kanban-add-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Add Column Button */
+        .kanban-add-column {
+            flex: 0 0 300px;
+            display: flex;
+            align-items: flex-start;
+            padding-top: 16px;
+        }
+
+        .kanban-add-column-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 16px;
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-lg);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .kanban-add-column-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(47, 109, 246, 0.04);
+        }
+
+        .kanban-add-column-btn svg {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        /* Task Card */
+        .task-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            cursor: grab;
+            transition: all var(--transition);
+            animation: fadeUp 0.2s ease forwards;
+        }
+
+        .task-card:hover {
+            border-color: var(--text-secondary);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .task-card.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .task-card.drag-over-top {
+            border-top: 2px solid var(--accent);
+            margin-top: -2px;
+        }
+
+        .task-card.drag-over-bottom {
+            border-bottom: 2px solid var(--accent);
+            margin-bottom: -2px;
+        }
+
+        .task-card-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .task-priority-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-top: 6px;
+            flex-shrink: 0;
+        }
+
+        .task-priority-dot.low { background: var(--success); }
+        .task-priority-dot.medium { background: #f5a623; }
+        .task-priority-dot.high { background: var(--danger); }
+
+        .task-card-title {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 500;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .task-card-description {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .task-card-footer {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .task-card-due {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .task-card-due.overdue {
+            color: var(--danger);
+        }
+
+        .task-card-due svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        .task-tag {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+
+        .task-card-actions {
+            display: flex;
+            gap: 4px;
+            margin-left: auto;
+            opacity: 0;
+            transition: opacity var(--transition);
+        }
+
+        .task-card:hover .task-card-actions {
+            opacity: 1;
+        }
+
+        .task-card-btn {
+            padding: 4px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .task-card-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text);
+        }
+
+        .task-card-btn.delete:hover {
+            color: var(--danger);
+        }
+
+        .task-card-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Task List View */
+        .task-list-container {
+            display: none;
+            flex: 1;
+            overflow: auto;
+            padding: 24px;
+        }
+
+        .task-list-container.active {
+            display: block;
+        }
+
+        .task-list {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .task-list-header {
+            display: grid;
+            grid-template-columns: 40px 1fr 120px 100px 120px 100px;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .task-list-header > div {
+            cursor: pointer;
+        }
+
+        .task-list-header > div:hover {
+            color: var(--text);
+        }
+
+        .task-list-item {
+            display: grid;
+            grid-template-columns: 40px 1fr 120px 100px 120px 100px;
+            gap: 12px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+            transition: background var(--transition);
+        }
+
+        .task-list-item:last-child {
+            border-bottom: none;
+        }
+
+        .task-list-item:hover {
+            background: var(--bg);
+        }
+
+        .task-list-item.completed .task-list-title {
+            text-decoration: line-through;
+            color: var(--text-secondary);
+        }
+
+        .task-list-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
+        .task-list-title {
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .task-list-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: var(--bg-tertiary);
+            text-align: center;
+        }
+
+        .task-list-priority {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+
+        .task-list-date {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .task-list-actions {
+            display: flex;
+            gap: 4px;
+            justify-content: flex-end;
+        }
+
+        /* Task Modal */
+        .task-modal-content {
+            max-width: 500px;
+        }
+
+        .task-form-group {
+            margin-bottom: 16px;
+        }
+
+        .task-form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+        }
+
+        .task-form-group input,
+        .task-form-group textarea,
+        .task-form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        .task-form-group input:focus,
+        .task-form-group textarea:focus,
+        .task-form-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(47, 109, 246, 0.1);
+        }
+
+        .task-form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .task-form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .task-tags-input {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--bg);
+            min-height: 42px;
+        }
+
+        .task-tags-input:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(47, 109, 246, 0.1);
+        }
+
+        .task-tags-input input {
+            flex: 1;
+            min-width: 100px;
+            border: none;
+            background: transparent;
+            padding: 4px;
+            font-size: 14px;
+        }
+
+        .task-tags-input input:focus {
+            outline: none;
+        }
+
+        .task-tag-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .task-tag-remove {
+            cursor: pointer;
+            opacity: 0.6;
+        }
+
+        .task-tag-remove:hover {
+            opacity: 1;
+        }
+
+        /* Tasks Empty State */
+        .tasks-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 24px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .tasks-empty svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .tasks-empty h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .tasks-empty p {
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        /* Export/Import Buttons */
+        .tasks-menu {
+            position: relative;
+        }
+
+        .tasks-menu-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 4px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: 0 4px 16px var(--shadow-lg);
+            min-width: 150px;
+            z-index: 100;
+            display: none;
+        }
+
+        .tasks-menu-dropdown.show {
+            display: block;
+        }
+
+        .tasks-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 10px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            font-size: 13px;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .tasks-menu-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .tasks-menu-item svg {
+            width: 16px;
+            height: 16px;
+            color: var(--text-secondary);
+        }
+
         .folder-tree {
             background: var(--bg);
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: var(--radius-md);
             max-height: 400px;
             overflow-y: auto;
             margin-bottom: 16px;
@@ -911,7 +1868,7 @@
         .tree-item:hover { background: var(--bg-tertiary); }
 
         .tree-item.selected {
-            background: rgba(0, 113, 227, 0.12);
+            background: rgba(47, 109, 246, 0.1);
             color: var(--accent);
         }
 
@@ -983,8 +1940,8 @@
         .selected-path {
             background: var(--bg);
             border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            padding: 10px 14px;
             margin-bottom: 16px;
             font-size: 13px;
             display: flex;
@@ -1012,7 +1969,7 @@
             transform: translateX(-50%) translateY(100px);
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             padding: 12px 20px;
             display: flex;
             align-items: center;
@@ -1046,9 +2003,9 @@
         .selection-btn {
             padding: 8px 16px;
             border: 1px solid var(--border);
-            background: var(--bg-tertiary);
+            background: var(--bg-secondary);
             color: var(--text);
-            border-radius: 8px;
+            border-radius: var(--radius-md);
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
@@ -1059,7 +2016,8 @@
         }
 
         .selection-btn:hover {
-            background: var(--border);
+            background: var(--bg-tertiary);
+            border-color: var(--text-secondary);
         }
 
         .selection-btn.danger {
@@ -1108,7 +2066,7 @@
             background: var(--bg-secondary);
             color: var(--text);
             padding: 14px 20px;
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             font-size: 14px;
             opacity: 0;
             transform: translateY(10px);
@@ -1130,7 +2088,7 @@
             left: 24px;
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: var(--radius-lg);
             padding: 16px 20px;
             min-width: 300px;
             box-shadow: 0 8px 32px var(--shadow-lg);
@@ -1163,14 +2121,21 @@
 
         @media (max-width: 768px) {
             .main { padding: 16px; }
-            .file-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
-            .file-item { padding: 12px 8px; }
+            .file-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+            .file-item { padding: 12px 8px 40px; }
             .file-icon { width: 44px; height: 44px; }
             .file-icon svg { width: 40px; height: 40px; }
-            .drop-zone { padding: 24px 16px; }
+            .drop-zone { padding: 20px 16px; }
             .header { padding: 12px 16px; }
-            .toolbar-search input { width: 140px; }
-            .nav-bar { margin: 0 -16px 16px; top: 57px; }
+            .toolbar-search input { width: 120px; }
+            .nav-bar { margin: 0 -16px 16px; top: 57px; padding: 10px 16px; }
+            .tab-bar { margin-left: 12px; }
+            .tab-btn { padding: 6px 10px; font-size: 13px; }
+            .btn { padding: 8px 12px; font-size: 12px; }
+            .toolbar { gap: 10px; }
+            .selection-bar { padding: 10px 16px; gap: 12px; }
+            .toast { right: 16px; left: 16px; bottom: 16px; }
+            .upload-progress { left: 16px; right: 16px; min-width: auto; }
         }
     </style>
 </head>
@@ -1181,6 +2146,21 @@
                 <path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/>
             </svg>
             Boxy
+        </div>
+        <div class="tab-bar">
+            <button class="tab-btn active" data-tab="files" onclick="switchTab('files')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+                Files
+            </button>
+            <button class="tab-btn" data-tab="tasks" onclick="switchTab('tasks')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 11l3 3L22 4"/>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                Tasks
+            </button>
         </div>
         <div class="header-actions">
             <div class="status">
@@ -1196,6 +2176,8 @@
     </header>
 
     <main class="main">
+        <!-- Files View -->
+        <div class="view-container active" id="filesView">
         <div class="toolbar">
             <div class="toolbar-search">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1240,6 +2222,15 @@
                     </svg>
                     New Folder
                 </button>
+                <button class="btn" onclick="showNewFileModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="12" y1="18" x2="12" y2="12"/>
+                        <line x1="9" y1="15" x2="15" y2="15"/>
+                    </svg>
+                    New File
+                </button>
             </div>
         </div>
 
@@ -1263,6 +2254,118 @@
         </div>
 
         <input type="file" id="fileInput" multiple>
+        </div><!-- end filesView -->
+
+        <!-- Tasks View -->
+        <div class="view-container" id="tasksView">
+            <div class="tasks-toolbar">
+                <div class="board-selector">
+                    <select id="boardSelect" onchange="switchBoard(this.value)"></select>
+                    <div class="board-menu">
+                        <button class="board-menu-btn" onclick="toggleBoardMenu(event)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>
+                            </svg>
+                        </button>
+                        <div class="board-menu-dropdown" id="boardMenuDropdown">
+                            <button class="board-menu-item" onclick="showBoardModal()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                                </svg>
+                                New Board
+                            </button>
+                            <button class="board-menu-item" onclick="showBoardModal(currentBoardId)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                                Rename Board
+                            </button>
+                            <button class="board-menu-item danger" id="deleteBoardBtn" onclick="deleteBoard(currentBoardId)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                                Delete Board
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="tasks-toolbar-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="taskSearchInput" placeholder="Search tasks...">
+                </div>
+                <div class="tasks-filter-group">
+                    <select id="taskStatusFilter">
+                        <option value="all">All Status</option>
+                        <option value="backlog">Backlog</option>
+                        <option value="todo">Todo</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="done">Done</option>
+                    </select>
+                    <select id="taskPriorityFilter">
+                        <option value="all">All Priority</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+                <div class="tasks-view-toggle">
+                    <button class="tasks-view-btn active" data-view="kanban" onclick="switchTaskView('kanban')">Board</button>
+                    <button class="tasks-view-btn" data-view="list" onclick="switchTaskView('list')">List</button>
+                </div>
+                <div class="tasks-actions">
+                    <button class="btn btn-primary" onclick="showTaskModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        New Task
+                    </button>
+                    <div class="tasks-menu">
+                        <button class="btn" onclick="toggleTasksMenu()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>
+                            </svg>
+                        </button>
+                        <div class="tasks-menu-dropdown" id="tasksMenuDropdown">
+                            <button class="tasks-menu-item" onclick="exportTasks()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                                </svg>
+                                Export JSON
+                            </button>
+                            <button class="tasks-menu-item" onclick="importTasks()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                                </svg>
+                                Import JSON
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kanban Board -->
+            <div class="kanban-container active" id="kanbanBoard"></div>
+
+            <!-- Task List -->
+            <div class="task-list-container" id="taskListView">
+                <div class="task-list">
+                    <div class="task-list-header">
+                        <div></div>
+                        <div onclick="sortTasks('title')">Title</div>
+                        <div onclick="sortTasks('status')">Status</div>
+                        <div onclick="sortTasks('priority')">Priority</div>
+                        <div onclick="sortTasks('dueDate')">Due Date</div>
+                        <div>Actions</div>
+                    </div>
+                    <div id="taskListBody"></div>
+                </div>
+            </div>
+        </div><!-- end tasksView -->
     </main>
 
     <!-- New Folder Modal -->
@@ -1273,6 +2376,34 @@
             <div class="modal-actions">
                 <button class="btn" onclick="closeFolderModal()">Cancel</button>
                 <button class="btn btn-primary" onclick="createFolder()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New File Modal -->
+    <div class="modal" id="newFileModal">
+        <div class="modal-content">
+            <h3>New File</h3>
+            <div class="new-file-input-group">
+                <input type="text" id="newFileName" placeholder="filename">
+                <select id="newFileExt">
+                    <option value=".txt">.txt</option>
+                    <option value=".md">.md</option>
+                    <option value=".py">.py</option>
+                    <option value=".js">.js</option>
+                    <option value=".json">.json</option>
+                    <option value=".html">.html</option>
+                    <option value=".css">.css</option>
+                    <option value=".rs">.rs</option>
+                    <option value=".toml">.toml</option>
+                    <option value=".yaml">.yaml</option>
+                    <option value=".yml">.yml</option>
+                    <option value=".csv">.csv</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn" onclick="closeNewFileModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="createNewFile()">Create</button>
             </div>
         </div>
     </div>
@@ -1322,6 +2453,100 @@
             </div>
         </div>
     </div>
+
+    <!-- Edit Modal -->
+    <div class="modal" id="editModal">
+        <div class="modal-content edit-modal-content">
+            <h3>Edit <code id="editFileName"></code></h3>
+            <textarea class="edit-textarea" id="editContent" spellcheck="false"></textarea>
+            <div class="edit-modal-actions">
+                <span class="edit-status" id="editStatus"></span>
+                <div class="modal-actions">
+                    <button class="btn" onclick="closeEditModal()">Cancel</button>
+                    <button class="btn btn-primary" id="editSaveBtn" onclick="saveEditContent()">Save</button>
+                </div>
+            </div>
+            <input type="hidden" id="editPath">
+        </div>
+    </div>
+
+    <!-- Task Modal -->
+    <div class="modal" id="taskModal">
+        <div class="modal-content task-modal-content">
+            <h3 id="taskModalTitle">New Task</h3>
+            <div class="task-form-group">
+                <label>Title</label>
+                <input type="text" id="taskTitle" placeholder="Enter task title">
+            </div>
+            <div class="task-form-group">
+                <label>Description</label>
+                <textarea id="taskDescription" placeholder="Enter description (optional)"></textarea>
+            </div>
+            <div class="task-form-row">
+                <div class="task-form-group">
+                    <label>Status</label>
+                    <select id="taskStatus">
+                        <option value="backlog">Backlog</option>
+                        <option value="todo">Todo</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="done">Done</option>
+                    </select>
+                </div>
+                <div class="task-form-group">
+                    <label>Priority</label>
+                    <select id="taskPriority">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+            </div>
+            <div class="task-form-group">
+                <label>Due Date</label>
+                <input type="date" id="taskDueDate">
+            </div>
+            <div class="task-form-group">
+                <label>Tags (press Enter to add)</label>
+                <div class="task-tags-input" id="taskTagsContainer">
+                    <input type="text" id="taskTagInput" placeholder="Add tag...">
+                </div>
+            </div>
+            <input type="hidden" id="taskId">
+            <div class="modal-actions">
+                <button type="button" class="btn" onclick="closeTaskModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveTask()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Column Modal -->
+    <div class="modal" id="columnModal">
+        <div class="modal-content">
+            <h3 id="columnModalTitle">New Column</h3>
+            <input type="text" id="columnName" placeholder="Column name">
+            <input type="hidden" id="columnId">
+            <div class="modal-actions">
+                <button class="btn" onclick="closeColumnModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveColumn()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Board Modal -->
+    <div class="modal" id="boardModal">
+        <div class="modal-content">
+            <h3 id="boardModalTitle">New Board</h3>
+            <input type="text" id="boardName" placeholder="Board name">
+            <input type="hidden" id="boardId">
+            <div class="modal-actions">
+                <button class="btn" onclick="closeBoardModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveBoard()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file input for import -->
+    <input type="file" id="importTasksInput" accept=".json" style="display:none">
 
     <div class="toast" id="toast"></div>
 
@@ -1527,7 +2752,7 @@
             ws.onmessage = (e) => {
                 const data = JSON.parse(e.data);
                 loadFiles();
-                const actions = { delete: 'Deleted', upload: 'Added', folder: 'Created', rename: 'Renamed', move: 'Moved' };
+                const actions = { delete: 'Deleted', upload: 'Added', folder: 'Created', rename: 'Renamed', move: 'Moved', edit: 'Edited' };
                 showToast(`${actions[data.action] || 'Updated'}: ${data.path.split('/').pop()}`);
             };
         }
@@ -1619,6 +2844,14 @@
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
                             </svg>
                         </button>
+                        ${isEditableFile(f.name) ? `
+                        <button class="file-action-btn" onclick="event.stopPropagation(); showEditModal('${escapedPath}')" title="Edit">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 20h9"/>
+                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                            </svg>
+                        </button>
+                        ` : ''}
                         ` : ''}
                         <button class="file-action-btn" onclick="event.stopPropagation(); showMoveModal('${escapedPath}')" title="Move">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1647,10 +2880,16 @@
         }
 
         const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'];
+        const EDITABLE_EXTENSIONS = ['txt', 'csv', 'py', 'json', 'md', 'rs', 'js', 'html', 'css', 'toml', 'yaml', 'yml'];
 
         function isImageFile(name) {
             const ext = name.split('.').pop().toLowerCase();
             return IMAGE_EXTENSIONS.includes(ext);
+        }
+
+        function isEditableFile(name) {
+            const ext = name.split('.').pop().toLowerCase();
+            return EDITABLE_EXTENSIONS.includes(ext);
         }
 
         function getFileIconHtml(name, isDir, fullPath) {
@@ -2196,6 +3435,53 @@
             loadFiles();
         }
 
+        // New File Modal
+        function showNewFileModal() {
+            document.getElementById('newFileModal').classList.add('active');
+            document.getElementById('newFileName').value = '';
+            document.getElementById('newFileExt').value = '.txt';
+            setTimeout(() => document.getElementById('newFileName').focus(), 100);
+        }
+
+        function closeNewFileModal() {
+            document.getElementById('newFileModal').classList.remove('active');
+        }
+
+        async function createNewFile() {
+            const name = document.getElementById('newFileName').value.trim();
+            const ext = document.getElementById('newFileExt').value;
+
+            if (!name) {
+                showToast('Please enter a filename');
+                return;
+            }
+
+            const filename = name + ext;
+
+            try {
+                const res = await fetch('/api/newfile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename, path: currentPath || null })
+                });
+
+                if (!res.ok) {
+                    const error = await res.text();
+                    throw new Error(error || 'Failed to create file');
+                }
+
+                const data = await res.json();
+                closeNewFileModal();
+                loadFiles();
+                showToast(`Created ${escapeHtml(filename)}`);
+
+                // Auto-open edit modal for the new file
+                setTimeout(() => showEditModal(data.path), 300);
+            } catch (err) {
+                showToast(err.message);
+            }
+        }
+
         // Rename Modal
         function showRenameModal(path, currentName) {
             document.getElementById('renameModal').classList.add('active');
@@ -2411,6 +3697,72 @@
             closePasteModal();
         }
 
+        // Edit Modal
+        async function showEditModal(path) {
+            const filename = path.split('/').pop();
+            document.getElementById('editFileName').textContent = filename;
+            document.getElementById('editPath').value = path;
+            document.getElementById('editContent').value = '';
+            document.getElementById('editStatus').textContent = 'Loading...';
+            document.getElementById('editStatus').className = 'edit-status';
+            document.getElementById('editSaveBtn').disabled = true;
+            document.getElementById('editModal').classList.add('active');
+
+            try {
+                const res = await fetch(`/api/content?path=${encodeURIComponent(path)}`);
+                if (!res.ok) {
+                    const error = await res.text();
+                    throw new Error(error || 'Failed to load file');
+                }
+                const content = await res.text();
+                document.getElementById('editContent').value = content;
+                document.getElementById('editStatus').textContent = '';
+                document.getElementById('editSaveBtn').disabled = false;
+                document.getElementById('editContent').focus();
+            } catch (err) {
+                document.getElementById('editStatus').textContent = err.message;
+                document.getElementById('editStatus').className = 'edit-status error';
+            }
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+            document.getElementById('editContent').value = '';
+            document.getElementById('editPath').value = '';
+            document.getElementById('editStatus').textContent = '';
+        }
+
+        async function saveEditContent() {
+            const path = document.getElementById('editPath').value;
+            const content = document.getElementById('editContent').value;
+            const statusEl = document.getElementById('editStatus');
+            const saveBtn = document.getElementById('editSaveBtn');
+
+            statusEl.textContent = 'Saving...';
+            statusEl.className = 'edit-status saving';
+            saveBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/content', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path, content })
+                });
+
+                if (!res.ok) {
+                    const error = await res.text();
+                    throw new Error(error || 'Failed to save file');
+                }
+
+                closeEditModal();
+                showToast('File saved successfully');
+            } catch (err) {
+                statusEl.textContent = err.message;
+                statusEl.className = 'edit-status error';
+                saveBtn.disabled = false;
+            }
+        }
+
         function showToast(msg) {
             const toast = document.getElementById('toast');
             toast.textContent = msg;
@@ -2558,6 +3910,19 @@
                     e.target.closest('.modal').classList.remove('active');
                 }
             });
+        });
+
+        // Edit modal keyboard shortcuts
+        document.getElementById('editContent').addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeEditModal();
+            }
+            if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+                e.preventDefault();
+                if (!document.getElementById('editSaveBtn').disabled) {
+                    saveEditContent();
+                }
+            }
         });
 
         document.querySelectorAll('.modal').forEach(modal => {
@@ -2848,6 +4213,1033 @@
                 closeGlobalSearch();
             }
         });
+
+        // ============================================
+        // TASK MANAGEMENT
+        // ============================================
+
+        // Task Data Model
+        const DEFAULT_COLUMNS = [
+            { id: 'backlog', name: 'Backlog', order: 0 },
+            { id: 'todo', name: 'Todo', order: 1 },
+            { id: 'in-progress', name: 'In Progress', order: 2 },
+            { id: 'done', name: 'Done', order: 3 }
+        ];
+
+        // Board management
+        let boards = [];
+        let currentBoardId = null;
+        let tasks = [];
+        let columns = [];
+        let currentTaskView = localStorage.getItem('boxy_task_view') || 'kanban';
+        let taskSortField = 'createdAt';
+        let taskSortDir = 'desc';
+        let taskSearchQuery = '';
+        let taskStatusFilter = 'all';
+        let taskPriorityFilter = 'all';
+        let editingTaskTags = [];
+        let draggedTask = null;
+        let draggedColumn = null;
+
+        function loadBoards() {
+            const savedBoards = localStorage.getItem('boxy_boards');
+            if (savedBoards) {
+                boards = JSON.parse(savedBoards);
+                currentBoardId = localStorage.getItem('boxy_current_board') || (boards[0]?.id || null);
+            } else {
+                // Migration: convert old format to new board format
+                const oldTasks = JSON.parse(localStorage.getItem('boxy_tasks') || '[]');
+                const oldColumns = JSON.parse(localStorage.getItem('boxy_columns') || JSON.stringify(DEFAULT_COLUMNS));
+                const defaultBoard = {
+                    id: generateId(),
+                    name: 'My Board',
+                    columns: oldColumns,
+                    tasks: oldTasks,
+                    createdAt: Date.now()
+                };
+                boards = [defaultBoard];
+                currentBoardId = defaultBoard.id;
+                saveBoards();
+            }
+            // Load current board data into working variables
+            const board = boards.find(b => b.id === currentBoardId);
+            if (board) {
+                tasks = board.tasks;
+                columns = board.columns;
+            } else if (boards.length > 0) {
+                currentBoardId = boards[0].id;
+                tasks = boards[0].tasks;
+                columns = boards[0].columns;
+            }
+        }
+
+        function saveBoards() {
+            localStorage.setItem('boxy_boards', JSON.stringify(boards));
+            localStorage.setItem('boxy_current_board', currentBoardId);
+        }
+
+        function saveCurrentBoard() {
+            const board = boards.find(b => b.id === currentBoardId);
+            if (board) {
+                board.tasks = tasks;
+                board.columns = columns;
+            }
+        }
+
+        function saveTasks() {
+            saveCurrentBoard();
+            saveBoards();
+        }
+
+        function saveColumns() {
+            saveCurrentBoard();
+            saveBoards();
+        }
+
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        // Board Management
+        function renderBoardSelector() {
+            const select = document.getElementById('boardSelect');
+            select.innerHTML = boards.map(b =>
+                `<option value="${b.id}" ${b.id === currentBoardId ? 'selected' : ''}>${escapeHtml(b.name)}</option>`
+            ).join('');
+            // Disable delete button if only one board
+            const deleteBtn = document.getElementById('deleteBoardBtn');
+            if (deleteBtn) {
+                deleteBtn.disabled = boards.length <= 1;
+            }
+        }
+
+        function switchBoard(boardId) {
+            if (boardId === currentBoardId) return;
+            // Save current board state
+            saveCurrentBoard();
+            // Switch to new board
+            currentBoardId = boardId;
+            const board = boards.find(b => b.id === boardId);
+            if (board) {
+                tasks = board.tasks;
+                columns = board.columns;
+            }
+            localStorage.setItem('boxy_current_board', boardId);
+            renderBoardSelector();
+            renderTasks();
+            closeBoardMenu();
+        }
+
+        function toggleBoardMenu(e) {
+            e && e.stopPropagation();
+            const dropdown = document.getElementById('boardMenuDropdown');
+            dropdown.classList.toggle('active');
+        }
+
+        function closeBoardMenu() {
+            document.getElementById('boardMenuDropdown').classList.remove('active');
+        }
+
+        function showBoardModal(boardId = null) {
+            closeBoardMenu();
+            const modal = document.getElementById('boardModal');
+            const title = document.getElementById('boardModalTitle');
+            const nameInput = document.getElementById('boardName');
+            const idInput = document.getElementById('boardId');
+
+            if (boardId) {
+                const board = boards.find(b => b.id === boardId);
+                title.textContent = 'Rename Board';
+                nameInput.value = board ? board.name : '';
+                idInput.value = boardId;
+            } else {
+                title.textContent = 'New Board';
+                nameInput.value = '';
+                idInput.value = '';
+            }
+
+            modal.classList.add('active');
+            nameInput.focus();
+        }
+
+        function closeBoardModal() {
+            document.getElementById('boardModal').classList.remove('active');
+        }
+
+        function saveBoard() {
+            const name = document.getElementById('boardName').value.trim();
+            const id = document.getElementById('boardId').value;
+
+            if (!name) {
+                showToast('Board name is required');
+                return;
+            }
+
+            if (id) {
+                // Rename existing board
+                const board = boards.find(b => b.id === id);
+                if (board) {
+                    board.name = name;
+                    saveBoards();
+                    renderBoardSelector();
+                    showToast('Board renamed');
+                }
+            } else {
+                // Create new board
+                const newBoard = {
+                    id: generateId(),
+                    name: name,
+                    columns: JSON.parse(JSON.stringify(DEFAULT_COLUMNS)),
+                    tasks: [],
+                    createdAt: Date.now()
+                };
+                boards.push(newBoard);
+                saveBoards();
+                switchBoard(newBoard.id);
+                showToast('Board created');
+            }
+
+            closeBoardModal();
+        }
+
+        function deleteBoard(boardId) {
+            if (boards.length <= 1) {
+                showToast('Cannot delete the only board');
+                return;
+            }
+
+            const board = boards.find(b => b.id === boardId);
+            if (!board) return;
+
+            if (!confirm(`Delete board "${board.name}"? This will delete all tasks in this board.`)) {
+                return;
+            }
+
+            closeBoardMenu();
+            boards = boards.filter(b => b.id !== boardId);
+
+            // Switch to another board if we deleted the current one
+            if (currentBoardId === boardId) {
+                currentBoardId = boards[0].id;
+                tasks = boards[0].tasks;
+                columns = boards[0].columns;
+            }
+
+            saveBoards();
+            renderBoardSelector();
+            renderTasks();
+            showToast('Board deleted');
+        }
+
+        // Close board menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.board-menu')) {
+                closeBoardMenu();
+            }
+        });
+
+        // Tab Switching
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tab);
+            });
+            document.querySelectorAll('.view-container').forEach(view => {
+                view.classList.remove('active');
+            });
+            document.getElementById(tab === 'files' ? 'filesView' : 'tasksView').classList.add('active');
+            localStorage.setItem('boxy_active_tab', tab);
+
+            if (tab === 'tasks') {
+                renderTasks();
+            }
+        }
+
+        // Task View Switching
+        function switchTaskView(view) {
+            currentTaskView = view;
+            localStorage.setItem('boxy_task_view', view);
+            document.querySelectorAll('.tasks-view-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === view);
+            });
+            document.getElementById('kanbanBoard').classList.toggle('active', view === 'kanban');
+            document.getElementById('taskListView').classList.toggle('active', view === 'list');
+            renderTasks();
+        }
+
+        // Filter Tasks
+        function getFilteredTasks() {
+            return tasks.filter(task => {
+                if (taskSearchQuery) {
+                    const query = taskSearchQuery.toLowerCase();
+                    if (!task.title.toLowerCase().includes(query) &&
+                        !(task.description || '').toLowerCase().includes(query)) {
+                        return false;
+                    }
+                }
+                if (taskStatusFilter !== 'all' && task.status !== taskStatusFilter) {
+                    return false;
+                }
+                if (taskPriorityFilter !== 'all' && task.priority !== taskPriorityFilter) {
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        // Render Tasks
+        function renderTasks() {
+            if (currentTaskView === 'kanban') {
+                renderKanban();
+            } else {
+                renderTaskList();
+            }
+        }
+
+        // Kanban Rendering
+        function renderKanban() {
+            const board = document.getElementById('kanbanBoard');
+            const filteredTasks = getFilteredTasks();
+
+            const sortedColumns = [...columns].sort((a, b) => a.order - b.order);
+
+            let html = sortedColumns.map(col => {
+                const colTasks = filteredTasks.filter(t => t.status === col.id);
+
+                return `
+                    <div class="kanban-column" data-column="${col.id}"
+                         ondragover="handleColumnDragOver(event)"
+                         ondragleave="handleColumnDragLeave(event)"
+                         ondrop="handleColumnDrop(event, '${col.id}')">
+                        <div class="kanban-column-header" onclick="toggleColumnCollapse('${col.id}')">
+                            <span class="kanban-column-title">${escapeHtml(col.name)}</span>
+                            <span class="kanban-column-count">${colTasks.length}</span>
+                            <div class="kanban-column-actions">
+                                <button class="kanban-column-btn" onclick="event.stopPropagation(); editColumn('${col.id}')" title="Edit">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                    </svg>
+                                </button>
+                                ${columns.length > 1 ? `
+                                <button class="kanban-column-btn" onclick="event.stopPropagation(); deleteColumn('${col.id}')" title="Delete">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    </svg>
+                                </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                        <div class="kanban-column-content">
+                            ${colTasks.length === 0 ? `
+                                <div class="tasks-empty" style="padding: 24px 12px;">
+                                    <p style="font-size: 13px; margin: 0;">No tasks</p>
+                                </div>
+                            ` : colTasks.map(task => renderTaskCard(task)).join('')}
+                        </div>
+                        <div class="kanban-add-task">
+                            <button class="kanban-add-btn" onclick="showTaskModal('${col.id}')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"/>
+                                    <line x1="5" y1="12" x2="19" y2="12"/>
+                                </svg>
+                                Add task
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            html += `
+                <div class="kanban-add-column">
+                    <button class="kanban-add-column-btn" onclick="showColumnModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Add Column
+                    </button>
+                </div>
+            `;
+
+            board.innerHTML = html;
+        }
+
+        function renderTaskCard(task) {
+            const dueClass = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done' ? 'overdue' : '';
+
+            return `
+                <div class="task-card" data-task-id="${task.id}"
+                     draggable="true"
+                     ondragstart="handleTaskDragStart(event, '${task.id}')"
+                     ondragend="handleTaskDragEnd(event)"
+                     ondragover="handleTaskCardDragOver(event)"
+                     ondragleave="handleTaskCardDragLeave(event)"
+                     ondrop="handleTaskCardDrop(event, '${task.id}')">
+                    <div class="task-card-header">
+                        <div class="task-priority-dot ${task.priority}"></div>
+                        <div class="task-card-title">${escapeHtml(task.title)}</div>
+                    </div>
+                    ${task.description ? `<div class="task-card-description">${escapeHtml(task.description)}</div>` : ''}
+                    <div class="task-card-footer">
+                        ${task.dueDate ? `
+                            <div class="task-card-due ${dueClass}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="16" y1="2" x2="16" y2="6"/>
+                                    <line x1="8" y1="2" x2="8" y2="6"/>
+                                    <line x1="3" y1="10" x2="21" y2="10"/>
+                                </svg>
+                                ${formatTaskDate(task.dueDate)}
+                            </div>
+                        ` : ''}
+                        ${(task.tags || []).slice(0, 2).map(tag => `<span class="task-tag">${escapeHtml(tag)}</span>`).join('')}
+                        ${(task.tags || []).length > 2 ? `<span class="task-tag">+${task.tags.length - 2}</span>` : ''}
+                        <div class="task-card-actions">
+                            <button class="task-card-btn" onclick="editTask('${task.id}')" title="Edit">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                            </button>
+                            <button class="task-card-btn delete" onclick="deleteTask('${task.id}')" title="Delete">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatTaskDate(dateStr) {
+            const date = new Date(dateStr);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            if (date.toDateString() === today.toDateString()) return 'Today';
+            if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+            return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        }
+
+        // List Rendering
+        function renderTaskList() {
+            const container = document.getElementById('taskListBody');
+            const filteredTasks = getFilteredTasks();
+
+            // Sort tasks
+            const sorted = [...filteredTasks].sort((a, b) => {
+                let aVal = a[taskSortField];
+                let bVal = b[taskSortField];
+                if (taskSortField === 'priority') {
+                    const order = { high: 0, medium: 1, low: 2 };
+                    aVal = order[aVal];
+                    bVal = order[bVal];
+                }
+                if (aVal < bVal) return taskSortDir === 'asc' ? -1 : 1;
+                if (aVal > bVal) return taskSortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            if (sorted.length === 0) {
+                container.innerHTML = `
+                    <div class="tasks-empty">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M9 11l3 3L22 4"/>
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                        </svg>
+                        <h3>No tasks yet</h3>
+                        <p>Create your first task to get started</p>
+                        <button class="btn btn-primary" onclick="showTaskModal()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            New Task
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = sorted.map(task => {
+                const col = columns.find(c => c.id === task.status);
+                const dueClass = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done' ? 'overdue' : '';
+
+                return `
+                    <div class="task-list-item ${task.status === 'done' ? 'completed' : ''}" data-task-id="${task.id}">
+                        <input type="checkbox" class="task-list-checkbox"
+                               ${task.status === 'done' ? 'checked' : ''}
+                               onchange="toggleTaskComplete('${task.id}')">
+                        <div class="task-list-title">
+                            <div class="task-priority-dot ${task.priority}"></div>
+                            ${escapeHtml(task.title)}
+                        </div>
+                        <div class="task-list-status">${col ? escapeHtml(col.name) : task.status}</div>
+                        <div class="task-list-priority">
+                            <div class="task-priority-dot ${task.priority}"></div>
+                            ${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                        </div>
+                        <div class="task-list-date ${dueClass}">
+                            ${task.dueDate ? formatTaskDate(task.dueDate) : '—'}
+                        </div>
+                        <div class="task-list-actions">
+                            <button class="task-card-btn" onclick="editTask('${task.id}')" title="Edit">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                            </button>
+                            <button class="task-card-btn delete" onclick="deleteTask('${task.id}')" title="Delete">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function sortTasks(field) {
+            if (taskSortField === field) {
+                taskSortDir = taskSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                taskSortField = field;
+                taskSortDir = 'asc';
+            }
+            renderTaskList();
+        }
+
+        function toggleTaskComplete(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.status = task.status === 'done' ? 'todo' : 'done';
+                saveTasks();
+                renderTasks();
+            }
+        }
+
+        // Task Modal
+        function showTaskModal(defaultStatus = 'todo') {
+            document.getElementById('taskModalTitle').textContent = 'New Task';
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskDescription').value = '';
+            document.getElementById('taskStatus').value = defaultStatus;
+            document.getElementById('taskPriority').value = 'medium';
+            document.getElementById('taskDueDate').value = '';
+            document.getElementById('taskId').value = '';
+            editingTaskTags = [];
+            renderTaskTags();
+            document.getElementById('taskModal').classList.add('active');
+            setTimeout(() => document.getElementById('taskTitle').focus(), 100);
+        }
+
+        function editTask(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            document.getElementById('taskModalTitle').textContent = 'Edit Task';
+            document.getElementById('taskTitle').value = task.title;
+            document.getElementById('taskDescription').value = task.description || '';
+            document.getElementById('taskStatus').value = task.status;
+            document.getElementById('taskPriority').value = task.priority;
+            document.getElementById('taskDueDate').value = task.dueDate || '';
+            document.getElementById('taskId').value = task.id;
+            editingTaskTags = [...(task.tags || [])];
+            renderTaskTags();
+            document.getElementById('taskModal').classList.add('active');
+            setTimeout(() => document.getElementById('taskTitle').focus(), 100);
+        }
+
+        function closeTaskModal() {
+            document.getElementById('taskModal').classList.remove('active');
+        }
+
+        let savingTask = false;
+        function saveTask() {
+            if (savingTask) return; // Prevent double submission
+
+            const title = document.getElementById('taskTitle').value.trim();
+            if (!title) {
+                showToast('Please enter a task title');
+                return;
+            }
+
+            savingTask = true;
+
+            const taskId = document.getElementById('taskId').value;
+            const taskData = {
+                title,
+                description: document.getElementById('taskDescription').value.trim(),
+                status: document.getElementById('taskStatus').value,
+                priority: document.getElementById('taskPriority').value,
+                dueDate: document.getElementById('taskDueDate').value || null,
+                tags: editingTaskTags
+            };
+
+            if (taskId) {
+                // Update existing task
+                const idx = tasks.findIndex(t => t.id === taskId);
+                if (idx !== -1) {
+                    tasks[idx] = { ...tasks[idx], ...taskData, updatedAt: Date.now() };
+                }
+                showToast('Task updated');
+            } else {
+                // Create new task
+                tasks.push({
+                    id: generateId(),
+                    ...taskData,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now()
+                });
+                showToast('Task created');
+            }
+
+            saveTasks();
+            closeTaskModal();
+            renderTasks();
+
+            // Reset guard after modal closes
+            setTimeout(() => { savingTask = false; }, 100);
+        }
+
+        function deleteTask(taskId) {
+            if (!confirm('Delete this task?')) return;
+            tasks = tasks.filter(t => t.id !== taskId);
+            saveTasks();
+            renderTasks();
+            showToast('Task deleted');
+        }
+
+        // Task Tags
+        function renderTaskTags() {
+            const container = document.getElementById('taskTagsContainer');
+            const input = document.getElementById('taskTagInput');
+
+            container.innerHTML = editingTaskTags.map(tag => `
+                <span class="task-tag-item">
+                    ${escapeHtml(tag)}
+                    <span class="task-tag-remove" onclick="removeTaskTag('${escapeAttr(tag)}')">&times;</span>
+                </span>
+            `).join('') + `<input type="text" id="taskTagInput" placeholder="Add tag...">`;
+
+            // Reattach event listener
+            document.getElementById('taskTagInput').addEventListener('keydown', handleTagInput);
+        }
+
+        function handleTagInput(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const tag = e.target.value.trim();
+                if (tag && !editingTaskTags.includes(tag)) {
+                    editingTaskTags.push(tag);
+                    renderTaskTags();
+                }
+                e.target.value = '';
+            }
+        }
+
+        function removeTaskTag(tag) {
+            editingTaskTags = editingTaskTags.filter(t => t !== tag);
+            renderTaskTags();
+        }
+
+        // Column Modal
+        function showColumnModal() {
+            document.getElementById('columnModalTitle').textContent = 'New Column';
+            document.getElementById('columnName').value = '';
+            document.getElementById('columnId').value = '';
+            document.getElementById('columnModal').classList.add('active');
+            setTimeout(() => document.getElementById('columnName').focus(), 100);
+        }
+
+        function editColumn(colId) {
+            const col = columns.find(c => c.id === colId);
+            if (!col) return;
+
+            document.getElementById('columnModalTitle').textContent = 'Edit Column';
+            document.getElementById('columnName').value = col.name;
+            document.getElementById('columnId').value = col.id;
+            document.getElementById('columnModal').classList.add('active');
+            setTimeout(() => document.getElementById('columnName').focus(), 100);
+        }
+
+        function closeColumnModal() {
+            document.getElementById('columnModal').classList.remove('active');
+        }
+
+        function saveColumn() {
+            const name = document.getElementById('columnName').value.trim();
+            if (!name) {
+                showToast('Please enter a column name');
+                return;
+            }
+
+            const colId = document.getElementById('columnId').value;
+
+            if (colId) {
+                // Update existing column
+                const col = columns.find(c => c.id === colId);
+                if (col) col.name = name;
+                showToast('Column updated');
+            } else {
+                // Create new column
+                const newId = name.toLowerCase().replace(/\s+/g, '-');
+                if (columns.find(c => c.id === newId)) {
+                    showToast('Column ID already exists');
+                    return;
+                }
+                columns.push({
+                    id: newId,
+                    name,
+                    order: columns.length
+                });
+                showToast('Column created');
+            }
+
+            saveColumns();
+            closeColumnModal();
+            renderKanban();
+        }
+
+        function deleteColumn(colId) {
+            if (!confirm('Delete this column? Tasks will be moved to Backlog.')) return;
+
+            // Move tasks to backlog
+            tasks.forEach(task => {
+                if (task.status === colId) {
+                    task.status = 'backlog';
+                }
+            });
+            saveTasks();
+
+            columns = columns.filter(c => c.id !== colId);
+            saveColumns();
+            renderKanban();
+            showToast('Column deleted');
+        }
+
+        function toggleColumnCollapse(colId) {
+            const col = document.querySelector(`.kanban-column[data-column="${colId}"]`);
+            if (col) col.classList.toggle('collapsed');
+        }
+
+        // Drag and Drop
+        function handleTaskDragStart(e, taskId) {
+            draggedTask = taskId;
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', taskId);
+        }
+
+        function handleTaskDragEnd(e) {
+            e.target.classList.remove('dragging');
+            draggedTask = null;
+            document.querySelectorAll('.kanban-column.drag-over').forEach(el => {
+                el.classList.remove('drag-over');
+            });
+        }
+
+        function handleColumnDragOver(e) {
+            e.preventDefault();
+            if (!draggedTask) return;
+            const col = e.target.closest('.kanban-column');
+            if (col) {
+                col.classList.add('drag-over');
+                e.dataTransfer.dropEffect = 'move';
+            }
+        }
+
+        function handleColumnDragLeave(e) {
+            const col = e.target.closest('.kanban-column');
+            if (col && !col.contains(e.relatedTarget)) {
+                col.classList.remove('drag-over');
+            }
+        }
+
+        function handleColumnDrop(e, columnId) {
+            e.preventDefault();
+            const col = e.target.closest('.kanban-column');
+            if (col) col.classList.remove('drag-over');
+
+            if (!draggedTask) return;
+
+            const task = tasks.find(t => t.id === draggedTask);
+            if (task) {
+                const oldStatus = task.status;
+                if (task.status !== columnId) {
+                    task.status = columnId;
+                    task.updatedAt = Date.now();
+                    // Move to end of new column
+                    const idx = tasks.indexOf(task);
+                    tasks.splice(idx, 1);
+                    tasks.push(task);
+                    saveTasks();
+                    renderKanban();
+                    showToast(`Moved to ${columns.find(c => c.id === columnId)?.name || columnId}`);
+                }
+            }
+        }
+
+        function handleTaskCardDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!draggedTask) return;
+            const card = e.target.closest('.task-card');
+            if (card && card.dataset.taskId !== draggedTask) {
+                // Determine if mouse is in top or bottom half
+                const rect = card.getBoundingClientRect();
+                const midY = rect.top + rect.height / 2;
+                card.classList.remove('drag-over-top', 'drag-over-bottom');
+                if (e.clientY < midY) {
+                    card.classList.add('drag-over-top');
+                } else {
+                    card.classList.add('drag-over-bottom');
+                }
+            }
+        }
+
+        function handleTaskCardDragLeave(e) {
+            const card = e.target.closest('.task-card');
+            if (card && !card.contains(e.relatedTarget)) {
+                card.classList.remove('drag-over-top', 'drag-over-bottom');
+            }
+        }
+
+        function handleTaskCardDrop(e, targetTaskId) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const card = e.target.closest('.task-card');
+            if (card) {
+                card.classList.remove('drag-over-top', 'drag-over-bottom');
+            }
+
+            // Also remove column highlight
+            const col = e.target.closest('.kanban-column');
+            if (col) col.classList.remove('drag-over');
+
+            if (!draggedTask || draggedTask === targetTaskId) return;
+
+            const draggedTaskObj = tasks.find(t => t.id === draggedTask);
+            const targetTaskObj = tasks.find(t => t.id === targetTaskId);
+
+            if (!draggedTaskObj || !targetTaskObj) return;
+
+            // Determine insert position based on mouse position
+            const rect = card.getBoundingClientRect();
+            const insertBefore = e.clientY < (rect.top + rect.height / 2);
+
+            // Update status if moving to different column
+            if (draggedTaskObj.status !== targetTaskObj.status) {
+                draggedTaskObj.status = targetTaskObj.status;
+                draggedTaskObj.updatedAt = Date.now();
+            }
+
+            // Remove from current position
+            const fromIdx = tasks.indexOf(draggedTaskObj);
+            tasks.splice(fromIdx, 1);
+
+            // Find target index and insert
+            let targetIdx = tasks.indexOf(targetTaskObj);
+            if (!insertBefore) targetIdx++;
+            tasks.splice(targetIdx, 0, draggedTaskObj);
+
+            saveTasks();
+            renderKanban();
+        }
+
+        // Search and Filters
+        document.getElementById('taskSearchInput').addEventListener('input', (e) => {
+            taskSearchQuery = e.target.value.trim();
+            renderTasks();
+        });
+
+        document.getElementById('taskStatusFilter').addEventListener('change', (e) => {
+            taskStatusFilter = e.target.value;
+            renderTasks();
+        });
+
+        document.getElementById('taskPriorityFilter').addEventListener('change', (e) => {
+            taskPriorityFilter = e.target.value;
+            renderTasks();
+        });
+
+        // Tasks Menu
+        function toggleTasksMenu() {
+            document.getElementById('tasksMenuDropdown').classList.toggle('show');
+        }
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.tasks-menu')) {
+                document.getElementById('tasksMenuDropdown').classList.remove('show');
+            }
+        });
+
+        // Export/Import
+        function exportTasks() {
+            const board = boards.find(b => b.id === currentBoardId);
+            const data = {
+                board: {
+                    name: board ? board.name : 'Exported Board',
+                    tasks,
+                    columns
+                },
+                exportedAt: new Date().toISOString()
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const boardName = (board ? board.name : 'board').replace(/[^a-z0-9]/gi, '-').toLowerCase();
+            a.download = `boxy-${boardName}-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Board exported');
+            toggleTasksMenu();
+        }
+
+        function importTasks() {
+            document.getElementById('importTasksInput').click();
+            toggleTasksMenu();
+        }
+
+        document.getElementById('importTasksInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const data = JSON.parse(event.target.result);
+
+                    // Handle new board format
+                    if (data.board && data.board.tasks) {
+                        const boardData = data.board;
+                        if (confirm(`Import board "${boardData.name}" with ${boardData.tasks.length} tasks as a new board?`)) {
+                            const newBoard = {
+                                id: generateId(),
+                                name: boardData.name || 'Imported Board',
+                                columns: boardData.columns || JSON.parse(JSON.stringify(DEFAULT_COLUMNS)),
+                                tasks: boardData.tasks,
+                                createdAt: Date.now()
+                            };
+                            boards.push(newBoard);
+                            saveBoards();
+                            switchBoard(newBoard.id);
+                            showToast(`Imported board with ${boardData.tasks.length} tasks`);
+                        }
+                    }
+                    // Handle legacy format (merge into current board)
+                    else if (data.tasks && Array.isArray(data.tasks)) {
+                        if (confirm(`Import ${data.tasks.length} tasks into current board? This will merge with existing tasks.`)) {
+                            // Merge tasks (add new, don't overwrite existing)
+                            const existingIds = new Set(tasks.map(t => t.id));
+                            const newTasks = data.tasks.filter(t => !existingIds.has(t.id));
+                            tasks = [...tasks, ...newTasks];
+                            saveTasks();
+
+                            // Merge columns
+                            if (data.columns && Array.isArray(data.columns)) {
+                                const existingColIds = new Set(columns.map(c => c.id));
+                                const newCols = data.columns.filter(c => !existingColIds.has(c.id));
+                                columns = [...columns, ...newCols];
+                                saveColumns();
+                            }
+
+                            renderTasks();
+                            showToast(`Imported ${newTasks.length} new tasks`);
+                        }
+                    } else {
+                        showToast('Invalid file format');
+                    }
+                } catch (err) {
+                    showToast('Failed to parse file');
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        });
+
+        // Keyboard shortcut for new task
+        document.addEventListener('keydown', (e) => {
+            // Only in tasks view
+            const activeTab = localStorage.getItem('boxy_active_tab') || 'files';
+            if (activeTab !== 'tasks') return;
+
+            // Skip if in input
+            if (e.target.matches('input, textarea, select')) return;
+            if (document.querySelector('.modal.active')) return;
+
+            if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+                e.preventDefault();
+                showTaskModal();
+            }
+        });
+
+        // Task modal keyboard handling
+        document.getElementById('taskTitle').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                saveTask();
+            }
+            if (e.key === 'Escape') {
+                closeTaskModal();
+            }
+        });
+
+        document.getElementById('columnName').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveColumn();
+            }
+            if (e.key === 'Escape') {
+                closeColumnModal();
+            }
+        });
+
+        // Initialize tag input listener
+        document.getElementById('taskTagInput').addEventListener('keydown', handleTagInput);
+
+        // Initialize boards
+        loadBoards();
+        renderBoardSelector();
+
+        // Board modal keyboard handling
+        document.getElementById('boardName').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveBoard();
+            }
+            if (e.key === 'Escape') {
+                closeBoardModal();
+            }
+        });
+
+        // Init tabs
+        const savedTab = localStorage.getItem('boxy_active_tab') || 'files';
+        if (savedTab === 'tasks') {
+            switchTab('tasks');
+        }
+
+        // Update task status dropdown options based on columns
+        function updateTaskStatusOptions() {
+            const select = document.getElementById('taskStatus');
+            select.innerHTML = columns.map(col =>
+                `<option value="${col.id}">${escapeHtml(col.name)}</option>`
+            ).join('');
+        }
+
+        // Call on init and when columns change
+        updateTaskStatusOptions();
+
+        // ============================================
+        // END TASK MANAGEMENT
+        // ============================================
 
         // Init
         document.getElementById('filterSelect').value = filterType;

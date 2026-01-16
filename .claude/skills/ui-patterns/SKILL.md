@@ -108,7 +108,7 @@ function connectWS() {
     };
 
     ws.onclose = () => {
-        setTimeout(connectWebSocket, 2000);  // Auto-reconnect
+        setTimeout(connectWS, 2000);  // Auto-reconnect
     };
 }
 ```
