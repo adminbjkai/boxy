@@ -8,3 +8,9 @@ npm-debug.log*
 yarn-error.log*
 .DS_Store
 .env
+
+# Test artifacts
+/test-results
+
+# TLDR cache
+/.tldr

@@ -115,6 +115,11 @@ function connectWS() {
 
 ## Security (CRITICAL)
 
+### XSS Sinks (Never use with unescaped user data)
+- `innerHTML` — only escaped content or constant strings
+- `insertAdjacentHTML` — only escaped content or constant strings
+- `outerHTML` — only escaped content or constant strings
+
 ### XSS Prevention
 ```javascript
 function escapeHtml(str) {
@@ -185,3 +190,10 @@ const iconMap = {
 3. Always escape user content (XSS)
 4. Auto-reconnect WebSocket on disconnect
 5. Stagger animations for visual polish
+6. **Use grep before reading** — `rg 'pattern' static/index.html`, then `sed -n` for targeted ranges
+
+## Pre-Change Checklist
+- [ ] `escapeHtml()` used for all user content in innerHTML
+- [ ] `escapeAttr()` used for all user content in attributes
+- [ ] WS reconnect logic preserved (max 30s backoff)
+- [ ] No inline styles overriding CSS variables
