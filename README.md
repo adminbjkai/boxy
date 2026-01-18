@@ -22,13 +22,44 @@ Tasks and boards are stored in **browser localStorage only** (no server persiste
 ### Claude Code Skills
 Repo includes Claude Code skills under `.claude/skills/` for development guidance.
 
-## Architecture & flow
+## Architecture & Flow
+
+Boxy uses a simple three-layer architecture:
+
+| Layer | Technology | Responsibility |
+|-------|------------|----------------|
+| **Client** | Vanilla HTML/JS | UI, local state (tasks in localStorage) |
+| **Server** | Rust/Actix | REST API, WebSocket broadcast, path sanitization |
+| **Storage** | Local filesystem | `./uploads` directory (volume-mountable) |
+
 ![Boxy architecture](docs/assets/images/boxy-architecture-20260112.png)
+
+### WebSocket Real-time Model
+
+All file mutations (upload, rename, move, delete, edit) trigger a broadcast to connected clients:
+
+```
+Client A: POST /api/rename → Server → broadcast_update("rename", path)
+                                   ↓
+                              WebSocket fan-out
+                                   ↓
+Client B, C, D: receive { action: "rename", path: "..." } → refresh grid
+```
+
+Reconnection uses a fixed 2-second retry interval via `connectWS()`.
+
 ![Boxy file flow](docs/assets/images/boxy-file-flow-20260112.png)
-- ![Boxy request flow](docs/assets/images/boxy-request-flow-20260112.png)
-- Browser UI calls REST endpoints for listing, uploads, folder ops, moves, deletes, downloads, and health checks.
-- WebSocket `/ws` fan-out broadcasts upload/rename/move/delete events to active clients.
-- Actix Web service reads/writes the `./uploads` filesystem (volume-mountable in Docker). See `docs/ARCHITECTURE.md` for details.
+
+### Security Invariants
+
+| Invariant | Implementation | Purpose |
+|-----------|----------------|---------|
+| **Path traversal blocked** | `resolve_path_safe()` with canonicalization | Prevents `../` escapes and symlink attacks |
+| **Search DoS prevention** | `MAX_SEARCH_RESULTS = 100` | Caps recursive search to prevent runaway traversal |
+| **XSS prevention** | `escapeHtml()` / `escapeAttr()` | All user content escaped before innerHTML |
+| **Payload limit** | 200MB default (`BOX_MAX_UPLOAD_BYTES`) | Prevents memory exhaustion |
+
+See `docs/ARCHITECTURE.md` for full details.
 
 ## Docs
 - UI walkthrough with live screenshots: `docs/UI_WALKTHROUGH.md`
@@ -43,18 +74,24 @@ cargo run
 Then open `http://localhost:8086` (or your overridden port).
 
 ## Endpoints
-- `GET /` static UI
-- `GET /ws` WebSocket for live updates
-- `GET /api/files?path=...` list files
-- `GET /api/search?q=...` search all files recursively
-- `POST /api/upload?path=...` upload multipart files (supports nested paths for folders)
-- `POST /api/folder` create folder
-- `POST /api/rename` rename item
-- `POST /api/move` move item
-- `POST /api/delete` delete item
-- `GET /api/folders` list folders for move dialog
-- `GET /api/download?path=...` download/preview file
-- `GET /api/health` healthcheck
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/` | Static UI (SPA) |
+| GET | `/ws` | WebSocket for live updates |
+| GET | `/api/files?path=...` | List files in directory |
+| GET | `/api/search?q=...` | Search files recursively (max 100 results) |
+| POST | `/api/upload?path=...` | Upload multipart files (supports nested paths) |
+| POST | `/api/folder` | Create folder `{ name, path? }` |
+| POST | `/api/rename` | Rename item `{ path, new_name }` |
+| POST | `/api/move` | Move item `{ path, dest_dir? }` |
+| POST | `/api/delete` | Delete item `{ path }` |
+| GET | `/api/folders` | List all folders (for move dialog) |
+| GET | `/api/download?path=...` | Download/preview file |
+| GET | `/api/content?path=...` | Get file content (text files only) |
+| POST | `/api/content` | Save file content `{ path, content }` |
+| POST | `/api/newfile` | Create new file `{ path?, filename }` |
+| GET | `/api/health` | Healthcheck |
 
 ## Playwright browser tests
 Install dependencies and run the e2e suite:
@@ -77,3 +114,15 @@ Or with compose:
 ```bash
 docker compose up --build
 ```
+
+## Diagram Generation
+
+Architecture diagrams are generated using AI image tools (g3img, DALL-E, etc.) with reproducible prompts stored in `docs/prompts/`:
+
+| Diagram | Prompt File | Output |
+|---------|-------------|--------|
+| Architecture | `docs/prompts/architecture.md` | System component overview |
+| File Flow | `docs/prompts/file-flow.md` | Upload and broadcast sequence |
+| Request Lifecycle | `docs/prompts/request-lifecycle.md` | Handler execution sequence |
+
+Generated images are saved to `docs/assets/images/` with date suffixes (e.g., `boxy-architecture-20260118.png`).
