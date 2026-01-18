@@ -7,7 +7,7 @@ async function writeFixture(path: string, contents: string) {
 
 test('loads the home screen', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Boxy')).toBeVisible();
+  await expect(page.getByRole('banner').getByText('Boxy')).toBeVisible();
   await expect(page.getByText('Drop files here, click Upload, or paste from clipboard')).toBeVisible();
 });
 
