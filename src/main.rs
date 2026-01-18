@@ -443,6 +443,8 @@ struct SearchResult {
     modified: u64,
 }
 
+const MAX_SEARCH_RESULTS: usize = 100;
+
 #[derive(Deserialize)]
 struct SearchQuery {
     q: String,
@@ -463,6 +465,7 @@ async fn search_files(
         String::new(),
         &search_term,
         &mut results,
+        MAX_SEARCH_RESULTS,
     )
     .await;
 
@@ -482,9 +485,20 @@ async fn collect_search_results(
     prefix: String,
     search_term: &str,
     results: &mut Vec<SearchResult>,
+    limit: usize,
 ) {
+    // Early termination if we've hit the limit
+    if results.len() >= limit {
+        return;
+    }
+
     if let Ok(mut dir) = tokio::fs::read_dir(&path).await {
         while let Ok(Some(entry)) = dir.next_entry().await {
+            // Check limit before processing each entry
+            if results.len() >= limit {
+                return;
+            }
+
             if let Ok(meta) = entry.metadata().await {
                 let name = entry.file_name().to_string_lossy().to_string();
                 let full_path = if prefix.is_empty() {
@@ -511,9 +525,9 @@ async fn collect_search_results(
                     });
                 }
 
-                // Recurse into directories
-                if meta.is_dir() {
-                    collect_search_results(entry.path(), full_path, search_term, results).await;
+                // Recurse into directories (check limit again)
+                if meta.is_dir() && results.len() < limit {
+                    collect_search_results(entry.path(), full_path, search_term, results, limit).await;
                 }
             }
         }
