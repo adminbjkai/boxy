@@ -14,6 +14,13 @@ Boxy is a lightweight file sharing UI with real-time updates, drag-and-drop uplo
 - Sortable table columns in list view (Name, Type, Size, Date Modified)
 - Keyboard navigation (arrows, space, enter, backspace, escape)
 - Preserved original file modification dates on upload
+- Tasks/Kanban boards for project management
+
+### Tasks Feature Persistence
+Tasks and boards are stored in **browser localStorage only** (no server persistence). Clearing browser data or switching browsers will reset all tasks.
+
+### Claude Code Skills
+Repo includes Claude Code skills under `.claude/skills/` for development guidance.
 
 ## Architecture & flow
 ![Boxy architecture](docs/assets/images/boxy-architecture-20260112.png)
