@@ -32,7 +32,7 @@ Boxy uses a simple three-layer architecture:
 | **Server** | Rust/Actix | REST API, WebSocket broadcast, path sanitization |
 | **Storage** | Local filesystem | `./uploads` directory (volume-mountable) |
 
-![Boxy architecture](docs/assets/images/boxy-architecture-20260116.png)
+![Boxy architecture](docs/assets/images/boxy-system-architecture-20260118.png)
 
 ### WebSocket Real-time Model
 
@@ -48,7 +48,7 @@ Client B, C, D: receive { action: "rename", path: "..." } → refresh grid
 
 Reconnection uses a fixed 2-second retry interval via `connectWS()`.
 
-![Boxy file flow](docs/assets/images/boxy-file-flow-20260112.png)
+![Boxy file upload flow](docs/assets/images/boxy-file-upload-flow-20260118.png)
 
 ### Security Invariants
 
@@ -62,7 +62,8 @@ Reconnection uses a fixed 2-second retry interval via `connectWS()`.
 See `docs/ARCHITECTURE.md` for full details.
 
 ## Docs
-- UI walkthrough with live screenshots: `docs/UI_WALKTHROUGH.md`
+- Architecture details: `docs/ARCHITECTURE.md`
+- UI walkthrough with screenshots: `docs/UI_WALKTHROUGH.md`
 
 ## Run locally
 ```bash
@@ -119,10 +120,14 @@ docker compose up --build
 
 Architecture diagrams are generated using AI image tools (g3img, DALL-E, etc.) with reproducible prompts stored in `docs/prompts/`:
 
-| Diagram | Prompt File | Output |
-|---------|-------------|--------|
-| Architecture | `docs/prompts/architecture.md` | System component overview |
-| File Flow | `docs/prompts/file-flow.md` | Upload and broadcast sequence |
-| Request Lifecycle | `docs/prompts/request-lifecycle.md` | Handler execution sequence |
+| Diagram | Prompt File | Description |
+|---------|-------------|-------------|
+| System Architecture | `01-system-architecture.md` | Three-layer architecture with Docker boundary |
+| File Upload Flow | `02-file-upload-flow.md` | Upload cycle with broadcast and error paths |
+| Request Lifecycle | `03-request-lifecycle.md` | Sequence diagram for rename operation |
+| WebSocket Model | `04-websocket-model.md` | Fan-out topology and reconnection behavior |
+| Security Model | `05-security-model.md` | Defense-in-depth layers and threat mitigation |
+| UI Feature Map | `06-ui-feature-map.md` | Frontend capabilities overview |
+| Deployment View | `07-deployment-view.md` | Containerized deployment architecture |
 
-Generated images are saved to `docs/assets/images/` with date suffixes (e.g., `boxy-architecture-20260118.png`).
+Generated images are saved to `docs/assets/images/` with date suffixes (e.g., `boxy-system-architecture-20260118.png`).
