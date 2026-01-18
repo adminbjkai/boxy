@@ -1,92 +1,215 @@
-# Boxy UI Walkthrough (Screenshots)
+# Boxy UI Walkthrough
 
-Captured on 2026-01-12 against a local build (`BOX_UPLOAD_DIR=./uploads_docs`, `BOX_PORT=8086`) using Playwright + Chromium. Each screenshot shows the live UI performing a core action.
+Captured on **2026-01-18** using Playwright + Chromium (headless) against a local build.
+All screens shown in both **Light** and **Dark** themes.
 
-## 1) Home screen
-![Home screen](assets/images/boxy-ui-home-20260112.png)
-- Empty state with drop zone, toolbar, search/sort controls, and breadcrumb.
+Server config: `BOX_UPLOAD_DIR=./uploads_docs BOX_PORT=8086`
 
-## 2) Create a folder
-![Create folder modal](assets/images/boxy-ui-new-folder-20260112.png)
-- `New Folder` opens a modal; entering `Projects` and clicking `Create` adds the folder to the grid.
+---
 
-## 3) Upload a file
-![Upload complete](assets/images/boxy-ui-uploaded-20260112.png)
-- File selected via the hidden file picker (`#fileInput`); progress bar runs, and the new file card appears with metadata.
+## 1) Home Screen (Empty State)
+The initial view with upload drop zone, toolbar, and navigation.
 
-## 4) Rename a file
-![Rename modal](assets/images/boxy-ui-rename-modal-20260112.png)
-- Hover a file card to reveal actions, click `Rename`, edit the name, and confirm to update the listing.
+**Light**
+![Home light](assets/images/boxy-ui-home-light-20260118.png)
 
-## 5) Move a file
-![Move modal](assets/images/boxy-ui-move-modal-20260112.png)
-- Hover the file, choose `Move`, select destination (e.g., `Projects`) in the tree, then click `Move here`.
+**Dark**
+![Home dark](assets/images/boxy-ui-home-dark-20260118.png)
 
-## 6) Folder view after move
-![Folder view](assets/images/boxy-ui-folder-view-20260112.png)
-- Navigating into `Projects` shows the moved file (`report-final.txt`), verifying the move.
+---
 
-## Reproducing screenshots
-1) Start the server with a clean uploads root:
+## 2) Create Folder Modal
+Click "New Folder" to open the folder creation dialog.
+
+**Light**
+![New folder modal light](assets/images/boxy-ui-new-folder-modal-light-20260118.png)
+
+**Dark**
+![New folder modal dark](assets/images/boxy-ui-new-folder-modal-dark-20260118.png)
+
+---
+
+## 3) Folder Created
+After creating a folder, it appears in the file grid.
+
+**Light**
+![Folder created light](assets/images/boxy-ui-folder-created-light-20260118.png)
+
+**Dark**
+![Folder created dark](assets/images/boxy-ui-folder-created-dark-20260118.png)
+
+---
+
+## 4) Upload Complete
+File uploaded via the hidden file input; card appears with metadata.
+
+**Light**
+![Upload complete light](assets/images/boxy-ui-upload-complete-light-20260118.png)
+
+**Dark**
+![Upload complete dark](assets/images/boxy-ui-upload-complete-dark-20260118.png)
+
+---
+
+## 5) Rename Modal
+Hover a file card, click "Rename" to open the rename dialog.
+
+**Light**
+![Rename modal light](assets/images/boxy-ui-rename-modal-light-20260118.png)
+
+**Dark**
+![Rename modal dark](assets/images/boxy-ui-rename-modal-dark-20260118.png)
+
+---
+
+## 6) Rename Complete
+After confirming rename, the file card updates with the new name.
+
+**Light**
+![Rename complete light](assets/images/boxy-ui-rename-complete-light-20260118.png)
+
+**Dark**
+![Rename complete dark](assets/images/boxy-ui-rename-complete-dark-20260118.png)
+
+---
+
+## 7) Move Modal
+Select destination folder from the tree view to move a file.
+
+**Light**
+![Move modal light](assets/images/boxy-ui-move-modal-light-20260118.png)
+
+**Dark**
+![Move modal dark](assets/images/boxy-ui-move-modal-dark-20260118.png)
+
+---
+
+## 8) Folder View (After Move)
+Navigate into a folder to see moved files; breadcrumb updates.
+
+**Light**
+![Folder view light](assets/images/boxy-ui-folder-view-light-20260118.png)
+
+**Dark**
+![Folder view dark](assets/images/boxy-ui-folder-view-dark-20260118.png)
+
+---
+
+## 9) Search Filtered
+Enter search term to filter files recursively across all folders.
+
+**Light**
+![Search filtered light](assets/images/boxy-ui-search-filtered-light-20260118.png)
+
+**Dark**
+![Search filtered dark](assets/images/boxy-ui-search-filtered-dark-20260118.png)
+
+---
+
+## 10) Sort Applied
+Use the sort dropdown to order files by name, size, type, or date.
+
+**Light**
+![Sort applied light](assets/images/boxy-ui-sort-applied-light-20260118.png)
+
+**Dark**
+![Sort applied dark](assets/images/boxy-ui-sort-applied-dark-20260118.png)
+
+---
+
+## 11) Download / Preview
+Hover a file to reveal action buttons including download.
+
+**Light**
+![Download light](assets/images/boxy-ui-download-light-20260118.png)
+
+**Dark**
+![Download dark](assets/images/boxy-ui-download-dark-20260118.png)
+
+---
+
+## 12) New File
+Create a new empty file using the "New File" button.
+
+**Light**
+![New file light](assets/images/boxy-ui-new-file-light-20260118.png)
+
+**Dark**
+![New file dark](assets/images/boxy-ui-new-file-dark-20260118.png)
+
+---
+
+## 13) Edit Content
+Double-click a text file to preview or edit its contents.
+
+**Light**
+![Edit content light](assets/images/boxy-ui-edit-content-light-20260118.png)
+
+**Dark**
+![Edit content dark](assets/images/boxy-ui-edit-content-dark-20260118.png)
+
+---
+
+## 14) Delete
+Hover a file and click "Delete" to remove it.
+
+**Light**
+![Delete light](assets/images/boxy-ui-delete-light-20260118.png)
+
+**Dark**
+![Delete dark](assets/images/boxy-ui-delete-dark-20260118.png)
+
+---
+
+## 15) Tasks / Kanban Board
+Switch to Tasks view to see the kanban-style task board (stored in localStorage only).
+
+**Light**
+![Tasks board light](assets/images/boxy-ui-tasks-board-light-20260118.png)
+
+**Dark**
+![Tasks board dark](assets/images/boxy-ui-tasks-board-dark-20260118.png)
+
+---
+
+## 16) Tasks Action
+Create and manage tasks within the kanban board.
+
+**Light**
+![Tasks action light](assets/images/boxy-ui-tasks-action-light-20260118.png)
+
+**Dark**
+![Tasks action dark](assets/images/boxy-ui-tasks-action-dark-20260118.png)
+
+---
+
+## 17) WebSocket Sync
+Multiple browser windows stay in sync via WebSocket broadcast.
+
+**Light**
+![WebSocket sync light](assets/images/boxy-ui-websocket-sync-light-20260118.png)
+
+**Dark**
+![WebSocket sync dark](assets/images/boxy-ui-websocket-sync-dark-20260118.png)
+
+---
+
+## Reproducing Screenshots
+
+1. Start the server with a clean uploads root:
    ```bash
    BOX_UPLOAD_DIR=./uploads_docs BOX_PORT=8086 cargo run --release
    ```
-2) In another shell, install dependencies once:
+
+2. Install Playwright dependencies:
    ```bash
    npm install
    npx playwright install --with-deps chromium
    ```
-3) Run a Playwright capture script similar to:
+
+3. Run the capture script:
    ```bash
-   node - <<'NODE'
-   const { chromium } = require('playwright');
-   const fs = require('fs');
-   const path = require('path');
-   const imagesDir = path.join(process.cwd(), 'docs/assets/images');
-   if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
-   const stamp = '20260112';
-   const imgPath = (slug) => path.join(imagesDir, `boxy-${slug}-${stamp}.png`);
-   (async () => {
-     const browser = await chromium.launch({ headless: true });
-     const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
-     const base = 'http://localhost:8086';
-     await page.goto(base, { waitUntil: 'networkidle' });
-     await page.waitForSelector('text=Drop files here');
-     await page.screenshot({ path: imgPath('ui-home'), fullPage: true });
-     await page.getByRole('button', { name: 'New Folder' }).click();
-     await page.fill('#folderName', 'Projects');
-     await page.waitForSelector('#folderModal.active');
-     await page.screenshot({ path: imgPath('ui-new-folder'), fullPage: true });
-     await page.getByRole('button', { name: 'Create' }).click();
-     await page.waitForSelector('text=Projects');
-     const uploadPath = path.join('/tmp', 'boxy-upload-demo.txt');
-     fs.writeFileSync(uploadPath, 'Demo upload from automated documentation run.\n');
-     await page.setInputFiles('#fileInput', uploadPath);
-     await page.waitForSelector('text=boxy-upload-demo.txt', { timeout: 5000 });
-     await page.waitForTimeout(300);
-     await page.screenshot({ path: imgPath('ui-uploaded'), fullPage: true });
-     const fileCard = page.locator('.file-item', { hasText: 'boxy-upload-demo.txt' }).first();
-     await fileCard.hover();
-     await fileCard.locator('button[title="Rename"]').click();
-     await page.fill('#renameName', 'report-final.txt');
-     await page.waitForSelector('#renameModal.active');
-     await page.screenshot({ path: imgPath('ui-rename-modal'), fullPage: true });
-     await page.locator('#renameModal').getByRole('button', { name: 'Rename' }).click();
-     await page.waitForSelector('text=report-final.txt');
-     const renamedCard = page.locator('.file-item', { hasText: 'report-final.txt' }).first();
-     await renamedCard.hover();
-     await renamedCard.locator('button[title="Move"]').click();
-     await page.waitForSelector('#moveModal.active');
-     await page.locator('#moveModal .tree-folder-name', { hasText: 'Projects' }).click();
-     await page.waitForTimeout(200);
-     await page.screenshot({ path: imgPath('ui-move-modal'), fullPage: true });
-     await page.locator('#moveModal').getByRole('button', { name: 'Move here' }).click();
-     await page.waitForTimeout(500);
-     await page.locator('.file-item', { hasText: 'Projects' }).click();
-     await page.waitForSelector('.file-item:has-text("report-final.txt")');
-     await page.screenshot({ path: imgPath('ui-folder-view'), fullPage: true });
-     await browser.close();
-   })();
-   NODE
+   node docs/capture-ui-screenshots.mjs
    ```
-   Adjust the `stamp` to roll new filenames as needed.
+
+The script generates all screenshots in `docs/assets/images/` with both light and dark theme variants.
