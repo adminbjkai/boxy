@@ -3820,9 +3820,11 @@
 
         function escapeAttr(str) {
             return str
-                .replace(/\\/g, '\\\\')  // Escape backslashes first
-                .replace(/'/g, "\\'")    // Escape single quotes for JS strings
-                .replace(/"/g, '&quot;'); // Escape double quotes for HTML attributes
+                .replace(/\\/g, '\\\\')   // Escape backslashes first
+                .replace(/'/g, "\\'")     // Escape single quotes for JS strings
+                .replace(/"/g, '&quot;')  // Escape double quotes for HTML attributes
+                .replace(/`/g, '\\`')     // Escape backticks for template literals
+                .replace(/\$/g, '\\$');   // Escape $ to prevent template interpolation
         }
 
         // Drag & Drop zone

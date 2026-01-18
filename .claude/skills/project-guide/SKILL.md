@@ -126,7 +126,9 @@ docker compose up --build   # Docker deployment
 3. Always sanitize paths before filesystem access
 4. Broadcast all mutations via WebSocket
 5. Use env vars for config with sensible defaults
+6. **Use TLDR before reading files** — see tldr-first skill
 
 ## Related Skills
+- **tldr-first**: Token-efficient exploration (TLDR commands first)
 - **ui-patterns**: Frontend CSS/JS patterns
 - **quality-checklist**: Pre-commit verification
