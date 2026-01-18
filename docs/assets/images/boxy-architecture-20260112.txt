@@ -1,3 +1,0 @@
-**Analyzing the Web Service**
-
-I'm currently focused on the structural elements of the architectural diagram. I've decided on the title and aspect ratio. Now, I'm working to organize the information into distinct vertical sections, starting with the Browser UI, followed by the Actix Web Service, and finally the Database. I'm considering the best way to visually represent the interactions between these components.

@@ -32,7 +32,7 @@ Boxy uses a simple three-layer architecture:
 | **Server** | Rust/Actix | REST API, WebSocket broadcast, path sanitization |
 | **Storage** | Local filesystem | `./uploads` directory (volume-mountable) |
 
-![Boxy architecture](docs/assets/images/boxy-architecture-20260112.png)
+![Boxy architecture](docs/assets/images/boxy-architecture-20260116.png)
 
 ### WebSocket Real-time Model
 

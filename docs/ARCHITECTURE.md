@@ -11,10 +11,13 @@ Boxy is a lightweight file sharing UI built with Rust/Actix, serving a static we
 
 ## Diagrams
 ### Architecture (components)
-![Boxy architecture](assets/images/boxy-architecture-20260112.png)
+![Boxy architecture](assets/images/boxy-architecture-20260116.png)
 
 ### File flow (upload + updates)
 ![Boxy file flow](assets/images/boxy-file-flow-20260112.png)
+
+### Request lifecycle (rename operation)
+![Boxy request lifecycle](assets/images/boxy-request-flow-20260112.png)
 
 ## Runtime configuration
 - `BOX_PORT`: HTTP bind port (default `8086`).
@@ -33,6 +36,9 @@ Boxy is a lightweight file sharing UI built with Rust/Actix, serving a static we
 - `POST /api/delete` – delete `{ path }`
 - `GET /api/folders` – list all folders for move dialog
 - `GET /api/download?path=...` – download/preview file
+- `GET /api/content?path=...` – get file content (text files only)
+- `POST /api/content` – save file content `{ path, content }`
+- `POST /api/newfile` – create new file `{ path?, filename }`
 - `GET /api/health` – healthcheck
 
 ## Notes on implementation
