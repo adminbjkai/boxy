@@ -229,7 +229,9 @@ async fn upload_file(
             while let Some(chunk) = field.next().await {
                 bytes.extend_from_slice(&chunk?);
             }
-            if let Ok(parsed) = serde_json::from_slice::<std::collections::HashMap<String, u64>>(&bytes) {
+            if let Ok(parsed) =
+                serde_json::from_slice::<std::collections::HashMap<String, u64>>(&bytes)
+            {
                 mtimes = parsed;
             }
             continue;
@@ -262,7 +264,10 @@ async fn upload_file(
 
         // Preserve original modification time if provided
         if let Some(&mtime_ms) = mtimes.get(&filename) {
-            let mtime = filetime::FileTime::from_unix_time((mtime_ms / 1000) as i64, ((mtime_ms % 1000) * 1_000_000) as u32);
+            let mtime = filetime::FileTime::from_unix_time(
+                (mtime_ms / 1000) as i64,
+                ((mtime_ms % 1000) * 1_000_000) as u32,
+            );
             let _ = filetime::set_file_mtime(&filepath, mtime);
         }
 
@@ -527,7 +532,8 @@ async fn collect_search_results(
 
                 // Recurse into directories (check limit again)
                 if meta.is_dir() && results.len() < limit {
-                    collect_search_results(entry.path(), full_path, search_term, results, limit).await;
+                    collect_search_results(entry.path(), full_path, search_term, results, limit)
+                        .await;
                 }
             }
         }
@@ -734,13 +740,13 @@ async fn download_file(
     if query.download.unwrap_or(false) {
         response.insert_header((
             "Content-Disposition",
-            format!("attachment; filename=\"{}\"", filename.replace('"', "\\\""))
+            format!("attachment; filename=\"{}\"", filename.replace('"', "\\\"")),
         ));
     } else {
         // Explicit inline directive for preview - required by Edge for PDF viewing
         response.insert_header((
             "Content-Disposition",
-            format!("inline; filename=\"{}\"", filename.replace('"', "\\\""))
+            format!("inline; filename=\"{}\"", filename.replace('"', "\\\"")),
         ));
     }
 
