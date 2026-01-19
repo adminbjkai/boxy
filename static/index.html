@@ -2179,13 +2179,23 @@
            ============================================ */
         .task-card.drag-ghost {
             position: fixed;
+            left: 0;
+            top: 0;
             pointer-events: none;
             z-index: 1000;
-            opacity: 0.9;
-            transform: rotate(2deg);
+            opacity: 0.95;
+            will-change: transform;
             box-shadow: 0 12px 40px rgba(0,0,0,0.25);
             cursor: grabbing;
-            width: 280px;
+            transition: none;
+        }
+
+        .task-card.drag-ghost .task-card-actions {
+            display: none;
+        }
+
+        .kanban-column-content.drag-active .task-card:not(.dragging) {
+            transition: transform 0.15s ease;
         }
 
         .task-placeholder {
@@ -5665,9 +5675,12 @@
         }
 
         // Drag and Drop with Pointer Events + Live Placeholder
+        // === KANBAN TASK DRAG STATE (module level) ===
         let dragState = null;
         let ghostEl = null;
         let placeholderEl = null;
+        let cachedColumnRects = null;
+        let taskDragRafId = null;
 
         function startTaskDrag(e, taskId) {
             // Ignore if clicking on buttons
@@ -5678,9 +5691,17 @@
             if (!card) return;
 
             e.preventDefault();
-            card.setPointerCapture(e.pointerId);
 
             const rect = card.getBoundingClientRect();
+
+            // PERFORMANCE: Cache ALL column positions at drag start
+            cachedColumnRects = [...document.querySelectorAll('.kanban-column')].map(col => ({
+                el: col,
+                id: col.dataset.column,
+                rect: col.getBoundingClientRect(),
+                content: col.querySelector('.kanban-column-content')
+            }));
+
             dragState = {
                 taskId,
                 startX: e.clientX,
@@ -5690,75 +5711,96 @@
                 cardWidth: rect.width,
                 cardHeight: rect.height,
                 isDragging: false,
-                originalCard: card
+                originalCard: card,
+                lastX: e.clientX,
+                lastY: e.clientY
             };
 
-            card.addEventListener('pointermove', onTaskDragMove);
-            card.addEventListener('pointerup', onTaskDragEnd);
-            card.addEventListener('pointercancel', onTaskDragEnd);
+            // Document-level listeners for reliable capture
+            document.addEventListener('pointermove', onTaskDragMove);
+            document.addEventListener('pointerup', onTaskDragEnd);
+            document.addEventListener('pointercancel', onTaskDragEnd);
+        }
+
+        function initTaskDragVisuals() {
+            dragState.isDragging = true;
+            dragState.originalCard.classList.add('dragging');
+
+            // Create ghost element
+            ghostEl = dragState.originalCard.cloneNode(true);
+            ghostEl.classList.remove('dragging');
+            ghostEl.classList.add('drag-ghost');
+            ghostEl.style.width = dragState.cardWidth + 'px';
+            document.body.appendChild(ghostEl);
+
+            // Create placeholder
+            placeholderEl = document.createElement('div');
+            placeholderEl.className = 'task-placeholder';
+            placeholderEl.style.height = dragState.cardHeight + 'px';
+            dragState.originalCard.parentNode.insertBefore(placeholderEl, dragState.originalCard);
+
+            // Hide original
+            dragState.originalCard.style.display = 'none';
+
+            // Mark all task containers as drag-active
+            document.querySelectorAll('.kanban-column-content').forEach(c => c.classList.add('drag-active'));
+
+            // Initial position
+            updateTaskDragPosition();
         }
 
         function onTaskDragMove(e) {
             if (!dragState) return;
 
+            dragState.lastX = e.clientX;
+            dragState.lastY = e.clientY;
+
             const dx = Math.abs(e.clientX - dragState.startX);
             const dy = Math.abs(e.clientY - dragState.startY);
 
-            // Start drag if moved enough
+            // Start drag after 5px movement
             if (!dragState.isDragging && (dx > 5 || dy > 5)) {
-                dragState.isDragging = true;
-                dragState.originalCard.classList.add('dragging');
-
-                // Create ghost element
-                ghostEl = dragState.originalCard.cloneNode(true);
-                ghostEl.classList.add('drag-ghost');
-                ghostEl.style.width = dragState.cardWidth + 'px';
-                document.body.appendChild(ghostEl);
-
-                // Create placeholder
-                placeholderEl = document.createElement('div');
-                placeholderEl.className = 'task-placeholder';
-                placeholderEl.style.height = dragState.cardHeight + 'px';
-                dragState.originalCard.parentNode.insertBefore(placeholderEl, dragState.originalCard);
-
-                // Hide original
-                dragState.originalCard.style.display = 'none';
-
-                // Mark all task containers as drag-active
-                document.querySelectorAll('.kanban-column-content').forEach(c => c.classList.add('drag-active'));
+                initTaskDragVisuals();
             }
 
-            if (dragState.isDragging && ghostEl) {
-                // Move ghost
-                ghostEl.style.left = (e.clientX - dragState.offsetX) + 'px';
-                ghostEl.style.top = (e.clientY - dragState.offsetY) + 'px';
-
-                // Find drop target
-                updatePlaceholder(e.clientX, e.clientY);
+            // PERFORMANCE: Batch updates with RAF
+            if (dragState.isDragging && !taskDragRafId) {
+                taskDragRafId = requestAnimationFrame(updateTaskDragPosition);
             }
         }
 
+        function updateTaskDragPosition() {
+            taskDragRafId = null;
+            if (!dragState || !dragState.isDragging) return;
+
+            // PERFORMANCE: Use transform (GPU-accelerated)
+            const x = dragState.lastX - dragState.offsetX;
+            const y = dragState.lastY - dragState.offsetY;
+
+            if (ghostEl) {
+                ghostEl.style.transform = `translate(${x}px, ${y}px)`;
+            }
+
+            // Update placeholder position
+            updatePlaceholder(dragState.lastX, dragState.lastY);
+        }
+
         function updatePlaceholder(x, y) {
-            if (!placeholderEl || !dragState) return;
+            if (!placeholderEl || !dragState || !cachedColumnRects) return;
 
-            // Find column under cursor
-            const cols = document.querySelectorAll('.kanban-column');
+            // PERFORMANCE: Use cached column rects (no DOM queries!)
             let targetColumn = null;
-            let targetTasks = null;
-
-            for (const col of cols) {
-                const rect = col.getBoundingClientRect();
-                if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+            for (const col of cachedColumnRects) {
+                if (x >= col.rect.left && x <= col.rect.right) {
                     targetColumn = col;
-                    targetTasks = col.querySelector('.kanban-column-content');
                     break;
                 }
             }
 
-            if (!targetTasks) return;
+            if (!targetColumn || !targetColumn.content) return;
 
-            // Find insertion point among cards
-            const cards = [...targetTasks.querySelectorAll('.task-card:not(.dragging)')];
+            // Find insertion point among visible cards
+            const cards = [...targetColumn.content.querySelectorAll('.task-card:not(.dragging)')];
             let insertBefore = null;
 
             for (const card of cards) {
@@ -5773,26 +5815,34 @@
             // Move placeholder
             if (insertBefore) {
                 if (placeholderEl.nextSibling !== insertBefore) {
-                    targetTasks.insertBefore(placeholderEl, insertBefore);
+                    targetColumn.content.insertBefore(placeholderEl, insertBefore);
                 }
             } else {
-                // Insert at end
-                if (placeholderEl.parentNode !== targetTasks || placeholderEl.nextSibling !== null) {
-                    targetTasks.appendChild(placeholderEl);
+                if (placeholderEl.parentNode !== targetColumn.content || placeholderEl.nextSibling !== null) {
+                    targetColumn.content.appendChild(placeholderEl);
                 }
             }
+
+            // Store target for drop
+            dragState.targetColumnId = targetColumn.id;
         }
 
         function onTaskDragEnd(e) {
+            // Remove document-level listeners immediately
+            document.removeEventListener('pointermove', onTaskDragMove);
+            document.removeEventListener('pointerup', onTaskDragEnd);
+            document.removeEventListener('pointercancel', onTaskDragEnd);
+
+            // Cancel any pending RAF
+            if (taskDragRafId) {
+                cancelAnimationFrame(taskDragRafId);
+                taskDragRafId = null;
+            }
+
             if (!dragState) return;
 
-            const card = dragState.originalCard;
-            card.removeEventListener('pointermove', onTaskDragMove);
-            card.removeEventListener('pointerup', onTaskDragEnd);
-            card.removeEventListener('pointercancel', onTaskDragEnd);
-            card.releasePointerCapture(e.pointerId);
-
             if (dragState.isDragging) {
+                const card = dragState.originalCard;
                 card.classList.remove('dragging');
                 card.style.display = '';
 
@@ -5852,7 +5902,9 @@
                 renderKanban();
             }
 
+            // Clear all state
             dragState = null;
+            cachedColumnRects = null;
         }
 
         // Legacy drag handlers for columns (kept for backwards compatibility)
