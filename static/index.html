@@ -169,6 +169,9 @@
             z-index: 40;
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
+            min-height: 44px;
+            box-sizing: border-box;
+            overflow: visible;
         }
 
         .breadcrumb {
@@ -190,6 +193,7 @@
             cursor: pointer;
             white-space: nowrap;
             transition: all var(--transition);
+            line-height: 1.4;
         }
 
         .breadcrumb-item:hover { background: var(--bg-tertiary); color: var(--text); }
@@ -200,6 +204,7 @@
             font-size: 13px;
             color: var(--text-secondary);
             white-space: nowrap;
+            line-height: 1.4;
         }
 
         .toolbar-actions { display: flex; gap: 8px; }
@@ -2262,6 +2267,13 @@
             color: var(--accent);
         }
 
+        .dashboard-tile-img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            border-radius: var(--radius-sm);
+        }
+
         .dashboard-tile-name {
             font-size: 14px;
             font-weight: 500;
@@ -2322,6 +2334,28 @@
             background: rgba(47, 109, 246, 0.04);
             transform: none;
             box-shadow: none;
+        }
+
+        /* Dashboard Tile Drag & Drop */
+        .dashboard-tile.dragging {
+            opacity: 0.5;
+        }
+
+        .dashboard-tile.drag-ghost {
+            position: fixed;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0.9;
+            transform: scale(1.05) rotate(2deg);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+        }
+
+        .dashboard-tile-placeholder {
+            background: var(--accent);
+            opacity: 0.15;
+            border: 2px dashed var(--accent);
+            border-radius: var(--radius-lg);
+            min-height: 120px;
         }
 
         /* ============================================
@@ -3000,6 +3034,7 @@
             <input type="text" id="tileName" placeholder="Tile name" autocomplete="off">
             <input type="text" id="tileUrl" placeholder="URL (https://...)" autocomplete="off">
             <input type="text" id="tileIcon" placeholder="Emoji icon (optional, e.g. 📧)" autocomplete="off">
+            <input type="text" id="tileIconUrl" placeholder="Icon URL (optional, overrides emoji)" autocomplete="off">
             <input type="hidden" id="tileEditId">
             <div class="modal-actions">
                 <button class="btn" onclick="closeTileModal()">Cancel</button>
@@ -6019,7 +6054,7 @@
             if (!grid) return;
 
             const tilesHtml = dashboardTiles.map(tile => `
-                <a class="dashboard-tile" href="${escapeAttr(tile.url)}" target="_blank" onclick="event.stopPropagation()">
+                <a class="dashboard-tile" href="${escapeAttr(tile.url)}" target="_blank" data-tile-id="${tile.id}" onpointerdown="startTileDrag(event, '${tile.id}')" onclick="event.stopPropagation()">
                     <div class="dashboard-tile-actions">
                         <button class="dashboard-tile-btn" onclick="event.preventDefault(); event.stopPropagation(); editTile('${tile.id}')" title="Edit">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -6033,7 +6068,7 @@
                             </svg>
                         </button>
                     </div>
-                    <div class="dashboard-tile-icon">${tile.icon || '🔗'}</div>
+                    <div class="dashboard-tile-icon">${tile.iconUrl ? `<img src="${escapeAttr(tile.iconUrl)}" class="dashboard-tile-img" alt="" onerror="this.style.display='none';this.parentElement.innerHTML='${tile.icon || '🔗'}'">` : (tile.icon || '🔗')}</div>
                     <span class="dashboard-tile-name">${escapeHtml(tile.name)}</span>
                 </a>
             `).join('');
@@ -6058,6 +6093,7 @@
             const nameInput = document.getElementById('tileName');
             const urlInput = document.getElementById('tileUrl');
             const iconInput = document.getElementById('tileIcon');
+            const iconUrlInput = document.getElementById('tileIconUrl');
             const editIdInput = document.getElementById('tileEditId');
 
             if (tileId) {
@@ -6067,6 +6103,7 @@
                     nameInput.value = tile.name;
                     urlInput.value = tile.url;
                     iconInput.value = tile.icon || '';
+                    iconUrlInput.value = tile.iconUrl || '';
                     editIdInput.value = tileId;
                 }
             } else {
@@ -6074,6 +6111,7 @@
                 nameInput.value = '';
                 urlInput.value = '';
                 iconInput.value = '';
+                iconUrlInput.value = '';
                 editIdInput.value = '';
             }
 
@@ -6085,14 +6123,20 @@
             document.getElementById('tileModal').classList.remove('active');
         }
 
+        let savingTile = false; // Guard against duplicate saves
         function saveTile() {
+            if (savingTile) return; // Prevent double execution
+            savingTile = true;
+
             const name = document.getElementById('tileName').value.trim();
             let url = document.getElementById('tileUrl').value.trim();
             const icon = document.getElementById('tileIcon').value.trim();
+            const iconUrl = document.getElementById('tileIconUrl').value.trim();
             const editId = document.getElementById('tileEditId').value;
 
             if (!name || !url) {
                 showToast('Name and URL are required');
+                savingTile = false;
                 return;
             }
 
@@ -6107,13 +6151,15 @@
                     tile.name = name;
                     tile.url = url;
                     tile.icon = icon;
+                    tile.iconUrl = iconUrl;
                 }
             } else {
                 dashboardTiles.push({
                     id: Date.now().toString(36),
                     name,
                     url,
-                    icon
+                    icon,
+                    iconUrl
                 });
             }
 
@@ -6121,6 +6167,7 @@
             closeTileModal();
             renderDashboard();
             showToast(editId ? 'Tile updated' : 'Tile added');
+            savingTile = false; // Reset guard
         }
 
         function editTile(tileId) {
@@ -6139,6 +6186,7 @@
         document.getElementById('tileName').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
+                e.stopPropagation();
                 document.getElementById('tileUrl').focus();
             }
             if (e.key === 'Escape') closeTileModal();
@@ -6146,10 +6194,197 @@
         document.getElementById('tileUrl').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('tileIcon').focus();
+            }
+            if (e.key === 'Escape') closeTileModal();
+        });
+        document.getElementById('tileIcon').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('tileIconUrl').focus();
+            }
+            if (e.key === 'Escape') closeTileModal();
+        });
+        document.getElementById('tileIconUrl').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
                 saveTile();
             }
             if (e.key === 'Escape') closeTileModal();
         });
+
+        // Dashboard tile drag-and-drop
+        let tileDragState = null;
+        let tileGhostEl = null;
+        let tilePlaceholderEl = null;
+
+        function startTileDrag(e, tileId) {
+            // Ignore if clicking on action buttons
+            if (e.target.closest('.dashboard-tile-btn')) return;
+            if (e.button !== 0) return; // Only left click
+
+            const tile = e.target.closest('.dashboard-tile');
+            if (!tile || tile.classList.contains('dashboard-add-tile')) return;
+
+            e.preventDefault();
+            tile.setPointerCapture(e.pointerId);
+
+            const rect = tile.getBoundingClientRect();
+            tileDragState = {
+                tileId,
+                startX: e.clientX,
+                startY: e.clientY,
+                offsetX: e.clientX - rect.left,
+                offsetY: e.clientY - rect.top,
+                tileWidth: rect.width,
+                tileHeight: rect.height,
+                isDragging: false,
+                originalTile: tile
+            };
+
+            tile.addEventListener('pointermove', onTileDragMove);
+            tile.addEventListener('pointerup', onTileDragEnd);
+            tile.addEventListener('pointercancel', onTileDragEnd);
+        }
+
+        function onTileDragMove(e) {
+            if (!tileDragState) return;
+
+            const dx = Math.abs(e.clientX - tileDragState.startX);
+            const dy = Math.abs(e.clientY - tileDragState.startY);
+
+            // Start drag if moved enough
+            if (!tileDragState.isDragging && (dx > 5 || dy > 5)) {
+                tileDragState.isDragging = true;
+                tileDragState.originalTile.classList.add('dragging');
+
+                // Create ghost element
+                tileGhostEl = tileDragState.originalTile.cloneNode(true);
+                tileGhostEl.classList.add('drag-ghost');
+                tileGhostEl.style.width = tileDragState.tileWidth + 'px';
+                tileGhostEl.style.height = tileDragState.tileHeight + 'px';
+                document.body.appendChild(tileGhostEl);
+
+                // Create placeholder
+                tilePlaceholderEl = document.createElement('div');
+                tilePlaceholderEl.className = 'dashboard-tile-placeholder';
+                tilePlaceholderEl.style.width = tileDragState.tileWidth + 'px';
+                tilePlaceholderEl.style.height = tileDragState.tileHeight + 'px';
+                tileDragState.originalTile.parentNode.insertBefore(tilePlaceholderEl, tileDragState.originalTile);
+
+                // Hide original
+                tileDragState.originalTile.style.display = 'none';
+            }
+
+            if (tileDragState.isDragging && tileGhostEl) {
+                // Move ghost
+                tileGhostEl.style.left = (e.clientX - tileDragState.offsetX) + 'px';
+                tileGhostEl.style.top = (e.clientY - tileDragState.offsetY) + 'px';
+
+                // Find drop target
+                updateTilePlaceholder(e.clientX, e.clientY);
+            }
+        }
+
+        function updateTilePlaceholder(x, y) {
+            if (!tilePlaceholderEl || !tileDragState) return;
+
+            const grid = document.getElementById('dashboardGrid');
+            if (!grid) return;
+
+            // Get all tiles except the dragged one and the add button
+            const tiles = [...grid.querySelectorAll('.dashboard-tile:not(.dragging):not(.dashboard-add-tile)')];
+            let insertBefore = null;
+
+            for (const tile of tiles) {
+                const rect = tile.getBoundingClientRect();
+                const midX = rect.left + rect.width / 2;
+                const midY = rect.top + rect.height / 2;
+
+                // Check if cursor is to the left or above this tile
+                if (y < rect.bottom && (y < rect.top || x < midX)) {
+                    insertBefore = tile;
+                    break;
+                }
+            }
+
+            // Move placeholder
+            if (insertBefore) {
+                if (tilePlaceholderEl.nextSibling !== insertBefore) {
+                    grid.insertBefore(tilePlaceholderEl, insertBefore);
+                }
+            } else {
+                // Insert before the add-tile button
+                const addTile = grid.querySelector('.dashboard-add-tile');
+                if (addTile && tilePlaceholderEl.nextSibling !== addTile) {
+                    grid.insertBefore(tilePlaceholderEl, addTile);
+                }
+            }
+        }
+
+        function onTileDragEnd(e) {
+            if (!tileDragState) return;
+
+            const tile = tileDragState.originalTile;
+            tile.removeEventListener('pointermove', onTileDragMove);
+            tile.removeEventListener('pointerup', onTileDragEnd);
+            tile.removeEventListener('pointercancel', onTileDragEnd);
+            tile.releasePointerCapture(e.pointerId);
+
+            if (tileDragState.isDragging) {
+                tile.classList.remove('dragging');
+                tile.style.display = '';
+
+                // Remove ghost
+                if (tileGhostEl) {
+                    tileGhostEl.remove();
+                    tileGhostEl = null;
+                }
+
+                // Commit reorder based on placeholder position
+                if (tilePlaceholderEl && tilePlaceholderEl.parentNode) {
+                    const grid = document.getElementById('dashboardGrid');
+                    const allTiles = [...grid.querySelectorAll('.dashboard-tile:not(.dashboard-add-tile)')];
+                    const placeholderIndex = [...grid.children].indexOf(tilePlaceholderEl);
+
+                    // Calculate new order
+                    const draggedTile = dashboardTiles.find(t => t.id === tileDragState.tileId);
+                    if (draggedTile) {
+                        // Remove from current position
+                        dashboardTiles = dashboardTiles.filter(t => t.id !== tileDragState.tileId);
+
+                        // Count how many real tiles are before the placeholder
+                        let newIndex = 0;
+                        for (let i = 0; i < placeholderIndex; i++) {
+                            const child = grid.children[i];
+                            if (child.classList.contains('dashboard-tile') &&
+                                !child.classList.contains('dashboard-add-tile') &&
+                                !child.classList.contains('dragging') &&
+                                child !== tilePlaceholderEl) {
+                                newIndex++;
+                            }
+                        }
+
+                        // Insert at new position
+                        dashboardTiles.splice(newIndex, 0, draggedTile);
+                        saveTiles();
+                    }
+
+                    tilePlaceholderEl.remove();
+                    tilePlaceholderEl = null;
+
+                    renderDashboard();
+                }
+            } else {
+                // Was a click, not a drag - allow the link to work
+                // The click will be handled by the anchor's default behavior
+            }
+
+            tileDragState = null;
+        }
 
         // ============================================
         // CREDENTIALS
