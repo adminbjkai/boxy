@@ -3439,14 +3439,20 @@
             ws = new WebSocket(`${protocol}//${location.host}/ws`);
 
             ws.onopen = () => {
+                console.log('WebSocket connected');
                 document.getElementById('statusDot').classList.add('connected');
                 document.getElementById('statusText').textContent = 'Live';
             };
 
             ws.onclose = () => {
+                console.log('WebSocket closed, reconnecting in 2s...');
                 document.getElementById('statusDot').classList.remove('connected');
                 document.getElementById('statusText').textContent = 'Reconnecting...';
                 setTimeout(connectWS, 2000);
+            };
+
+            ws.onerror = (err) => {
+                console.error('WebSocket error:', err);
             };
 
             ws.onmessage = (e) => {
