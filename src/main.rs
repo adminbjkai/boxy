@@ -756,6 +756,9 @@ async fn download_file(
 async fn serve_index() -> Result<HttpResponse> {
     Ok(HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
+        .insert_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+        .insert_header(("Pragma", "no-cache"))
+        .insert_header(("Expires", "0"))
         .body(include_str!("../static/index.html")))
 }
 
