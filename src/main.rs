@@ -766,6 +766,78 @@ async fn healthcheck() -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().json(serde_json::json!({"ok": true})))
 }
 
+// === Server-side Data Storage API ===
+// Stores JSON data in uploads/.boxy/ for cross-browser sync
+
+#[derive(Deserialize)]
+struct DataPath {
+    data_type: String,
+}
+
+async fn get_data(
+    state: web::Data<AppState>,
+    path: web::Path<DataPath>,
+) -> Result<HttpResponse> {
+    let data_type = &path.data_type;
+
+    // Whitelist allowed data types
+    let allowed = ["boards", "tiles", "credentials"];
+    if !allowed.contains(&data_type.as_str()) {
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "Invalid data type"
+        })));
+    }
+
+    let data_dir = state.upload_dir.join(".boxy");
+    std::fs::create_dir_all(&data_dir).ok();
+
+    let file_path = data_dir.join(format!("{}.json", data_type));
+
+    match std::fs::read_to_string(&file_path) {
+        Ok(content) => Ok(HttpResponse::Ok()
+            .content_type("application/json")
+            .insert_header(("Cache-Control", "no-cache"))
+            .body(content)),
+        Err(_) => Ok(HttpResponse::Ok()
+            .content_type("application/json")
+            .body("null")),
+    }
+}
+
+async fn save_data(
+    state: web::Data<AppState>,
+    path: web::Path<DataPath>,
+    body: web::Bytes,
+) -> Result<HttpResponse> {
+    let data_type = &path.data_type;
+
+    // Whitelist allowed data types
+    let allowed = ["boards", "tiles", "credentials"];
+    if !allowed.contains(&data_type.as_str()) {
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "Invalid data type"
+        })));
+    }
+
+    let data_dir = state.upload_dir.join(".boxy");
+    std::fs::create_dir_all(&data_dir).ok();
+
+    let file_path = data_dir.join(format!("{}.json", data_type));
+
+    match std::fs::write(&file_path, &body) {
+        Ok(_) => {
+            // Broadcast to all clients for real-time sync
+            broadcast_update(&state.broadcaster, "data_sync", data_type);
+            Ok(HttpResponse::Ok().json(serde_json::json!({
+                "success": true
+            })))
+        }
+        Err(e) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": e.to_string()
+        }))),
+    }
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
@@ -808,6 +880,8 @@ async fn main() -> std::io::Result<()> {
             .route("/api/content", web::post().to(save_content))
             .route("/api/newfile", web::post().to(create_new_file))
             .route("/api/health", web::get().to(healthcheck))
+            .route("/api/data/{data_type}", web::get().to(get_data))
+            .route("/api/data/{data_type}", web::post().to(save_data))
     })
     .bind(("0.0.0.0", settings.port))?
     .run()
