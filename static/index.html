@@ -2129,13 +2129,489 @@
             .header { padding: 12px 16px; }
             .toolbar-search input { width: 120px; }
             .nav-bar { margin: 0 -16px 16px; top: 57px; padding: 10px 16px; }
-            .tab-bar { margin-left: 12px; }
+            .tab-bar { margin-left: 12px; gap: 2px; flex-wrap: wrap; }
             .tab-btn { padding: 6px 10px; font-size: 13px; }
             .btn { padding: 8px 12px; font-size: 12px; }
             .toolbar { gap: 10px; }
             .selection-bar { padding: 10px 16px; gap: 12px; }
             .toast { right: 16px; left: 16px; bottom: 16px; }
             .upload-progress { left: 16px; right: 16px; min-width: auto; }
+            .dashboard-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+            .credentials-list { padding: 0 16px; }
+        }
+
+        /* ============================================
+           UI POLISH - Enhanced Transitions
+           ============================================ */
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .file-item:active, .task-card:active:not(.dragging) {
+            transform: scale(0.98);
+        }
+
+        .modal-content {
+            animation: modalIn 0.2s ease;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .view-container {
+            animation: fadeIn 0.15s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* ============================================
+           KANBAN DRAG - Live Placeholder
+           ============================================ */
+        .task-card.drag-ghost {
+            position: fixed;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0.9;
+            transform: rotate(2deg);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+            cursor: grabbing;
+            width: 280px;
+        }
+
+        .task-placeholder {
+            background: var(--accent);
+            opacity: 0.15;
+            border: 2px dashed var(--accent);
+            border-radius: var(--radius-md);
+            min-height: 60px;
+            margin-bottom: 10px;
+            transition: height 0.15s ease;
+        }
+
+        .kanban-tasks.drag-active {
+            min-height: 80px;
+        }
+
+        /* ============================================
+           DASHBOARD PAGE
+           ============================================ */
+        .dashboard-view {
+            padding: 24px;
+        }
+
+        .dashboard-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .dashboard-header h2 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 16px;
+        }
+
+        .dashboard-tile {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition);
+            text-decoration: none;
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+        }
+
+        .dashboard-tile:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px var(--shadow);
+        }
+
+        .dashboard-tile-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .dashboard-tile-icon svg {
+            width: 24px;
+            height: 24px;
+            color: var(--accent);
+        }
+
+        .dashboard-tile-name {
+            font-size: 14px;
+            font-weight: 500;
+            word-break: break-word;
+        }
+
+        .dashboard-tile-actions {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity var(--transition);
+        }
+
+        .dashboard-tile:hover .dashboard-tile-actions {
+            opacity: 1;
+        }
+
+        .dashboard-tile-btn {
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            transition: all var(--transition);
+        }
+
+        .dashboard-tile-btn:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        .dashboard-tile-btn.danger:hover {
+            background: var(--danger);
+        }
+
+        .dashboard-tile-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .dashboard-add-tile {
+            border: 2px dashed var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .dashboard-add-tile:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(47, 109, 246, 0.04);
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* ============================================
+           CREDENTIALS PAGE
+           ============================================ */
+        .credentials-view {
+            padding: 24px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .credentials-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .credentials-header h2 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .credentials-warning {
+            background: rgba(255, 59, 48, 0.1);
+            border: 1px solid var(--danger);
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--danger);
+        }
+
+        .credentials-warning svg {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .credentials-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .credential-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            transition: all var(--transition);
+        }
+
+        .credential-card:hover {
+            border-color: var(--text-secondary);
+        }
+
+        .credential-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .credential-title {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .credential-title svg {
+            width: 18px;
+            height: 18px;
+            color: var(--accent);
+        }
+
+        .credential-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .credential-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            transition: all var(--transition);
+        }
+
+        .credential-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .credential-btn.danger:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .credential-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .credential-fields {
+            display: grid;
+            gap: 8px;
+        }
+
+        .credential-field {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .credential-field-label {
+            color: var(--text-secondary);
+            min-width: 80px;
+        }
+
+        .credential-field-value {
+            flex: 1;
+            font-family: 'SF Mono', monospace;
+            background: var(--bg-tertiary);
+            padding: 6px 10px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .credential-field-value.masked {
+            letter-spacing: 2px;
+        }
+
+        .credential-copy-btn {
+            padding: 4px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+        }
+
+        .credential-copy-btn:hover {
+            color: var(--accent);
+            background: var(--bg);
+        }
+
+        .credential-copy-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .credential-notes {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .credentials-empty {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-secondary);
+        }
+
+        .credentials-empty svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* ============================================
+           ABOUT PAGE
+           ============================================ */
+        .about-view {
+            padding: 24px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .about-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .about-header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            font-family: 'Fraunces', serif;
+            margin-bottom: 8px;
+        }
+
+        .about-header p {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+
+        .about-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .about-section h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .about-section h3 svg {
+            width: 20px;
+            height: 20px;
+            color: var(--accent);
+        }
+
+        .about-section ul {
+            list-style: none;
+            display: grid;
+            gap: 10px;
+        }
+
+        .about-section li {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .about-section li svg {
+            width: 16px;
+            height: 16px;
+            color: var(--success);
+            flex-shrink: 0;
+            margin-top: 3px;
+        }
+
+        .about-links {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .about-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 16px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            color: var(--text);
+            text-decoration: none;
+            font-size: 14px;
+            transition: all var(--transition);
+        }
+
+        .about-link:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        .about-link svg {
+            width: 16px;
+            height: 16px;
         }
     </style>
 </head>
@@ -2148,6 +2624,12 @@
             Boxy
         </div>
         <div class="tab-bar">
+            <button class="tab-btn" data-tab="dashboard" onclick="switchTab('dashboard')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                </svg>
+                Home
+            </button>
             <button class="tab-btn active" data-tab="files" onclick="switchTab('files')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
@@ -2160,6 +2642,18 @@
                     <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
                 </svg>
                 Tasks
+            </button>
+            <button class="tab-btn" data-tab="credentials" onclick="switchTab('credentials')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                Keys
+            </button>
+            <button class="tab-btn" data-tab="about" onclick="switchTab('about')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                About
             </button>
         </div>
         <div class="header-actions">
@@ -2366,7 +2860,170 @@
                 </div>
             </div>
         </div><!-- end tasksView -->
+
+        <!-- Dashboard View -->
+        <div class="view-container" id="dashboardView">
+            <div class="dashboard-view">
+                <div class="dashboard-header">
+                    <h2>Dashboard</h2>
+                    <button class="btn btn-primary" onclick="showTileModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Add Tile
+                    </button>
+                </div>
+                <div class="dashboard-grid" id="dashboardGrid"></div>
+            </div>
+        </div><!-- end dashboardView -->
+
+        <!-- Credentials View -->
+        <div class="view-container" id="credentialsView">
+            <div class="credentials-view">
+                <div class="credentials-header">
+                    <h2>Credentials</h2>
+                    <button class="btn btn-primary" onclick="showCredentialModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Add Credential
+                    </button>
+                </div>
+                <div class="credentials-warning">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <span><strong>Warning:</strong> Credentials are stored in localStorage only. This is NOT secure storage for sensitive data. Use a proper password manager for important credentials.</span>
+                </div>
+                <div class="credentials-list" id="credentialsList"></div>
+            </div>
+        </div><!-- end credentialsView -->
+
+        <!-- About View -->
+        <div class="view-container" id="aboutView">
+            <div class="about-view">
+                <div class="about-header">
+                    <h1>Boxy</h1>
+                    <p>A modern file sharing and productivity app</p>
+                </div>
+
+                <div class="about-section">
+                    <h3>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>
+                        </svg>
+                        Features
+                    </h3>
+                    <ul>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                            File sharing with drag-and-drop upload
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                            Real-time updates via WebSocket
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                            Kanban-style task management with multiple boards
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                            Dashboard with customizable app tiles
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                            Built-in text file editor
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                            Light and dark theme support
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="about-section">
+                    <h3>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                        Security
+                    </h3>
+                    <ul>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                            Path traversal protection via strict path validation
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                            XSS prevention with content escaping
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                            Files stored in isolated upload directory
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="about-section">
+                    <h3>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                        </svg>
+                        Links
+                    </h3>
+                    <div class="about-links">
+                        <a href="https://github.com" target="_blank" class="about-link">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+                            </svg>
+                            GitHub
+                        </a>
+                        <a href="/api/health" target="_blank" class="about-link">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                            </svg>
+                            Health Check
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div><!-- end aboutView -->
     </main>
+
+    <!-- Tile Modal -->
+    <div class="modal" id="tileModal">
+        <div class="modal-content">
+            <h3 id="tileModalTitle">Add Tile</h3>
+            <input type="text" id="tileName" placeholder="Tile name" autocomplete="off">
+            <input type="text" id="tileUrl" placeholder="URL (https://...)" autocomplete="off">
+            <input type="text" id="tileIcon" placeholder="Emoji icon (optional, e.g. 📧)" autocomplete="off">
+            <input type="hidden" id="tileEditId">
+            <div class="modal-actions">
+                <button class="btn" onclick="closeTileModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveTile()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Credential Modal -->
+    <div class="modal" id="credentialModal">
+        <div class="modal-content">
+            <h3 id="credentialModalTitle">Add Credential</h3>
+            <input type="text" id="credentialTitle" placeholder="Title (e.g. Gmail)" autocomplete="off">
+            <input type="text" id="credentialUsername" placeholder="Username / Email" autocomplete="off">
+            <input type="password" id="credentialPassword" placeholder="Password" autocomplete="off">
+            <input type="text" id="credentialUrl" placeholder="URL (optional)" autocomplete="off">
+            <textarea id="credentialNotes" placeholder="Notes (optional)" rows="3"></textarea>
+            <input type="hidden" id="credentialEditId">
+            <div class="modal-actions">
+                <button class="btn" onclick="closeCredentialModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveCredential()">Save</button>
+            </div>
+        </div>
+    </div>
 
     <!-- New Folder Modal -->
     <div class="modal" id="folderModal">
@@ -4448,13 +5105,42 @@
             document.querySelectorAll('.view-container').forEach(view => {
                 view.classList.remove('active');
             });
-            document.getElementById(tab === 'files' ? 'filesView' : 'tasksView').classList.add('active');
+
+            // Map tab to view ID
+            const viewMap = {
+                files: 'filesView',
+                tasks: 'tasksView',
+                dashboard: 'dashboardView',
+                credentials: 'credentialsView',
+                about: 'aboutView'
+            };
+            const viewId = viewMap[tab] || 'filesView';
+            document.getElementById(viewId).classList.add('active');
             localStorage.setItem('boxy_active_tab', tab);
 
+            // Update hash for routing
+            if (location.hash !== '#/' + tab) {
+                history.pushState(null, '', '#/' + tab);
+            }
+
+            // Render tab-specific content
             if (tab === 'tasks') {
                 renderTasks();
+            } else if (tab === 'dashboard') {
+                renderDashboard();
+            } else if (tab === 'credentials') {
+                renderCredentials();
             }
         }
+
+        // Hash router
+        function handleHashChange() {
+            const hash = location.hash.replace('#/', '') || 'files';
+            const validTabs = ['files', 'tasks', 'dashboard', 'credentials', 'about'];
+            const tab = validTabs.includes(hash) ? hash : 'files';
+            switchTab(tab);
+        }
+        window.addEventListener('hashchange', handleHashChange);
 
         // Task View Switching
         function switchTaskView(view) {
@@ -4571,12 +5257,8 @@
 
             return `
                 <div class="task-card" data-task-id="${task.id}"
-                     draggable="true"
-                     ondragstart="handleTaskDragStart(event, '${task.id}')"
-                     ondragend="handleTaskDragEnd(event)"
-                     ondragover="handleTaskCardDragOver(event)"
-                     ondragleave="handleTaskCardDragLeave(event)"
-                     ondrop="handleTaskCardDrop(event, '${task.id}')">
+                     onpointerdown="startTaskDrag(event, '${task.id}')"
+                     style="touch-action: none;">
                     <div class="task-card-header">
                         <div class="task-priority-dot ${task.priority}"></div>
                         <div class="task-card-title">${escapeHtml(task.title)}</div>
@@ -4929,130 +5611,201 @@
             if (col) col.classList.toggle('collapsed');
         }
 
-        // Drag and Drop
-        function handleTaskDragStart(e, taskId) {
-            draggedTask = taskId;
-            e.target.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', taskId);
-        }
+        // Drag and Drop with Pointer Events + Live Placeholder
+        let dragState = null;
+        let ghostEl = null;
+        let placeholderEl = null;
 
-        function handleTaskDragEnd(e) {
-            e.target.classList.remove('dragging');
-            draggedTask = null;
-            document.querySelectorAll('.kanban-column.drag-over').forEach(el => {
-                el.classList.remove('drag-over');
-            });
-        }
+        function startTaskDrag(e, taskId) {
+            // Ignore if clicking on buttons
+            if (e.target.closest('.task-card-btn')) return;
+            if (e.button !== 0) return; // Only left click
 
-        function handleColumnDragOver(e) {
+            const card = e.target.closest('.task-card');
+            if (!card) return;
+
             e.preventDefault();
-            if (!draggedTask) return;
-            const col = e.target.closest('.kanban-column');
-            if (col) {
-                col.classList.add('drag-over');
-                e.dataTransfer.dropEffect = 'move';
+            card.setPointerCapture(e.pointerId);
+
+            const rect = card.getBoundingClientRect();
+            dragState = {
+                taskId,
+                startX: e.clientX,
+                startY: e.clientY,
+                offsetX: e.clientX - rect.left,
+                offsetY: e.clientY - rect.top,
+                cardWidth: rect.width,
+                cardHeight: rect.height,
+                isDragging: false,
+                originalCard: card
+            };
+
+            card.addEventListener('pointermove', onTaskDragMove);
+            card.addEventListener('pointerup', onTaskDragEnd);
+            card.addEventListener('pointercancel', onTaskDragEnd);
+        }
+
+        function onTaskDragMove(e) {
+            if (!dragState) return;
+
+            const dx = Math.abs(e.clientX - dragState.startX);
+            const dy = Math.abs(e.clientY - dragState.startY);
+
+            // Start drag if moved enough
+            if (!dragState.isDragging && (dx > 5 || dy > 5)) {
+                dragState.isDragging = true;
+                dragState.originalCard.classList.add('dragging');
+
+                // Create ghost element
+                ghostEl = dragState.originalCard.cloneNode(true);
+                ghostEl.classList.add('drag-ghost');
+                ghostEl.style.width = dragState.cardWidth + 'px';
+                document.body.appendChild(ghostEl);
+
+                // Create placeholder
+                placeholderEl = document.createElement('div');
+                placeholderEl.className = 'task-placeholder';
+                placeholderEl.style.height = dragState.cardHeight + 'px';
+                dragState.originalCard.parentNode.insertBefore(placeholderEl, dragState.originalCard);
+
+                // Hide original
+                dragState.originalCard.style.display = 'none';
+
+                // Mark all task containers as drag-active
+                document.querySelectorAll('.kanban-tasks').forEach(c => c.classList.add('drag-active'));
+            }
+
+            if (dragState.isDragging && ghostEl) {
+                // Move ghost
+                ghostEl.style.left = (e.clientX - dragState.offsetX) + 'px';
+                ghostEl.style.top = (e.clientY - dragState.offsetY) + 'px';
+
+                // Find drop target
+                updatePlaceholder(e.clientX, e.clientY);
             }
         }
 
-        function handleColumnDragLeave(e) {
-            const col = e.target.closest('.kanban-column');
-            if (col && !col.contains(e.relatedTarget)) {
-                col.classList.remove('drag-over');
-            }
-        }
+        function updatePlaceholder(x, y) {
+            if (!placeholderEl || !dragState) return;
 
-        function handleColumnDrop(e, columnId) {
-            e.preventDefault();
-            const col = e.target.closest('.kanban-column');
-            if (col) col.classList.remove('drag-over');
+            // Find column under cursor
+            const cols = document.querySelectorAll('.kanban-column');
+            let targetColumn = null;
+            let targetTasks = null;
 
-            if (!draggedTask) return;
-
-            const task = tasks.find(t => t.id === draggedTask);
-            if (task) {
-                const oldStatus = task.status;
-                if (task.status !== columnId) {
-                    task.status = columnId;
-                    task.updatedAt = Date.now();
-                    // Move to end of new column
-                    const idx = tasks.indexOf(task);
-                    tasks.splice(idx, 1);
-                    tasks.push(task);
-                    saveTasks();
-                    renderKanban();
-                    showToast(`Moved to ${columns.find(c => c.id === columnId)?.name || columnId}`);
+            for (const col of cols) {
+                const rect = col.getBoundingClientRect();
+                if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                    targetColumn = col;
+                    targetTasks = col.querySelector('.kanban-tasks');
+                    break;
                 }
             }
-        }
 
-        function handleTaskCardDragOver(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            if (!draggedTask) return;
-            const card = e.target.closest('.task-card');
-            if (card && card.dataset.taskId !== draggedTask) {
-                // Determine if mouse is in top or bottom half
+            if (!targetTasks) return;
+
+            // Find insertion point among cards
+            const cards = [...targetTasks.querySelectorAll('.task-card:not(.dragging)')];
+            let insertBefore = null;
+
+            for (const card of cards) {
                 const rect = card.getBoundingClientRect();
                 const midY = rect.top + rect.height / 2;
-                card.classList.remove('drag-over-top', 'drag-over-bottom');
-                if (e.clientY < midY) {
-                    card.classList.add('drag-over-top');
-                } else {
-                    card.classList.add('drag-over-bottom');
+                if (y < midY) {
+                    insertBefore = card;
+                    break;
+                }
+            }
+
+            // Move placeholder
+            if (insertBefore) {
+                if (placeholderEl.nextSibling !== insertBefore) {
+                    targetTasks.insertBefore(placeholderEl, insertBefore);
+                }
+            } else {
+                // Insert at end
+                if (placeholderEl.parentNode !== targetTasks || placeholderEl.nextSibling !== null) {
+                    targetTasks.appendChild(placeholderEl);
                 }
             }
         }
 
-        function handleTaskCardDragLeave(e) {
-            const card = e.target.closest('.task-card');
-            if (card && !card.contains(e.relatedTarget)) {
-                card.classList.remove('drag-over-top', 'drag-over-bottom');
+        function onTaskDragEnd(e) {
+            if (!dragState) return;
+
+            const card = dragState.originalCard;
+            card.removeEventListener('pointermove', onTaskDragMove);
+            card.removeEventListener('pointerup', onTaskDragEnd);
+            card.removeEventListener('pointercancel', onTaskDragEnd);
+            card.releasePointerCapture(e.pointerId);
+
+            if (dragState.isDragging) {
+                card.classList.remove('dragging');
+                card.style.display = '';
+
+                // Remove ghost
+                if (ghostEl) {
+                    ghostEl.remove();
+                    ghostEl = null;
+                }
+
+                // Commit the move based on placeholder position
+                if (placeholderEl && placeholderEl.parentNode) {
+                    const tasksContainer = placeholderEl.parentNode;
+                    const column = tasksContainer.closest('.kanban-column');
+                    const newStatus = column ? column.dataset.column : null;
+
+                    // Get all cards in this column (excluding placeholder)
+                    const cardsInColumn = [...tasksContainer.querySelectorAll('.task-card')];
+                    const placeholderIndex = [...tasksContainer.children].indexOf(placeholderEl);
+
+                    // Find the task
+                    const task = tasks.find(t => t.id === dragState.taskId);
+                    if (task && newStatus) {
+                        // Remove from tasks array
+                        const fromIdx = tasks.indexOf(task);
+                        tasks.splice(fromIdx, 1);
+
+                        // Update status
+                        if (task.status !== newStatus) {
+                            task.status = newStatus;
+                            task.updatedAt = Date.now();
+                        }
+
+                        // Find the card that should come after
+                        let insertIdx = tasks.length;
+                        const cardsAfterPlaceholder = cardsInColumn.slice(placeholderIndex);
+                        if (cardsAfterPlaceholder.length > 0) {
+                            const nextCard = cardsAfterPlaceholder.find(c => c.dataset.taskId !== dragState.taskId);
+                            if (nextCard) {
+                                const nextTask = tasks.find(t => t.id === nextCard.dataset.taskId);
+                                if (nextTask) {
+                                    insertIdx = tasks.indexOf(nextTask);
+                                }
+                            }
+                        }
+
+                        tasks.splice(insertIdx, 0, task);
+                        saveTasks();
+                    }
+
+                    placeholderEl.remove();
+                    placeholderEl = null;
+                }
+
+                // Clean up drag-active state
+                document.querySelectorAll('.kanban-tasks').forEach(c => c.classList.remove('drag-active'));
+
+                renderKanban();
             }
+
+            dragState = null;
         }
 
-        function handleTaskCardDrop(e, targetTaskId) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            const card = e.target.closest('.task-card');
-            if (card) {
-                card.classList.remove('drag-over-top', 'drag-over-bottom');
-            }
-
-            // Also remove column highlight
-            const col = e.target.closest('.kanban-column');
-            if (col) col.classList.remove('drag-over');
-
-            if (!draggedTask || draggedTask === targetTaskId) return;
-
-            const draggedTaskObj = tasks.find(t => t.id === draggedTask);
-            const targetTaskObj = tasks.find(t => t.id === targetTaskId);
-
-            if (!draggedTaskObj || !targetTaskObj) return;
-
-            // Determine insert position based on mouse position
-            const rect = card.getBoundingClientRect();
-            const insertBefore = e.clientY < (rect.top + rect.height / 2);
-
-            // Update status if moving to different column
-            if (draggedTaskObj.status !== targetTaskObj.status) {
-                draggedTaskObj.status = targetTaskObj.status;
-                draggedTaskObj.updatedAt = Date.now();
-            }
-
-            // Remove from current position
-            const fromIdx = tasks.indexOf(draggedTaskObj);
-            tasks.splice(fromIdx, 1);
-
-            // Find target index and insert
-            let targetIdx = tasks.indexOf(targetTaskObj);
-            if (!insertBefore) targetIdx++;
-            tasks.splice(targetIdx, 0, draggedTaskObj);
-
-            saveTasks();
-            renderKanban();
-        }
+        // Legacy drag handlers for columns (kept for backwards compatibility)
+        function handleColumnDragOver(e) { e.preventDefault(); }
+        function handleColumnDragLeave(e) {}
+        function handleColumnDrop(e, columnId) { e.preventDefault(); }
 
         // Search and Filters
         document.getElementById('taskSearchInput').addEventListener('input', (e) => {
@@ -5222,11 +5975,20 @@
             }
         });
 
-        // Init tabs
-        const savedTab = localStorage.getItem('boxy_active_tab') || 'files';
-        if (savedTab === 'tasks') {
-            switchTab('tasks');
-        }
+        // Init tabs - use hash if present, else localStorage, else 'files'
+        const initTab = () => {
+            const hash = location.hash.replace('#/', '');
+            const validTabs = ['files', 'tasks', 'dashboard', 'credentials', 'about'];
+            if (hash && validTabs.includes(hash)) {
+                switchTab(hash);
+            } else {
+                const savedTab = localStorage.getItem('boxy_active_tab') || 'files';
+                if (validTabs.includes(savedTab)) {
+                    switchTab(savedTab);
+                }
+            }
+        };
+        initTab();
 
         // Update task status dropdown options based on columns
         function updateTaskStatusOptions() {
@@ -5241,6 +6003,394 @@
 
         // ============================================
         // END TASK MANAGEMENT
+        // ============================================
+
+        // ============================================
+        // DASHBOARD TILES
+        // ============================================
+        let dashboardTiles = JSON.parse(localStorage.getItem('boxy_tiles') || '[]');
+
+        function saveTiles() {
+            localStorage.setItem('boxy_tiles', JSON.stringify(dashboardTiles));
+        }
+
+        function renderDashboard() {
+            const grid = document.getElementById('dashboardGrid');
+            if (!grid) return;
+
+            const tilesHtml = dashboardTiles.map(tile => `
+                <a class="dashboard-tile" href="${escapeAttr(tile.url)}" target="_blank" onclick="event.stopPropagation()">
+                    <div class="dashboard-tile-actions">
+                        <button class="dashboard-tile-btn" onclick="event.preventDefault(); event.stopPropagation(); editTile('${tile.id}')" title="Edit">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                        </button>
+                        <button class="dashboard-tile-btn danger" onclick="event.preventDefault(); event.stopPropagation(); deleteTile('${tile.id}')" title="Delete">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="dashboard-tile-icon">${tile.icon || '🔗'}</div>
+                    <span class="dashboard-tile-name">${escapeHtml(tile.name)}</span>
+                </a>
+            `).join('');
+
+            const addTileHtml = `
+                <div class="dashboard-tile dashboard-add-tile" onclick="showTileModal()">
+                    <div class="dashboard-tile-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                    </div>
+                    <span class="dashboard-tile-name">Add Tile</span>
+                </div>
+            `;
+
+            grid.innerHTML = tilesHtml + addTileHtml;
+        }
+
+        function showTileModal(tileId) {
+            const modal = document.getElementById('tileModal');
+            const title = document.getElementById('tileModalTitle');
+            const nameInput = document.getElementById('tileName');
+            const urlInput = document.getElementById('tileUrl');
+            const iconInput = document.getElementById('tileIcon');
+            const editIdInput = document.getElementById('tileEditId');
+
+            if (tileId) {
+                const tile = dashboardTiles.find(t => t.id === tileId);
+                if (tile) {
+                    title.textContent = 'Edit Tile';
+                    nameInput.value = tile.name;
+                    urlInput.value = tile.url;
+                    iconInput.value = tile.icon || '';
+                    editIdInput.value = tileId;
+                }
+            } else {
+                title.textContent = 'Add Tile';
+                nameInput.value = '';
+                urlInput.value = '';
+                iconInput.value = '';
+                editIdInput.value = '';
+            }
+
+            modal.classList.add('active');
+            nameInput.focus();
+        }
+
+        function closeTileModal() {
+            document.getElementById('tileModal').classList.remove('active');
+        }
+
+        function saveTile() {
+            const name = document.getElementById('tileName').value.trim();
+            let url = document.getElementById('tileUrl').value.trim();
+            const icon = document.getElementById('tileIcon').value.trim();
+            const editId = document.getElementById('tileEditId').value;
+
+            if (!name || !url) {
+                showToast('Name and URL are required');
+                return;
+            }
+
+            // Auto-add https if missing
+            if (!/^https?:\/\//i.test(url)) {
+                url = 'https://' + url;
+            }
+
+            if (editId) {
+                const tile = dashboardTiles.find(t => t.id === editId);
+                if (tile) {
+                    tile.name = name;
+                    tile.url = url;
+                    tile.icon = icon;
+                }
+            } else {
+                dashboardTiles.push({
+                    id: Date.now().toString(36),
+                    name,
+                    url,
+                    icon
+                });
+            }
+
+            saveTiles();
+            closeTileModal();
+            renderDashboard();
+            showToast(editId ? 'Tile updated' : 'Tile added');
+        }
+
+        function editTile(tileId) {
+            showTileModal(tileId);
+        }
+
+        function deleteTile(tileId) {
+            if (!confirm('Delete this tile?')) return;
+            dashboardTiles = dashboardTiles.filter(t => t.id !== tileId);
+            saveTiles();
+            renderDashboard();
+            showToast('Tile deleted');
+        }
+
+        // Tile modal keyboard handling
+        document.getElementById('tileName').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('tileUrl').focus();
+            }
+            if (e.key === 'Escape') closeTileModal();
+        });
+        document.getElementById('tileUrl').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveTile();
+            }
+            if (e.key === 'Escape') closeTileModal();
+        });
+
+        // ============================================
+        // CREDENTIALS
+        // ============================================
+        let credentials = JSON.parse(localStorage.getItem('boxy_credentials') || '[]');
+        let revealedPasswords = new Set();
+
+        function saveCredentials() {
+            localStorage.setItem('boxy_credentials', JSON.stringify(credentials));
+        }
+
+        function renderCredentials() {
+            const list = document.getElementById('credentialsList');
+            if (!list) return;
+
+            if (credentials.length === 0) {
+                list.innerHTML = `
+                    <div class="credentials-empty">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        <p>No credentials stored</p>
+                        <button class="btn btn-primary" onclick="showCredentialModal()" style="margin-top: 16px">
+                            Add Your First Credential
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = credentials.map(cred => {
+                const isRevealed = revealedPasswords.has(cred.id);
+                const passwordDisplay = isRevealed ? escapeHtml(cred.password) : '••••••••';
+                return `
+                    <div class="credential-card">
+                        <div class="credential-header">
+                            <div class="credential-title">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                                ${escapeHtml(cred.title)}
+                            </div>
+                            <div class="credential-actions">
+                                <button class="credential-btn" onclick="editCredential('${cred.id}')" title="Edit">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                    </svg>
+                                </button>
+                                <button class="credential-btn danger" onclick="deleteCredential('${cred.id}')" title="Delete">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="credential-fields">
+                            ${cred.username ? `
+                            <div class="credential-field">
+                                <span class="credential-field-label">Username</span>
+                                <div class="credential-field-value">
+                                    <span>${escapeHtml(cred.username)}</span>
+                                    <button class="credential-copy-btn" onclick="copyToClipboard('${escapeAttr(cred.username)}')" title="Copy">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            ` : ''}
+                            ${cred.password ? `
+                            <div class="credential-field">
+                                <span class="credential-field-label">Password</span>
+                                <div class="credential-field-value ${isRevealed ? '' : 'masked'}">
+                                    <span>${passwordDisplay}</span>
+                                    <div style="display: flex; gap: 4px;">
+                                        <button class="credential-copy-btn" onclick="togglePasswordReveal('${cred.id}')" title="${isRevealed ? 'Hide' : 'Show'}">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                ${isRevealed ?
+                                                    '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>' :
+                                                    '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+                                                }
+                                            </svg>
+                                        </button>
+                                        <button class="credential-copy-btn" onclick="copyToClipboard('${escapeAttr(cred.password)}')" title="Copy">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            ` : ''}
+                            ${cred.url ? `
+                            <div class="credential-field">
+                                <span class="credential-field-label">URL</span>
+                                <div class="credential-field-value">
+                                    <a href="${escapeAttr(cred.url)}" target="_blank" style="color: var(--accent); text-decoration: none;">${escapeHtml(cred.url)}</a>
+                                    <button class="credential-copy-btn" onclick="copyToClipboard('${escapeAttr(cred.url)}')" title="Copy">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                        ${cred.notes ? `<div class="credential-notes">${escapeHtml(cred.notes)}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function togglePasswordReveal(credId) {
+            if (revealedPasswords.has(credId)) {
+                revealedPasswords.delete(credId);
+            } else {
+                revealedPasswords.add(credId);
+            }
+            renderCredentials();
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Copied to clipboard');
+            }).catch(() => {
+                showToast('Failed to copy');
+            });
+        }
+
+        function showCredentialModal(credId) {
+            const modal = document.getElementById('credentialModal');
+            const title = document.getElementById('credentialModalTitle');
+            const titleInput = document.getElementById('credentialTitle');
+            const usernameInput = document.getElementById('credentialUsername');
+            const passwordInput = document.getElementById('credentialPassword');
+            const urlInput = document.getElementById('credentialUrl');
+            const notesInput = document.getElementById('credentialNotes');
+            const editIdInput = document.getElementById('credentialEditId');
+
+            if (credId) {
+                const cred = credentials.find(c => c.id === credId);
+                if (cred) {
+                    title.textContent = 'Edit Credential';
+                    titleInput.value = cred.title;
+                    usernameInput.value = cred.username || '';
+                    passwordInput.value = cred.password || '';
+                    urlInput.value = cred.url || '';
+                    notesInput.value = cred.notes || '';
+                    editIdInput.value = credId;
+                }
+            } else {
+                title.textContent = 'Add Credential';
+                titleInput.value = '';
+                usernameInput.value = '';
+                passwordInput.value = '';
+                urlInput.value = '';
+                notesInput.value = '';
+                editIdInput.value = '';
+            }
+
+            modal.classList.add('active');
+            titleInput.focus();
+        }
+
+        function closeCredentialModal() {
+            document.getElementById('credentialModal').classList.remove('active');
+        }
+
+        function saveCredential() {
+            const title = document.getElementById('credentialTitle').value.trim();
+            const username = document.getElementById('credentialUsername').value.trim();
+            const password = document.getElementById('credentialPassword').value;
+            const url = document.getElementById('credentialUrl').value.trim();
+            const notes = document.getElementById('credentialNotes').value.trim();
+            const editId = document.getElementById('credentialEditId').value;
+
+            if (!title) {
+                showToast('Title is required');
+                return;
+            }
+
+            if (editId) {
+                const cred = credentials.find(c => c.id === editId);
+                if (cred) {
+                    cred.title = title;
+                    cred.username = username;
+                    cred.password = password;
+                    cred.url = url;
+                    cred.notes = notes;
+                    cred.updatedAt = Date.now();
+                }
+            } else {
+                credentials.push({
+                    id: Date.now().toString(36),
+                    title,
+                    username,
+                    password,
+                    url,
+                    notes,
+                    createdAt: Date.now()
+                });
+            }
+
+            saveCredentials();
+            closeCredentialModal();
+            renderCredentials();
+            showToast(editId ? 'Credential updated' : 'Credential added');
+        }
+
+        function editCredential(credId) {
+            showCredentialModal(credId);
+        }
+
+        function deleteCredential(credId) {
+            if (!confirm('Delete this credential?')) return;
+            credentials = credentials.filter(c => c.id !== credId);
+            saveCredentials();
+            renderCredentials();
+            showToast('Credential deleted');
+        }
+
+        // Credential modal keyboard handling
+        document.getElementById('credentialTitle').addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeCredentialModal();
+        });
+        document.getElementById('credentialPassword').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveCredential();
+            }
+            if (e.key === 'Escape') closeCredentialModal();
+        });
+
+        // ============================================
+        // END DASHBOARD & CREDENTIALS
         // ============================================
 
         // Init
