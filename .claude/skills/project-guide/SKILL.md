@@ -16,21 +16,27 @@ alwaysApply: false
 ## Project Structure
 ```
 boxy/
-├── src/main.rs          # Monolithic backend (all handlers)
-├── static/index.html    # Complete frontend (HTML + CSS + JS)
-├── tests/ui.spec.ts     # Playwright e2e tests
-├── docs/                # Architecture docs
-├── uploads/             # File storage (gitignored)
-├── Cargo.toml           # Rust config
-└── package.json         # Playwright config
+├── src/main.rs              # Backend (all handlers)
+├── static/
+│   ├── index.html           # Main app (HTML + JS)
+│   └── css/styles.css       # Extracted CSS
+├── data/                    # App data (gitignored)
+│   ├── boards.json          # Kanban boards + tasks
+│   ├── tiles.json           # Dashboard tiles
+│   └── credentials.json     # Stored credentials
+├── uploads/                 # File storage (gitignored)
+├── tests/ui.spec.ts         # Playwright e2e tests
+├── docs/                    # Architecture docs
+├── Cargo.toml               # Rust config
+└── package.json             # Playwright config
 ```
 
 ## Backend Patterns (src/main.rs)
 
 ### Architecture
 - **Single-file design** - all handlers in main.rs
-- **AppState** holds: broadcaster, upload_dir, max_upload_bytes
-- **Settings from env**: `BOX_PORT`, `BOX_UPLOAD_DIR`, `BOX_MAX_UPLOAD_BYTES`
+- **AppState** holds: broadcaster, upload_dir, data_dir, max_upload_bytes
+- **Settings from env**: `BOX_PORT`, `BOX_UPLOAD_DIR`, `BOX_DATA_DIR`, `BOX_MAX_UPLOAD_BYTES`
 
 ### Security (CRITICAL)
 ```rust
@@ -72,20 +78,19 @@ broadcast_update(&state.broadcaster, "upload", &path);
 | GET | `/api/folders` | All folder paths |
 | GET | `/api/download?path=` | Download/preview file |
 | GET | `/api/health` | Healthcheck |
+| GET | `/api/data/{type}` | Load app data (boards, tiles, credentials) |
 | POST | `/api/upload?path=` | Upload (multipart, supports folders) |
 | POST | `/api/folder` | Create folder |
 | POST | `/api/rename` | Rename item |
 | POST | `/api/move` | Move item |
 | POST | `/api/delete` | Delete item |
+| POST | `/api/data/{type}` | Save app data with WebSocket broadcast |
 
 ## Kanban Board System (Frontend)
 
 ### Data Structure
 ```javascript
-// localStorage keys
-boxy_boards         // Array of all boards
-boxy_current_board  // ID of active board
-
+// Server-side storage: data/boards.json
 // Board structure
 {
   id: 'abc123',
@@ -97,12 +102,11 @@ boxy_current_board  // ID of active board
 ```
 
 ### Key Functions
-- `loadBoards()` - Load from localStorage, auto-migrates old `boxy_tasks`/`boxy_columns` format
-- `saveBoards()` - Persist all boards
+- `loadBoards()` - Async, loads from server API, auto-migrates localStorage on first run
+- `saveBoards()` - Async, persists to server, broadcasts via WebSocket
 - `saveCurrentBoard()` - Sync working `tasks`/`columns` to active board
-- `switchBoard(boardId)` - Change active board, updates UI
-- `renderBoardSelector()` - Update board dropdown
-- `showBoardModal(boardId?)` - Create/rename board modal
+- `loadTiles()` / `saveTiles()` - Dashboard tiles (data/tiles.json)
+- `loadCredentials()` / `saveCredentials()` - Stored keys (data/credentials.json)
 
 ### Working Variables
 ```javascript
@@ -111,6 +115,11 @@ let currentBoardId = null; // Active board
 let tasks = [];            // Current board's tasks (working copy)
 let columns = [];          // Current board's columns (working copy)
 ```
+
+### Cross-Browser Sync
+- Data stored server-side in `data/` directory
+- WebSocket broadcasts `data_sync` events on save
+- All connected browsers auto-update when data changes
 
 ## Quick Commands
 ```bash
@@ -122,9 +131,9 @@ docker compose up --build   # Docker deployment
 
 ## Rules
 1. Keep backend in single main.rs (no module splitting unless >1000 lines)
-2. Frontend stays embedded via `include_str!`
+2. CSS is extracted to `static/css/styles.css`, JS remains in index.html
 3. Always sanitize paths before filesystem access
-4. Broadcast all mutations via WebSocket
+4. Broadcast all mutations via WebSocket (including `data_sync` for app data)
 5. Use env vars for config with sensible defaults
 6. **Use TLDR before reading files** — see tldr-first skill
 

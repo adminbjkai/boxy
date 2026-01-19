@@ -9,7 +9,8 @@ alwaysApply: false
 ## Tech Stack
 - Vanilla JavaScript (no frameworks)
 - CSS variables for theming
-- Embedded in single index.html
+- CSS extracted to `static/css/styles.css`
+- JS remains in `static/index.html`
 
 ## CSS Architecture
 
@@ -101,9 +102,19 @@ function connectWS() {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     ws = new WebSocket(`${protocol}//${location.host}/ws`);
 
-    ws.onmessage = (e) => {
+    ws.onmessage = async (e) => {
         const { action, path } = JSON.parse(e.data);
-        loadFiles();  // Refresh
+
+        // Handle data sync (boards, tiles, credentials)
+        if (action === 'data_sync') {
+            if (path === 'boards') await loadBoards();
+            if (path === 'tiles') await loadTiles();
+            if (path === 'credentials') await loadCredentials();
+            showToast(`Synced: ${path}`);
+            return;
+        }
+
+        loadFiles();  // Refresh files
         showToast(`${action}: ${path}`);
     };
 
@@ -186,11 +197,11 @@ const iconMap = {
 
 ## Rules
 1. No external JS dependencies
-2. Use CSS variables for all colors
+2. Use CSS variables for all colors (defined in `static/css/styles.css`)
 3. Always escape user content (XSS)
 4. Auto-reconnect WebSocket on disconnect
 5. Stagger animations for visual polish
-6. **Use grep before reading** — `rg 'pattern' static/index.html`, then `sed -n` for targeted ranges
+6. **Use grep before reading** — `rg 'pattern' static/`, then `sed -n` for targeted ranges
 
 ## Pre-Change Checklist
 - [ ] `escapeHtml()` used for all user content in innerHTML

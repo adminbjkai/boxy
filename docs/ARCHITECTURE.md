@@ -10,7 +10,8 @@ Boxy is a lightweight file sharing UI built with Rust/Actix, serving a static we
 |-----------|------------|---------|
 | **Frontend** | Vanilla HTML/JS | Single-page UI with drag-drop, search, file grid |
 | **Backend** | Rust + Actix Web | REST API, WebSocket broadcast, path sanitization |
-| **Storage** | Local filesystem | `./uploads` directory (volume-mountable in Docker) |
+| **File Storage** | Local filesystem | `./uploads` directory (volume-mountable in Docker) |
+| **App Data** | JSON files | `./data` directory for boards, tiles, credentials |
 
 ### Key Characteristics
 
@@ -76,6 +77,7 @@ All filesystem operations pass through `resolve_path_safe()`:
 |----------|---------|-------------|
 | `BOX_PORT` | `8086` | HTTP bind port |
 | `BOX_UPLOAD_DIR` | `./uploads` | Upload root directory |
+| `BOX_DATA_DIR` | `./data` | App data directory (boards, tiles, credentials) |
 | `BOX_MAX_UPLOAD_BYTES` | `209715200` | Max upload size (200MB) |
 
 ## API Surface
@@ -97,6 +99,9 @@ All filesystem operations pass through `resolve_path_safe()`:
 | POST | `/api/content` | Save file content `{ path, content }` |
 | POST | `/api/newfile` | Create new file `{ path?, filename }` |
 | GET | `/api/health` | Healthcheck |
+| GET | `/api/data/{type}` | Load app data (boards, tiles, credentials) |
+| POST | `/api/data/{type}` | Save app data with WebSocket broadcast |
+| GET | `/static/*` | Static files (CSS, JS) |
 
 ## WebSocket Events
 
@@ -109,6 +114,7 @@ All file mutations trigger `broadcast_update(action, path)`:
 | `move` | File/folder moved | `{ action, path, dest }` |
 | `delete` | File/folder deleted | `{ action, path }` |
 | `edit` | File content saved | `{ action, path }` |
+| `data_sync` | App data saved | `{ action: "data_sync", path: "boards\|tiles\|credentials" }` |
 
 Reconnection: Fixed 2-second retry interval via `setTimeout(connectWS, 2000)`.
 
@@ -118,4 +124,24 @@ Reconnection: Fixed 2-second retry interval via `setTimeout(connectWS, 2000)`.
 - Duplicate filenames are de-duped server-side (`name`, `name_1`, `name_2`, ...)
 - Broadcast channel fans out events to all connected WebSocket clients
 - Compression middleware and payload limits protect the service
-- Tasks/Kanban feature uses browser localStorage only (no server persistence)
+- App data (boards, tiles, credentials) stored server-side in JSON files for cross-browser sync
+- WebSocket broadcasts `data_sync` events when app data changes, enabling real-time multi-client updates
+
+## File Structure
+
+```
+boxy/
+├── src/main.rs              # Backend (all handlers)
+├── static/
+│   ├── index.html           # Main app (HTML + JS)
+│   └── css/styles.css       # Extracted CSS
+├── data/                    # App data (gitignored)
+│   ├── boards.json          # Kanban boards + tasks
+│   ├── tiles.json           # Dashboard tiles
+│   └── credentials.json     # Stored credentials
+├── uploads/                 # File storage (gitignored)
+├── tests/ui.spec.ts         # Playwright e2e tests
+├── docs/                    # Documentation
+├── Cargo.toml               # Rust config
+└── package.json             # Playwright config
+```

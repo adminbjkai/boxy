@@ -1,3 +1,4 @@
+use actix_files::Files;
 use actix_multipart::Multipart;
 use actix_web::{
     middleware::{Compress, Logger},
@@ -11,6 +12,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::broadcast;
 
 const DEFAULT_UPLOAD_DIR: &str = "./uploads";
+const DEFAULT_DATA_DIR: &str = "./data";
 const DEFAULT_PORT: u16 = 8086;
 const DEFAULT_MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 200; // 200 MB
 const EDITABLE_EXTENSIONS: &[&str] = &[
@@ -37,11 +39,13 @@ type Broadcaster = broadcast::Sender<String>;
 struct AppState {
     broadcaster: Broadcaster,
     upload_dir: PathBuf,
+    data_dir: PathBuf,
     max_upload_bytes: usize,
 }
 
 struct Settings {
     upload_dir: PathBuf,
+    data_dir: PathBuf,
     port: u16,
     max_upload_bytes: usize,
 }
@@ -52,6 +56,9 @@ impl Settings {
             upload_dir: env::var("BOX_UPLOAD_DIR")
                 .map(PathBuf::from)
                 .unwrap_or_else(|_| PathBuf::from(DEFAULT_UPLOAD_DIR)),
+            data_dir: env::var("BOX_DATA_DIR")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| PathBuf::from(DEFAULT_DATA_DIR)),
             port: env::var("BOX_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
@@ -788,10 +795,7 @@ async fn get_data(
         })));
     }
 
-    let data_dir = state.upload_dir.join(".boxy");
-    std::fs::create_dir_all(&data_dir).ok();
-
-    let file_path = data_dir.join(format!("{}.json", data_type));
+    let file_path = state.data_dir.join(format!("{}.json", data_type));
 
     match std::fs::read_to_string(&file_path) {
         Ok(content) => Ok(HttpResponse::Ok()
@@ -819,10 +823,7 @@ async fn save_data(
         })));
     }
 
-    let data_dir = state.upload_dir.join(".boxy");
-    std::fs::create_dir_all(&data_dir).ok();
-
-    let file_path = data_dir.join(format!("{}.json", data_type));
+    let file_path = state.data_dir.join(format!("{}.json", data_type));
 
     match std::fs::write(&file_path, &body) {
         Ok(_) => {
@@ -844,11 +845,13 @@ async fn main() -> std::io::Result<()> {
 
     let settings = Settings::from_env();
     tokio::fs::create_dir_all(&settings.upload_dir).await?;
+    tokio::fs::create_dir_all(&settings.data_dir).await?;
 
     let (tx, _) = broadcast::channel::<String>(100);
     let state = AppState {
         broadcaster: tx,
         upload_dir: settings.upload_dir.clone(),
+        data_dir: settings.data_dir.clone(),
         max_upload_bytes: settings.max_upload_bytes,
     };
 
@@ -882,6 +885,7 @@ async fn main() -> std::io::Result<()> {
             .route("/api/health", web::get().to(healthcheck))
             .route("/api/data/{data_type}", web::get().to(get_data))
             .route("/api/data/{data_type}", web::post().to(save_data))
+            .service(Files::new("/static", "./static").prefer_utf8(true))
     })
     .bind(("0.0.0.0", settings.port))?
     .run()
