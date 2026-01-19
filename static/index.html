@@ -2198,7 +2198,7 @@
             transition: height 0.15s ease;
         }
 
-        .kanban-tasks.drag-active {
+        .kanban-column-content.drag-active {
             min-height: 80px;
         }
 
@@ -2352,6 +2352,10 @@
             will-change: transform;
             box-shadow: 0 8px 24px rgba(0,0,0,0.2);
             transition: none;
+        }
+
+        .dashboard-tile.drag-ghost .dashboard-tile-actions {
+            display: none;
         }
 
         .dashboard-tile-placeholder {
@@ -5721,7 +5725,7 @@
                 dragState.originalCard.style.display = 'none';
 
                 // Mark all task containers as drag-active
-                document.querySelectorAll('.kanban-tasks').forEach(c => c.classList.add('drag-active'));
+                document.querySelectorAll('.kanban-column-content').forEach(c => c.classList.add('drag-active'));
             }
 
             if (dragState.isDragging && ghostEl) {
@@ -5746,7 +5750,7 @@
                 const rect = col.getBoundingClientRect();
                 if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
                     targetColumn = col;
-                    targetTasks = col.querySelector('.kanban-tasks');
+                    targetTasks = col.querySelector('.kanban-column-content');
                     break;
                 }
             }
@@ -5843,7 +5847,7 @@
                 }
 
                 // Clean up drag-active state
-                document.querySelectorAll('.kanban-tasks').forEach(c => c.classList.remove('drag-active'));
+                document.querySelectorAll('.kanban-column-content').forEach(c => c.classList.remove('drag-active'));
 
                 renderKanban();
             }
