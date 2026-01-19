@@ -3351,6 +3351,35 @@
         document.documentElement.setAttribute('data-theme', savedTheme);
         updateThemeIcon();
 
+        // === SERVER-SIDE DATA API ===
+        // Data is stored on server in uploads/.boxy/ for cross-browser sync
+        async function loadServerData(dataType) {
+            try {
+                const resp = await fetch(`/api/data/${dataType}`);
+                if (!resp.ok) throw new Error('Failed to load');
+                const data = await resp.json();
+                return data;
+            } catch (err) {
+                console.error(`Error loading ${dataType}:`, err);
+                return null;
+            }
+        }
+
+        async function saveServerData(dataType, data) {
+            try {
+                const resp = await fetch(`/api/data/${dataType}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!resp.ok) throw new Error('Failed to save');
+                return true;
+            } catch (err) {
+                console.error(`Error saving ${dataType}:`, err);
+                return false;
+            }
+        }
+
         // File type icons
         function getFileIcon(name, isDir) {
             if (isDir) {
@@ -3469,8 +3498,37 @@
                 console.error('WebSocket error:', err);
             };
 
-            ws.onmessage = (e) => {
+            ws.onmessage = async (e) => {
                 const data = JSON.parse(e.data);
+
+                // Handle server-side data sync
+                if (data.action === 'data_sync') {
+                    const dataType = data.path;
+                    if (dataType === 'boards') {
+                        await loadBoards();
+                        const hash = location.hash.replace('#/', '');
+                        if (hash === 'tasks') {
+                            renderBoardSelector();
+                            renderKanban();
+                        }
+                    } else if (dataType === 'tiles') {
+                        await loadTiles();
+                        const hash = location.hash.replace('#/', '');
+                        if (hash === 'dashboard' || hash === '' || !hash) {
+                            renderDashboard();
+                        }
+                    } else if (dataType === 'credentials') {
+                        await loadCredentials();
+                        const hash = location.hash.replace('#/', '');
+                        if (hash === 'credentials') {
+                            renderCredentials();
+                        }
+                    }
+                    showToast(`Synced: ${dataType}`);
+                    return;
+                }
+
+                // Handle file operations
                 loadFiles();
                 const actions = { delete: 'Deleted', upload: 'Added', folder: 'Created', rename: 'Renamed', move: 'Moved', edit: 'Edited' };
                 showToast(`${actions[data.action] || 'Updated'}: ${data.path.split('/').pop()}`);
@@ -4963,41 +5021,68 @@
         let draggedTask = null;
         let draggedColumn = null;
 
-        function loadBoards() {
-            const savedBoards = localStorage.getItem('boxy_boards');
-            if (savedBoards) {
-                boards = JSON.parse(savedBoards);
-                currentBoardId = localStorage.getItem('boxy_current_board') || (boards[0]?.id || null);
+        async function loadBoards() {
+            const serverBoards = await loadServerData('boards');
+
+            if (serverBoards && Array.isArray(serverBoards) && serverBoards.length > 0) {
+                boards = serverBoards;
+                currentBoardId = boards[0]?.id || null;
             } else {
-                // Migration: convert old format to new board format
-                const oldTasks = JSON.parse(localStorage.getItem('boxy_tasks') || '[]');
-                const oldColumns = JSON.parse(localStorage.getItem('boxy_columns') || JSON.stringify(DEFAULT_COLUMNS));
-                const defaultBoard = {
-                    id: generateId(),
-                    name: 'My Board',
-                    columns: oldColumns,
-                    tasks: oldTasks,
-                    createdAt: Date.now()
-                };
-                boards = [defaultBoard];
-                currentBoardId = defaultBoard.id;
-                saveBoards();
+                // Migration: check localStorage first (one-time migration)
+                const localBoards = localStorage.getItem('boxy_boards');
+                if (localBoards) {
+                    boards = JSON.parse(localBoards);
+                    currentBoardId = localStorage.getItem('boxy_current_board') || (boards[0]?.id || null);
+                    await saveServerData('boards', boards); // Save to server
+                    localStorage.removeItem('boxy_boards'); // Clean up
+                    localStorage.removeItem('boxy_current_board');
+                    localStorage.removeItem('boxy_tasks');
+                    localStorage.removeItem('boxy_columns');
+                } else {
+                    // Check for old format migration
+                    const oldTasks = JSON.parse(localStorage.getItem('boxy_tasks') || '[]');
+                    const oldColumns = JSON.parse(localStorage.getItem('boxy_columns') || JSON.stringify(DEFAULT_COLUMNS));
+                    if (oldTasks.length > 0 || localStorage.getItem('boxy_tasks')) {
+                        const defaultBoard = {
+                            id: generateId(),
+                            name: 'My Board',
+                            columns: oldColumns,
+                            tasks: oldTasks,
+                            createdAt: Date.now()
+                        };
+                        boards = [defaultBoard];
+                        currentBoardId = defaultBoard.id;
+                        await saveServerData('boards', boards);
+                        localStorage.removeItem('boxy_tasks');
+                        localStorage.removeItem('boxy_columns');
+                    } else {
+                        // Create default board
+                        boards = [{
+                            id: generateId(),
+                            name: 'My Board',
+                            columns: [...DEFAULT_COLUMNS],
+                            tasks: [],
+                            createdAt: Date.now()
+                        }];
+                        currentBoardId = boards[0].id;
+                        await saveServerData('boards', boards);
+                    }
+                }
             }
             // Load current board data into working variables
             const board = boards.find(b => b.id === currentBoardId);
             if (board) {
-                tasks = board.tasks;
-                columns = board.columns;
+                tasks = board.tasks || [];
+                columns = board.columns || [];
             } else if (boards.length > 0) {
                 currentBoardId = boards[0].id;
-                tasks = boards[0].tasks;
-                columns = boards[0].columns;
+                tasks = boards[0].tasks || [];
+                columns = boards[0].columns || [];
             }
         }
 
-        function saveBoards() {
-            localStorage.setItem('boxy_boards', JSON.stringify(boards));
-            localStorage.setItem('boxy_current_board', currentBoardId);
+        async function saveBoards() {
+            await saveServerData('boards', boards);
         }
 
         function saveCurrentBoard() {
@@ -5008,14 +5093,14 @@
             }
         }
 
-        function saveTasks() {
+        async function saveTasks() {
             saveCurrentBoard();
-            saveBoards();
+            await saveBoards();
         }
 
-        function saveColumns() {
+        async function saveColumns() {
             saveCurrentBoard();
-            saveBoards();
+            await saveBoards();
         }
 
         function generateId() {
@@ -6107,10 +6192,6 @@
         // Initialize tag input listener
         document.getElementById('taskTagInput').addEventListener('keydown', handleTagInput);
 
-        // Initialize boards
-        loadBoards();
-        renderBoardSelector();
-
         // Board modal keyboard handling
         document.getElementById('boardName').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -6122,8 +6203,29 @@
             }
         });
 
-        // Init tabs - use hash if present, else localStorage, else 'files'
-        const initTab = () => {
+        // Update task status dropdown options based on columns
+        function updateTaskStatusOptions() {
+            const select = document.getElementById('taskStatus');
+            select.innerHTML = columns.map(col =>
+                `<option value="${col.id}">${escapeHtml(col.name)}</option>`
+            ).join('');
+        }
+
+        // === ASYNC APP INITIALIZATION ===
+        // Load all server data before rendering
+        (async function initApp() {
+            // Load all server-side data in parallel
+            await Promise.all([
+                loadBoards(),
+                loadTiles(),
+                loadCredentials()
+            ]);
+
+            // Initialize UI after data is loaded
+            renderBoardSelector();
+            updateTaskStatusOptions();
+
+            // Init tabs - use hash if present, else localStorage, else 'files'
             const hash = location.hash.replace('#/', '');
             const validTabs = ['files', 'tasks', 'dashboard', 'credentials', 'about'];
             if (hash && validTabs.includes(hash)) {
@@ -6134,19 +6236,7 @@
                     switchTab(savedTab);
                 }
             }
-        };
-        initTab();
-
-        // Update task status dropdown options based on columns
-        function updateTaskStatusOptions() {
-            const select = document.getElementById('taskStatus');
-            select.innerHTML = columns.map(col =>
-                `<option value="${col.id}">${escapeHtml(col.name)}</option>`
-            ).join('');
-        }
-
-        // Call on init and when columns change
-        updateTaskStatusOptions();
+        })();
 
         // ============================================
         // END TASK MANAGEMENT
@@ -6155,10 +6245,28 @@
         // ============================================
         // DASHBOARD TILES
         // ============================================
-        let dashboardTiles = JSON.parse(localStorage.getItem('boxy_tiles') || '[]');
+        let dashboardTiles = [];
 
-        function saveTiles() {
-            localStorage.setItem('boxy_tiles', JSON.stringify(dashboardTiles));
+        async function loadTiles() {
+            const serverTiles = await loadServerData('tiles');
+
+            if (serverTiles && Array.isArray(serverTiles)) {
+                dashboardTiles = serverTiles;
+            } else {
+                // Migration from localStorage
+                const localTiles = localStorage.getItem('boxy_tiles');
+                if (localTiles) {
+                    dashboardTiles = JSON.parse(localTiles);
+                    await saveServerData('tiles', dashboardTiles);
+                    localStorage.removeItem('boxy_tiles');
+                } else {
+                    dashboardTiles = [];
+                }
+            }
+        }
+
+        async function saveTiles() {
+            await saveServerData('tiles', dashboardTiles);
         }
 
         function renderDashboard() {
@@ -6542,11 +6650,29 @@
         // ============================================
         // CREDENTIALS
         // ============================================
-        let credentials = JSON.parse(localStorage.getItem('boxy_credentials') || '[]');
+        let credentials = [];
         let revealedPasswords = new Set();
 
-        function saveCredentials() {
-            localStorage.setItem('boxy_credentials', JSON.stringify(credentials));
+        async function loadCredentials() {
+            const serverCreds = await loadServerData('credentials');
+
+            if (serverCreds && Array.isArray(serverCreds)) {
+                credentials = serverCreds;
+            } else {
+                // Migration from localStorage
+                const localCreds = localStorage.getItem('boxy_credentials');
+                if (localCreds) {
+                    credentials = JSON.parse(localCreds);
+                    await saveServerData('credentials', credentials);
+                    localStorage.removeItem('boxy_credentials');
+                } else {
+                    credentials = [];
+                }
+            }
+        }
+
+        async function saveCredentials() {
+            await saveServerData('credentials', credentials);
         }
 
         function renderCredentials() {
