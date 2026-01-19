@@ -5720,6 +5720,8 @@
             document.addEventListener('pointermove', onTaskDragMove);
             document.addEventListener('pointerup', onTaskDragEnd);
             document.addEventListener('pointercancel', onTaskDragEnd);
+            document.addEventListener('keydown', onTaskDragKeyDown);
+            window.addEventListener('blur', onTaskDragWindowBlur);
         }
 
         function initTaskDragVisuals() {
@@ -5827,11 +5829,14 @@
             dragState.targetColumnId = targetColumn.id;
         }
 
-        function onTaskDragEnd(e) {
-            // Remove document-level listeners immediately
+        // Bulletproof cleanup function - can be called anytime
+        function cleanupTaskDrag() {
+            // Remove all event listeners
             document.removeEventListener('pointermove', onTaskDragMove);
             document.removeEventListener('pointerup', onTaskDragEnd);
             document.removeEventListener('pointercancel', onTaskDragEnd);
+            document.removeEventListener('keydown', onTaskDragKeyDown);
+            window.removeEventListener('blur', onTaskDragWindowBlur);
 
             // Cancel any pending RAF
             if (taskDragRafId) {
@@ -5839,21 +5844,60 @@
                 taskDragRafId = null;
             }
 
-            if (!dragState) return;
+            // Remove ghost element (both by variable and DOM query for safety)
+            if (ghostEl) {
+                ghostEl.remove();
+                ghostEl = null;
+            }
+            document.querySelectorAll('.task-card.drag-ghost').forEach(el => el.remove());
 
-            if (dragState.isDragging) {
-                const card = dragState.originalCard;
+            // Remove placeholder
+            if (placeholderEl) {
+                placeholderEl.remove();
+                placeholderEl = null;
+            }
+            document.querySelectorAll('.task-placeholder').forEach(el => el.remove());
+
+            // Remove dragging class and restore display on all cards
+            document.querySelectorAll('.task-card.dragging').forEach(card => {
                 card.classList.remove('dragging');
                 card.style.display = '';
+            });
 
-                // Remove ghost
-                if (ghostEl) {
-                    ghostEl.remove();
-                    ghostEl = null;
-                }
+            // Remove drag-active from columns
+            document.querySelectorAll('.kanban-column-content.drag-active').forEach(col => {
+                col.classList.remove('drag-active');
+            });
 
-                // Commit the move based on placeholder position
-                if (placeholderEl && placeholderEl.parentNode) {
+            // Clear state
+            dragState = null;
+            cachedColumnRects = null;
+        }
+
+        // Escape key handler to cancel drag
+        function onTaskDragKeyDown(e) {
+            if (e.key === 'Escape' && dragState) {
+                e.preventDefault();
+                cleanupTaskDrag();
+                renderKanban();
+            }
+        }
+
+        // Window blur handler - cleanup if user switches tabs
+        function onTaskDragWindowBlur() {
+            if (dragState) {
+                cleanupTaskDrag();
+                renderKanban();
+            }
+        }
+
+        function onTaskDragEnd(e) {
+            // Store state before cleanup
+            const wasDragging = dragState?.isDragging;
+            const taskId = dragState?.taskId;
+
+            try {
+                if (wasDragging && placeholderEl && placeholderEl.parentNode) {
                     const tasksContainer = placeholderEl.parentNode;
                     const column = tasksContainer.closest('.kanban-column');
                     const newStatus = column ? column.dataset.column : null;
@@ -5863,7 +5907,7 @@
                     const placeholderIndex = [...tasksContainer.children].indexOf(placeholderEl);
 
                     // Find the task
-                    const task = tasks.find(t => t.id === dragState.taskId);
+                    const task = tasks.find(t => t.id === taskId);
                     if (task && newStatus) {
                         // Remove from tasks array
                         const fromIdx = tasks.indexOf(task);
@@ -5879,7 +5923,7 @@
                         let insertIdx = tasks.length;
                         const cardsAfterPlaceholder = cardsInColumn.slice(placeholderIndex);
                         if (cardsAfterPlaceholder.length > 0) {
-                            const nextCard = cardsAfterPlaceholder.find(c => c.dataset.taskId !== dragState.taskId);
+                            const nextCard = cardsAfterPlaceholder.find(c => c.dataset.taskId !== taskId);
                             if (nextCard) {
                                 const nextTask = tasks.find(t => t.id === nextCard.dataset.taskId);
                                 if (nextTask) {
@@ -5891,20 +5935,18 @@
                         tasks.splice(insertIdx, 0, task);
                         saveTasks();
                     }
-
-                    placeholderEl.remove();
-                    placeholderEl = null;
                 }
-
-                // Clean up drag-active state
-                document.querySelectorAll('.kanban-column-content').forEach(c => c.classList.remove('drag-active'));
-
-                renderKanban();
+            } catch (err) {
+                console.error('Error in drag end:', err);
             }
 
-            // Clear all state
-            dragState = null;
-            cachedColumnRects = null;
+            // ALWAYS cleanup, even if error occurred
+            cleanupTaskDrag();
+
+            // Re-render if we were actually dragging
+            if (wasDragging) {
+                renderKanban();
+            }
         }
 
         // Legacy drag handlers for columns (kept for backwards compatibility)
