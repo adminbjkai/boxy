@@ -3154,19 +3154,31 @@
             dragState.isDragging = true;
             dragState.originalCard.classList.add('dragging');
 
+            // Get fresh rect for initial position (in case of scroll)
+            const cardRect = dragState.originalCard.getBoundingClientRect();
+
             // Create ghost element
             ghostEl = dragState.originalCard.cloneNode(true);
             ghostEl.classList.remove('dragging');
             ghostEl.classList.add('drag-ghost');
-            ghostEl.style.width = dragState.cardWidth + 'px';
 
-            // CRITICAL: Set initial position BEFORE appending to DOM
-            // This prevents flash at origin (0,0)
-            const initialX = dragState.lastX - dragState.offsetX;
-            const initialY = dragState.lastY - dragState.offsetY;
+            // CRITICAL: Clear inherited animation/transition BEFORE setting transform
+            // The base .task-card has animation: fadeUp which sets transform: translateY(0)
+            // This would override our position transform if not cleared
+            ghostEl.style.animation = 'none';
+            ghostEl.style.transition = 'none';
+            ghostEl.style.width = cardRect.width + 'px';
+
+            // Position ghost at card's current visual position
+            const initialX = cardRect.left;
+            const initialY = cardRect.top;
             ghostEl.style.transform = `translate(${initialX}px, ${initialY}px)`;
 
             document.body.appendChild(ghostEl);
+
+            // Update stored offset based on fresh rect
+            dragState.offsetX = dragState.lastX - cardRect.left;
+            dragState.offsetY = dragState.lastY - cardRect.top;
 
             // Create placeholder
             placeholderEl = document.createElement('div');
@@ -3841,8 +3853,18 @@
             tileGhostEl = tile.cloneNode(true);
             tileGhostEl.classList.remove('dragging');
             tileGhostEl.classList.add('drag-ghost');
+
+            // Clear inherited transitions to prevent animation from origin
+            tileGhostEl.style.animation = 'none';
+            tileGhostEl.style.transition = 'none';
             tileGhostEl.style.width = tileDragState.width + 'px';
             tileGhostEl.style.height = tileDragState.height + 'px';
+
+            // Position BEFORE appending to prevent flash at origin
+            const initialX = tileDragState.lastX - tileDragState.offsetX;
+            const initialY = tileDragState.lastY - tileDragState.offsetY;
+            tileGhostEl.style.transform = `translate(${initialX}px, ${initialY}px) scale(1.02) rotate(1deg)`;
+
             document.body.appendChild(tileGhostEl);
 
             // Create placeholder
