@@ -3893,22 +3893,24 @@
         function onTileDragMove(e) {
             if (!tileDragState) return;
 
+            // Always update position first (before checking isDragging)
+            tileDragState.lastX = e.clientX;
+            tileDragState.lastY = e.clientY;
+
             const dx = Math.abs(e.clientX - tileDragState.startX);
             const dy = Math.abs(e.clientY - tileDragState.startY);
 
             // Start drag if moved enough (8px threshold)
             if (!tileDragState.isDragging && (dx > 8 || dy > 8)) {
                 initTileDragVisuals();
+                // Immediately update position (don't wait for RAF)
+                updateTileDragPosition();
+                return;
             }
 
-            if (tileDragState.isDragging) {
-                tileDragState.lastX = e.clientX;
-                tileDragState.lastY = e.clientY;
-
-                // Use RAF for smooth 60fps updates
-                if (!tileDragRafId) {
-                    tileDragRafId = requestAnimationFrame(updateTileDragPosition);
-                }
+            // Use RAF for smooth 60fps updates on subsequent moves
+            if (tileDragState.isDragging && !tileDragRafId) {
+                tileDragRafId = requestAnimationFrame(updateTileDragPosition);
             }
         }
 
@@ -3935,16 +3937,24 @@
             if (!grid) return;
 
             // Find insertion point based on cursor position
+            // Use 33% threshold for more responsive feel (like task cards)
             let insertBeforeEl = null;
 
             for (const item of cachedTileRects) {
                 if (item.id === tileDragState.tileId) continue;
 
-                const midX = item.rect.left + item.rect.width / 2;
-                const midY = item.rect.top + item.rect.height / 2;
+                // For horizontal grid: use left third of tile as threshold
+                const thresholdX = item.rect.left + item.rect.width * 0.33;
+                // For vertical positioning: use top third
+                const thresholdY = item.rect.top + item.rect.height * 0.33;
 
-                // Insert before this tile if cursor is above/left of center
-                if (y < item.rect.bottom && (y < midY || x < midX)) {
+                // Insert before this tile if cursor is in the left/top region
+                if (x < thresholdX && y < item.rect.bottom) {
+                    insertBeforeEl = item.el;
+                    break;
+                }
+                // Also handle vertical stacking (when tiles wrap to next row)
+                if (y < thresholdY && x >= item.rect.left && x <= item.rect.right) {
                     insertBeforeEl = item.el;
                     break;
                 }
@@ -3952,13 +3962,13 @@
 
             // Move placeholder only if position changed
             if (insertBeforeEl) {
-                if (tilePlaceholderEl.nextSibling !== insertBeforeEl) {
+                if (tilePlaceholderEl.nextElementSibling !== insertBeforeEl) {
                     grid.insertBefore(tilePlaceholderEl, insertBeforeEl);
                 }
             } else {
                 // Insert before the add-tile button
                 const addTile = grid.querySelector('.dashboard-add-tile');
-                if (addTile && tilePlaceholderEl.nextSibling !== addTile) {
+                if (addTile && tilePlaceholderEl.nextElementSibling !== addTile) {
                     grid.insertBefore(tilePlaceholderEl, addTile);
                 }
             }
