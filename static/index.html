@@ -3205,9 +3205,12 @@
             // Start drag after 5px movement
             if (!dragState.isDragging && (dx > 5 || dy > 5)) {
                 initTaskDragVisuals();
+                // Immediately update position after init (don't wait for RAF)
+                updateTaskDragPosition();
+                return;
             }
 
-            // PERFORMANCE: Batch updates with RAF
+            // PERFORMANCE: Batch updates with RAF for subsequent moves
             if (dragState.isDragging && !taskDragRafId) {
                 taskDragRafId = requestAnimationFrame(updateTaskDragPosition);
             }
@@ -3243,26 +3246,32 @@
 
             if (!targetColumn || !targetColumn.content) return;
 
-            // Find insertion point among visible cards
+            // Find insertion point among visible cards (excluding dragging card)
             const cards = [...targetColumn.content.querySelectorAll('.task-card:not(.dragging)')];
             let insertBefore = null;
 
+            // Use a threshold closer to the top of each card (33% instead of 50%)
+            // This makes upward dragging feel more responsive
             for (const card of cards) {
                 const rect = card.getBoundingClientRect();
-                const midY = rect.top + rect.height / 2;
-                if (y < midY) {
+                // Threshold at 1/3 from top - feels more natural when reordering
+                const threshold = rect.top + rect.height * 0.33;
+                if (y < threshold) {
                     insertBefore = card;
                     break;
                 }
             }
 
-            // Move placeholder
+            // Move placeholder only if position actually changes (prevents flicker)
             if (insertBefore) {
-                if (placeholderEl.nextSibling !== insertBefore) {
+                // Check if placeholder is already in the right place
+                if (placeholderEl.nextElementSibling !== insertBefore) {
                     targetColumn.content.insertBefore(placeholderEl, insertBefore);
                 }
             } else {
-                if (placeholderEl.parentNode !== targetColumn.content || placeholderEl.nextSibling !== null) {
+                // Append to end if cursor is below all cards
+                const lastChild = targetColumn.content.lastElementChild;
+                if (lastChild !== placeholderEl) {
                     targetColumn.content.appendChild(placeholderEl);
                 }
             }
