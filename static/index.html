@@ -3159,6 +3159,13 @@
             ghostEl.classList.remove('dragging');
             ghostEl.classList.add('drag-ghost');
             ghostEl.style.width = dragState.cardWidth + 'px';
+
+            // CRITICAL: Set initial position BEFORE appending to DOM
+            // This prevents flash at origin (0,0)
+            const initialX = dragState.lastX - dragState.offsetX;
+            const initialY = dragState.lastY - dragState.offsetY;
+            ghostEl.style.transform = `translate(${initialX}px, ${initialY}px)`;
+
             document.body.appendChild(ghostEl);
 
             // Create placeholder
@@ -3172,9 +3179,6 @@
 
             // Mark all task containers as drag-active
             document.querySelectorAll('.kanban-column-content').forEach(c => c.classList.add('drag-active'));
-
-            // Initial position
-            updateTaskDragPosition();
         }
 
         function onTaskDragMove(e) {
