@@ -202,6 +202,13 @@
                         <option value="medium">Medium</option>
                         <option value="low">Low</option>
                     </select>
+                    <select id="taskDueDateFilter">
+                        <option value="all">All Dates</option>
+                        <option value="overdue">Overdue</option>
+                        <option value="due-soon">Due Soon (3 days)</option>
+                        <option value="has-date">Has Due Date</option>
+                        <option value="no-date">No Due Date</option>
+                    </select>
                 </div>
                 <div class="tasks-view-toggle">
                     <button class="tasks-view-btn active" data-view="kanban" onclick="switchTaskView('kanban')">Board</button>
@@ -2358,6 +2365,7 @@
         let taskSearchQuery = '';
         let taskStatusFilter = 'all';
         let taskPriorityFilter = 'all';
+        let taskDueDateFilter = 'all';
         let editingTaskTags = [];
         let draggedTask = null;
         let draggedColumn = null;
@@ -2659,6 +2667,14 @@
                 if (taskPriorityFilter !== 'all' && task.priority !== taskPriorityFilter) {
                     return false;
                 }
+                // Due date filter
+                if (taskDueDateFilter !== 'all') {
+                    const dueClass = getDueDateClass(task);
+                    if (taskDueDateFilter === 'overdue' && dueClass !== 'overdue') return false;
+                    if (taskDueDateFilter === 'due-soon' && dueClass !== 'due-soon') return false;
+                    if (taskDueDateFilter === 'has-date' && !task.dueDate) return false;
+                    if (taskDueDateFilter === 'no-date' && task.dueDate) return false;
+                }
                 return true;
             });
         }
@@ -2742,7 +2758,7 @@
         }
 
         function renderTaskCard(task) {
-            const dueClass = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done' ? 'overdue' : '';
+            const dueClass = getDueDateClass(task);
 
             return `
                 <div class="task-card" data-task-id="${task.id}"
@@ -2783,6 +2799,21 @@
                     </div>
                 </div>
             `;
+        }
+
+        function getDueDateClass(task) {
+            if (!task.dueDate || task.status === 'done') return '';
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const dueDate = new Date(task.dueDate);
+            dueDate.setHours(0, 0, 0, 0);
+
+            const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) return 'overdue';
+            if (diffDays <= 3) return 'due-soon';
+            return '';
         }
 
         function formatTaskDate(dateStr) {
@@ -2839,7 +2870,7 @@
 
             container.innerHTML = sorted.map(task => {
                 const col = columns.find(c => c.id === task.status);
-                const dueClass = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done' ? 'overdue' : '';
+                const dueClass = getDueDateClass(task);
 
                 return `
                     <div class="task-list-item ${task.status === 'done' ? 'completed' : ''}" data-task-id="${task.id}">
@@ -3418,6 +3449,11 @@
 
         document.getElementById('taskPriorityFilter').addEventListener('change', (e) => {
             taskPriorityFilter = e.target.value;
+            renderTasks();
+        });
+
+        document.getElementById('taskDueDateFilter').addEventListener('change', (e) => {
+            taskDueDateFilter = e.target.value;
             renderTasks();
         });
 

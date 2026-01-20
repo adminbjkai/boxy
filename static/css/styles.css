@@ -1515,6 +1515,10 @@ body::before {
     color: var(--danger);
 }
 
+.task-card-due.due-soon {
+    color: #f59e0b; /* Amber/warning color */
+}
+
 .task-card-due svg {
     width: 12px;
     height: 12px;
@@ -1658,6 +1662,16 @@ body::before {
 .task-list-date {
     font-size: 13px;
     color: var(--text-secondary);
+}
+
+.task-list-date.overdue {
+    color: var(--danger);
+    font-weight: 500;
+}
+
+.task-list-date.due-soon {
+    color: #f59e0b;
+    font-weight: 500;
 }
 
 .task-list-actions {
