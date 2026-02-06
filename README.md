@@ -15,9 +15,11 @@ Boxy is a lightweight file sharing UI with real-time updates, drag-and-drop uplo
 - Keyboard navigation (arrows, space, enter, backspace, escape)
 - Preserved original file modification dates on upload
 - Tasks/Kanban boards for project management
+- Dashboard with customizable tiles
+- Credentials vault (server-synced JSON; not secure for sensitive secrets)
 
-### Tasks Feature Persistence
-Tasks and boards are stored in **browser localStorage only** (no server persistence). Clearing browser data or switching browsers will reset all tasks.
+### App Data Persistence
+Tasks/boards, dashboard tiles, and credentials are stored server-side in `BOX_DATA_DIR` (default `./data`) and synced to connected clients via WebSocket `data_sync`. LocalStorage is used only for UI preferences (theme, view mode, last tab) and one-time migration from older local-only data.
 
 ### Claude Code Skills
 Repo includes Claude Code skills under `.claude/skills/` for development guidance.
@@ -28,15 +30,16 @@ Boxy uses a simple three-layer architecture:
 
 | Layer | Technology | Responsibility |
 |-------|------------|----------------|
-| **Client** | Vanilla HTML/JS | UI, local state (tasks in localStorage) |
+| **Client** | Vanilla HTML/JS | UI, local prefs (localStorage) + app data sync |
 | **Server** | Rust/Actix | REST API, WebSocket broadcast, path sanitization |
 | **Storage** | Local filesystem | `./uploads` directory (volume-mountable) |
+| **App Data** | JSON files | `./data` directory (boards, tiles, credentials) |
 
 ![Boxy architecture](docs/assets/images/boxy-system-architecture-20260118.png)
 
 ### WebSocket Real-time Model
 
-All file mutations (upload, rename, move, delete, edit) trigger a broadcast to connected clients:
+All file mutations (upload, rename, move, delete, edit) trigger a broadcast to connected clients, and app data updates (boards/tiles/credentials) broadcast `data_sync`:
 
 ```
 Client A: POST /api/rename → Server → broadcast_update("rename", path)
@@ -69,6 +72,7 @@ See `docs/ARCHITECTURE.md` for full details.
 ```bash
 BOX_PORT=8086              # HTTP port (default 8086)
 BOX_UPLOAD_DIR=./uploads   # upload root (default ./uploads)
+BOX_DATA_DIR=./data        # app data root (default ./data)
 BOX_MAX_UPLOAD_BYTES=209715200  # max upload size in bytes (default 200MB)
 cargo run
 ```
@@ -93,6 +97,9 @@ Then open `http://localhost:8086` (or your overridden port).
 | POST | `/api/content` | Save file content `{ path, content }` |
 | POST | `/api/newfile` | Create new file `{ path?, filename }` |
 | GET | `/api/health` | Healthcheck |
+| GET | `/api/data/{type}` | Load app data (boards, tiles, credentials) |
+| POST | `/api/data/{type}` | Save app data (boards, tiles, credentials) |
+| GET | `/static/*` | Static assets (CSS/JS) |
 
 ## Playwright browser tests
 Install dependencies and run the e2e suite:
@@ -108,7 +115,7 @@ If the server is already running, Playwright will reuse it.
 Build and run:
 ```bash
 docker build -t boxy .
-docker run -p 8086:8086 -v $(pwd)/uploads:/app/uploads boxy
+docker run -p 8086:8086 -v $(pwd)/uploads:/app/uploads -v $(pwd)/data:/app/data -e BOX_DATA_DIR=/app/data boxy
 ```
 
 Or with compose:

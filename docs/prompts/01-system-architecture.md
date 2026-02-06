@@ -19,7 +19,7 @@ Create a professional technical architecture diagram titled "Boxy System Archite
   - "Search Bar" (global recursive search)
   - "Folder Navigation"
   - "Rename/Move Modals"
-  - "Tasks/Kanban" with label: "localStorage only"
+  - "Tasks/Kanban" with label: "Server-synced JSON (BOX_DATA_DIR)"
 - Connection out: Arrow labeled "REST API" pointing right
 - Connection out: Bidirectional arrow labeled "WebSocket /ws" pointing right
 

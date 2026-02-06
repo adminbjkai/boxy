@@ -162,7 +162,7 @@ Hover a file and click "Delete" to remove it.
 ---
 
 ## 15) Tasks / Kanban Board
-Switch to Tasks view to see the kanban-style task board (stored in localStorage only).
+Switch to Tasks view to see the kanban-style task board (stored server-side in `BOX_DATA_DIR` and synced via WebSocket `data_sync`).
 
 **Light**
 ![Tasks board light](assets/images/boxy-ui-tasks-board-light-20260118.png)

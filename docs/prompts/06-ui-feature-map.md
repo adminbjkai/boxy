@@ -62,11 +62,11 @@ Create a UI feature map diagram titled "Boxy UI Feature Map" showing all fronten
 7. **Tasks/Kanban Board**
    - Icon: Kanban columns
    - Label: "Project management"
-   - Badge: "localStorage only (no server sync)"
+   - Badge: "Server-synced JSON (BOX_DATA_DIR)"
    - Features:
      - "Create/edit/delete boards"
      - "Drag tasks between columns"
-     - "Browser-local persistence"
+     - "WebSocket data_sync updates"
 
 **Modal Dialogs** (shown as overlays):
 8. **Rename Modal**

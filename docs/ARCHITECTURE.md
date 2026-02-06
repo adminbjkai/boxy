@@ -19,7 +19,7 @@ Boxy is a lightweight file sharing UI built with Rust/Actix, serving a static we
 - **APIs**: REST endpoints for file CRUD; WebSocket `/ws` for broadcast updates
 - **Storage**: local filesystem with server-side filename de-duplication
 - **Limits**: 200MB payload limit, 100 search results cap
-- **Config**: runtime environment variables (`BOX_PORT`, `BOX_UPLOAD_DIR`, `BOX_MAX_UPLOAD_BYTES`)
+- **Config**: runtime environment variables (`BOX_PORT`, `BOX_UPLOAD_DIR`, `BOX_DATA_DIR`, `BOX_MAX_UPLOAD_BYTES`)
 
 ## Diagrams
 
@@ -126,6 +126,7 @@ Reconnection: Fixed 2-second retry interval via `setTimeout(connectWS, 2000)`.
 - Compression middleware and payload limits protect the service
 - App data (boards, tiles, credentials) stored server-side in JSON files for cross-browser sync
 - WebSocket broadcasts `data_sync` events when app data changes, enabling real-time multi-client updates
+- In Docker, persist app data by mounting a volume and setting `BOX_DATA_DIR` (default is `/app/data` inside the container)
 
 ## File Structure
 
