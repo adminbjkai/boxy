@@ -17,8 +17,10 @@ When the user asks for any image / visual / infographic / diagram / UI mock / ar
 
 2) Compose a highly specific g3img prompt:
    - Always include: subject, layout, labels, key components, style cues, and “no copyrighted logos”.
+   - For Nano Banana Pro / Gemini 3 Pro Image, it helps to specify: subject + composition + action + location + style (and any exact on-image text in quotes).
    - If it’s for docs/README: use clear headings, callouts, arrows, and short labels.
    - If it’s for UI: include screen frame, cards, buttons, and simple icons (generic).
+   - For multi-image decks (presentations), repeat a short “style block” in every prompt (background color, typography, accent color, icon style) to keep consistency.
 
 3) Run g3img:
    - Execute: g3img "<final prompt>"
@@ -27,6 +29,7 @@ When the user asks for any image / visual / infographic / diagram / UI mock / ar
 4) Review the generated visual:
    - Open/inspect the file (use any available method) OR at minimum check it exists and size > 0 bytes.
    - If it’s obviously wrong (missing key elements / unreadable labels / wrong style), re-run g3img with a refined prompt (max 2 retries) focusing on the deficiencies.
+   - If text is garbled: reduce the amount of text, increase font size, or switch to fewer/larger callouts.
 
 5) Standardize naming + placement in the repo:
    - Determine the best destination folder:
@@ -56,4 +59,3 @@ Operational rules:
 - Always return: final filepath(s), where you placed it in the repo, and the README/doc snippet if you updated docs.
 
 Now acknowledge these rules and wait for my first image request.
-

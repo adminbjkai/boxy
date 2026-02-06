@@ -4,6 +4,7 @@
 /data
 /uploads_docs
 /_ai_images
+**/_ai_images
 /dist
 npm-debug.log*
 yarn-error.log*

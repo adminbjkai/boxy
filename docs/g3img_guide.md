@@ -39,10 +39,7 @@ Generate a wide 16:9 technical diagram showing
 <browsers → API → storage> flow with labeled arrows,
 flat vector style, minimal colors, and text of each component legibly annotated.
 
-yaml
-Copy code
-
-Reason: Vertex AI image models deeply parse text instructions. Being specific helps them adhere to your intent rather than guessing your meaning. :contentReference[oaicite:1]{index=1}
+Reason: Vertex AI image models deeply parse text instructions. Being specific helps them adhere to your intent rather than guessing your meaning.
 
 ---
 
@@ -60,9 +57,6 @@ Left side: Browser UI components listed with arrows to the Actix Web backend API
 Include clean labels, arrows, and minimal flat color palette,
 no trademarked logos, readable text at >= 14pt equivalent.
 
-markdown
-Copy code
-
 Tip: referencing *composition and hierarchy* (left­→, center, right) helps the model arrange information logically.
 
 ### 🔵 Imagen (e.g., Imagen 4)
@@ -74,9 +68,6 @@ Create a photorealistic poster for Boxy UI mockup:
 center the file list UI with soft lighting, subtle shadow,
 clean modern aesthetic, bold text "Boxy Files" in header,
 warm color palette, 16:9.
-
-yaml
-Copy code
 
 ---
 
@@ -156,24 +147,37 @@ This increases clarity and reduces ambiguity, leading to stronger outputs. :cont
 
 ## 📌 7. Advanced Tips
 
+### Nano Banana Pro / Gemini 3 Pro Image (practical prompt pattern)
+
+For the Gemini 3 Pro image model (often discussed as “Nano Banana Pro”):
+
+- Prefer a **structured prompt**: **subject + composition + action + location + style**.
+- Put any **exact on-image text in quotes** so it renders precisely.
+- When requesting **infographics/diagrams**, keep copy short and ask for “large, legible typography”.
+- For **consistency across a deck**, repeat a small “style block” in every prompt:
+  - Background color / gradient
+  - Accent color
+  - Typography (headline vs body)
+  - Icon style (flat vector, rounded, minimal)
+
 ### Meta-Prompting
 Ask an LLM to *generate or refine* your prompt before sending it to `g3img`.  
 E.g., “Produce a concise CLI prompt for a wide diagram of X that includes elements A, B, C.”  
-This leverages the model’s understanding to generate a superior prompt itself. :contentReference[oaicite:3]{index=3}
+This leverages the model’s understanding to generate a superior prompt itself.
 
 ### Aspect Ratio & Resolution Control (via API)
 When using REST or SDKs, you can explicitly set:
 - `aspect_ratio`: e.g., `"16:9"`  
 - `image_size`: e.g., `"2K"`  
-See Vertex API docs for specifics. :contentReference[oaicite:4]{index=4}
+See Vertex API docs for specifics.
 
 ---
 
 ## 📚 References & Further Reading
 
-- Vertex AI image prompt design docs – explanation of attributes and examples. :contentReference[oaicite:5]{index=5}  
-- Prompt design strategies for Vertex AI (structure, context, roles). :contentReference[oaicite:6]{index=6}  
-- Vertex AI Gemini prompt engineering booklet. :contentReference[oaicite:7]{index=7}
+- Vertex AI image prompt design docs – explanation of attributes and examples.  
+- Prompt design strategies for Vertex AI (structure, context, roles).  
+- Vertex AI Gemini prompt engineering resources.
 
 ---
 

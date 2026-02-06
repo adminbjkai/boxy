@@ -1,0 +1,3 @@
+**Conceptualizing Design Elements**
+
+I'm presently focusing on the initial slide. The directive is to use a "Boxy" design, which I'm interpreting as bold fonts and rounded rectangular containers. I'm considering how best to arrange the title and three panels, aiming for a clean and visually accessible layout.

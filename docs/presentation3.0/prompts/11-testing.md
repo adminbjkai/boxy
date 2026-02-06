@@ -1,0 +1,1 @@
+Create a 16:9 presentation slide titled "Testing & Quality" in the same Boxy slide style. Show a Playwright test icon and a checklist: navigation tabs, uploads (progress + errors), inline rename, bulk actions, tasks empty CTA, credentials warning, WebSocket live indicator. Add a small card: "E2E: npm run test:e2e". Keep it neat and high legibility.

@@ -71,6 +71,7 @@ See `docs/ARCHITECTURE.md` for full details.
 - Architecture details: `docs/ARCHITECTURE.md`
 - UI walkthrough with screenshots: `docs/UI_WALKTHROUGH.md`
 - Implementation guide for AI/dev updates: `docs/IMPLEMENTATION_GUIDE.md`
+- Slides/decks: `docs/presentation3.0/`
 
 ## Run locally
 ```bash
