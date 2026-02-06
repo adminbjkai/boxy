@@ -24,32 +24,32 @@ Boxy is a lightweight file sharing UI built with Rust/Actix, serving a static we
 ## Diagrams
 
 ### System Architecture
-![Boxy system architecture](assets/images/boxy-system-architecture-20260118.png)
+![Boxy system architecture](assets/images/boxy-system-architecture-20260205.png)
 
 Three-layer architecture: Browser (vanilla HTML/JS) ↔ Actix Server (Rust) ↔ Filesystem (./uploads). All layers enclosed in optional Docker container with port 8086 exposed and uploads volume mounted.
 
 ### File Upload & Real-Time Update Flow
-![Boxy file upload flow](assets/images/boxy-file-upload-flow-20260118.png)
+![Boxy file upload flow](assets/images/boxy-file-upload-flow-20260205.png)
 
 1. User drags file → 2. Browser packages multipart FormData → 3. POST /api/upload → 4. Server validates path & size → 5. Write to filesystem → 6. broadcast_update() → 7. All clients refresh grid.
 
 ### Request Lifecycle (Rename Example)
-![Boxy request lifecycle](assets/images/boxy-request-lifecycle-20260118.png)
+![Boxy request lifecycle](assets/images/boxy-request-lifecycle-20260205.png)
 
 Sequence: Browser → Actix Router → Handler → Path Sanitizer (`resolve_path_safe`) → Filesystem (`tokio::fs::rename`) → WebSocket Broadcaster → All clients receive event.
 
 ### WebSocket Model
-![Boxy WebSocket model](assets/images/boxy-websocket-model-20260118.png)
+![Boxy WebSocket model](assets/images/boxy-websocket-model-20260205.png)
 
 Hub-and-spoke fan-out topology. Fixed 2-second reconnect interval (NOT exponential backoff). Events: upload, rename, move, delete, edit.
 
 ### Security Model
-![Boxy security model](assets/images/boxy-security-model-20260118.png)
+![Boxy security model](assets/images/boxy-security-model-20260205.png)
 
 Defense-in-depth: Layer 1 (Path Sanitization) → Layer 2 (Resource Limits) → Layer 3 (Output Encoding). Blocks path traversal, symlink escapes, DoS, and XSS.
 
 ### Deployment View
-![Boxy deployment view](assets/images/boxy-deployment-view-20260118.png)
+![Boxy deployment view](assets/images/boxy-deployment-view-20260205.png)
 
 Docker container exposing port 8086, volume mount for persistent uploads, configurable via environment variables.
 

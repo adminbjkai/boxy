@@ -38,7 +38,7 @@ Boxy uses a simple three-layer architecture:
 | **Storage** | Local filesystem | `./uploads` directory (volume-mountable) |
 | **App Data** | JSON files | `./data` directory (boards, tiles, credentials) |
 
-![Boxy architecture](docs/assets/images/boxy-system-architecture-20260118.png)
+![Boxy architecture](docs/assets/images/boxy-system-architecture-20260205.png)
 
 ### WebSocket Real-time Model
 
@@ -54,7 +54,7 @@ Client B, C, D: receive { action: "rename", path: "..." } → refresh grid
 
 Reconnection uses a fixed 2-second retry interval via `connectWS()`.
 
-![Boxy file upload flow](docs/assets/images/boxy-file-upload-flow-20260118.png)
+![Boxy file upload flow](docs/assets/images/boxy-file-upload-flow-20260205.png)
 
 ### Security Invariants
 
@@ -141,4 +141,4 @@ Architecture diagrams are generated using AI image tools (g3img, DALL-E, etc.) w
 | UI Feature Map | `06-ui-feature-map.md` | Frontend capabilities overview |
 | Deployment View | `07-deployment-view.md` | Containerized deployment architecture |
 
-Generated images are saved to `docs/assets/images/` with date suffixes (e.g., `boxy-system-architecture-20260118.png`).
+Generated images are saved to `docs/assets/images/` with date suffixes (e.g., `boxy-system-architecture-20260205.png`).

@@ -31,6 +31,7 @@ Create a technical diagram titled "Boxy WebSocket Real-Time Model" showing the f
   - `{ action: "move", path: "...", dest: "..." }`
   - `{ action: "delete", path: "..." }`
   - `{ action: "edit", path: "..." }`
+  - `{ action: "data_sync", path: "boards|tiles|credentials" }`
 
 ### Fan-Out Visualization
 - Show a single mutation (e.g., "Client A uploads file")
@@ -53,6 +54,7 @@ Create a technical diagram titled "Boxy WebSocket Real-Time Model" showing the f
   - Client A: "Rename file.txt → document.txt"
   - Server: "broadcast_update('rename', ...)"
   - Clients B, C, D: "Grid refreshes automatically"
+  - Second example: "Client A updates Tasks board" → "data_sync" → "Clients update boards"
 
 **Visual Style**:
 - Hub-and-spoke layout with central emphasis

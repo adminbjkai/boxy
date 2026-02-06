@@ -1,0 +1,3 @@
+**Defining the Architecture**
+
+I'm presently focused on structuring the diagram. The "Boxy WebSocket Real-Time Model" title is set. A hub-and-spoke arrangement, with a timeline anchoring the bottom, is the planned visual framework.

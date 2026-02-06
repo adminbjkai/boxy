@@ -23,7 +23,6 @@ Create a deployment architecture diagram titled "Boxy Deployment View" showing t
 - Port indicator: "8086"
 
 ### Docker Container (Center, large rounded rectangle)
-- Docker whale logo in corner
 - Label: "Docker Container"
 - Dashed border indicating container boundary
 
@@ -37,10 +36,13 @@ Create a deployment architecture diagram titled "Boxy Deployment View" showing t
 2. **Environment Variables** (small config box)
    - `BOX_PORT=8086`
    - `BOX_UPLOAD_DIR=./uploads`
+   - `BOX_DATA_DIR=./data`
    - `BOX_MAX_UPLOAD_BYTES=209715200`
 
 3. **Internal Volume Mount Point**
    - Folder icon: "/app/uploads"
+   - Arrow to external storage
+   - Second folder icon: "/app/data"
    - Arrow to external storage
 
 ### Host System / Volume (Right)
@@ -48,6 +50,9 @@ Create a deployment architecture diagram titled "Boxy Deployment View" showing t
 - Folder icon: "./uploads" or "/data/boxy/uploads"
 - Label: "Persistent Volume"
 - Volume mount indicator: "-v $(pwd)/uploads:/app/uploads"
+- Second folder icon: "./data"
+- Label: "Persistent App Data"
+- Volume mount indicator: "-v $(pwd)/data:/app/data"
 
 ### Deployment Commands (bottom section)
 Show command blocks:
@@ -55,7 +60,7 @@ Show command blocks:
 **Docker Build & Run**:
 ```
 docker build -t boxy .
-docker run -p 8086:8086 -v $(pwd)/uploads:/app/uploads boxy
+docker run -p 8086:8086 -v $(pwd)/uploads:/app/uploads -v $(pwd)/data:/app/data -e BOX_DATA_DIR=/app/data boxy
 ```
 
 **Docker Compose**:
@@ -91,6 +96,7 @@ BOX_PORT=8086 cargo run
 
 **Key Callouts**:
 - "Volume mount persists data across container restarts"
+- "Mount data volume to persist boards/tiles/credentials"
 - "Single binary, no external dependencies"
 - "Configurable via environment variables"
 

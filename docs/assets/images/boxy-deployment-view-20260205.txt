@@ -1,0 +1,3 @@
+**Analyzing Boxy's Architecture**
+
+I'm currently focused on the diagram's flow, ensuring it accurately represents user interaction with the "Boxy" application. The left-to-right progression, from users through various layers to the host filesystem, is a key consideration. I'm exploring how to best visualize container orchestration within this framework.

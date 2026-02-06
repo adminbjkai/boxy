@@ -21,6 +21,7 @@ Create a technical flow diagram titled "Boxy File Upload & Real-Time Update Flow
 - Box: "FormData Construction"
 - Shows: File being packaged into multipart/form-data
 - Label: "Preserves original modification dates"
+- Sub-label: "Sends optional mtimes metadata field"
 
 ### Step 3: HTTP Request
 - Arrow: "POST /api/upload?path=..."
@@ -35,9 +36,9 @@ Create a technical flow diagram titled "Boxy File Upload & Real-Time Update Flow
 - Step 4c: "De-duplicate filename" → "name_1, name_2, ..."
 
 ### Step 5: Filesystem Write
-- Arrow: "tokio::fs::write"
+- Arrow: "Stream write (chunked)"
 - Box: "./uploads/[path]/[filename]"
-- Label: "Async streaming write"
+- Label: "Async write; preserve mtime when provided"
 
 ### Step 6: Broadcast Trigger
 - Box: "broadcast_update('upload', path)"
@@ -48,6 +49,7 @@ Create a technical flow diagram titled "Boxy File Upload & Real-Time Update Flow
 - Multiple browser icons receiving event
 - Box: "{ action: 'upload', path: '...' }"
 - Label: "All browsers refresh file grid simultaneously"
+- Small UI inset: "Upload UI shows progress + per-file status/errors"
 
 **Error Paths** (shown as red dashed branches):
 - From Step 4a: "403 Forbidden" → "Path escapes base directory"

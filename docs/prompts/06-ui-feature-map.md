@@ -33,16 +33,21 @@ Create a UI feature map diagram titled "Boxy UI Feature Map" showing all fronten
    - Label: "File type filter"
    - Options: "All, Images, Documents, Code, Audio/Video"
 
+4. **Sticky Toolbar**
+   - Label: "Toolbar stays visible while scrolling"
+
 **Main Content Region**:
-4. **File Grid / List**
+5. **File Grid / List**
    - Icon: Grid of file icons
    - Features listed:
      - "Image thumbnails with lazy loading"
      - "Sortable columns (Name, Type, Size, Date)"
      - "Multi-select (Ctrl/Cmd+click, Shift+click)"
      - "Keyboard navigation (arrows, space, enter)"
+     - "Inline rename in list view"
+     - "Bulk actions panel when selecting multiple items"
 
-5. **Upload Zone**
+6. **Upload Zone**
    - Icon: Cloud with up arrow
    - Label: "Drag & drop zone"
    - Features:
@@ -50,8 +55,9 @@ Create a UI feature map diagram titled "Boxy UI Feature Map" showing all fronten
      - "Clipboard paste"
      - "Click to browse"
      - "Folder upload support"
+     - "Upload progress + per-file status/errors"
 
-6. **Folder Navigation**
+7. **Folder Navigation**
    - Icon: Folder tree
    - Label: "Breadcrumb navigation"
    - Features:
@@ -59,7 +65,7 @@ Create a UI feature map diagram titled "Boxy UI Feature Map" showing all fronten
      - "Backspace to go up"
 
 **Sidebar Region** (or secondary area):
-7. **Tasks/Kanban Board**
+8. **Tasks/Kanban Board**
    - Icon: Kanban columns
    - Label: "Project management"
    - Badge: "Server-synced JSON (BOX_DATA_DIR)"
@@ -67,17 +73,18 @@ Create a UI feature map diagram titled "Boxy UI Feature Map" showing all fronten
      - "Create/edit/delete boards"
      - "Drag tasks between columns"
      - "WebSocket data_sync updates"
+     - "Empty-state guidance for first task"
 
 **Modal Dialogs** (shown as overlays):
-8. **Rename Modal**
+9. **Rename Modal**
    - Input field with filename
    - Rename button
 
-9. **Move Modal**
+10. **Move Modal**
    - Folder tree selector
    - Move button
 
-10. **New Folder Modal**
+11. **New Folder Modal**
     - Input field for folder name
     - Create button
 
