@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/static/favicon.ico">
     <link rel="stylesheet" href="/static/css/styles.css">
     <style>
         /* Any page-specific inline overrides can go here */
@@ -69,6 +70,7 @@
     <main class="main">
         <!-- Files View -->
         <div class="view-container active" id="filesView">
+        <div class="files-sticky">
         <div class="toolbar">
             <div class="toolbar-search">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -124,17 +126,17 @@
                 </button>
             </div>
         </div>
+        <div class="nav-bar">
+            <nav class="breadcrumb" id="breadcrumb"></nav>
+            <div class="nav-meta" id="navMeta"></div>
+        </div>
+        </div>
 
         <div class="drop-zone" id="dropZone">
             <svg class="drop-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
             </svg>
             <p>Drop files here, click Upload, or paste from clipboard</p>
-        </div>
-
-        <div class="nav-bar">
-            <nav class="breadcrumb" id="breadcrumb"></nav>
-            <div class="nav-meta" id="navMeta"></div>
         </div>
         <div class="file-grid" id="fileGrid"></div>
         <div class="empty-state" id="emptyState" style="display:none">
@@ -298,7 +300,7 @@
                         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                         <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                     </svg>
-                    <span><strong>Warning:</strong> Credentials are stored in localStorage only. This is NOT secure storage for sensitive data. Use a proper password manager for important credentials.</span>
+                    <span><strong>Warning:</strong> Credentials are stored server-side in JSON (BOX_DATA_DIR) and synced across clients. This is NOT secure storage for sensitive data—use a password manager for important credentials.</span>
                 </div>
                 <div class="credentials-list" id="credentialsList"></div>
             </div>
@@ -613,14 +615,23 @@
     <div class="toast" id="toast"></div>
 
     <!-- Selection Action Bar -->
-    <div class="selection-bar" id="selectionBar">
-        <span class="selection-count" id="selectionCount">0 selected</span>
+    <div class="selection-bar is-hidden" id="selectionBar">
+        <div class="selection-summary">
+            <span class="selection-count" id="selectionCount">0 selected</span>
+            <span class="selection-label">Bulk actions</span>
+        </div>
         <div class="selection-actions">
             <button class="selection-btn" onclick="showBulkMoveModal()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M5 12h14M12 5l7 7-7 7"/>
                 </svg>
                 Move
+            </button>
+            <button class="selection-btn" onclick="downloadSelected()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                </svg>
+                Download
             </button>
             <button class="selection-btn danger" onclick="bulkDelete()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -637,10 +648,19 @@
     </div>
 
     <div class="upload-progress" id="uploadProgress">
-        <h4>Uploading...</h4>
+        <div class="upload-progress-header">
+            <h4 id="uploadProgressTitle">Uploading...</h4>
+            <button class="upload-progress-close" id="uploadProgressClose" onclick="dismissUploadProgress()" title="Dismiss">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
         <div class="progress-bar">
             <div class="progress-bar-fill" id="progressFill"></div>
         </div>
+        <div class="upload-progress-meta" id="uploadProgressMeta"></div>
+        <div class="upload-progress-list" id="uploadProgressList"></div>
     </div>
 
     <!-- Global Search -->
@@ -677,6 +697,9 @@
         let selectedFiles = new Set();
         let lastSelectedIndex = -1;
         let focusedIndex = -1;
+        let inlineRenamePath = null;
+        let inlineRenameOriginal = '';
+        let uploadQueue = Promise.resolve();
 
         // Theme
         function toggleTheme() {
@@ -897,6 +920,11 @@
             const empty = document.getElementById('emptyState');
             const meta = document.getElementById('navMeta');
 
+            if (viewMode !== 'list' && inlineRenamePath) {
+                inlineRenamePath = null;
+                inlineRenameOriginal = '';
+            }
+
             const visible = applyFilters(files);
             meta.textContent = `${visible.length} item${visible.length === 1 ? '' : 's'}`;
 
@@ -927,6 +955,7 @@
 
             const tableFooter = viewMode === 'list' ? '</div>' : '';
 
+            let foundInlineRename = false;
             const rows = visible.map((f, index) => {
                 const fullPath = currentPath ? currentPath + '/' + f.name : f.name;
                 const escapedPath = escapeAttr(fullPath);
@@ -934,9 +963,16 @@
                 const dateStr = f.modified ? formatDate(f.modified) : '';
                 const hasThumb = !f.is_dir && isImageFile(f.name);
                 const fileType = getFileType(f.name, f.is_dir);
+                const isEditing = viewMode === 'list' && inlineRenamePath === fullPath;
+                if (isEditing) {
+                    foundInlineRename = true;
+                }
 
                 const typeColumn = viewMode === 'list' ? `<div class="file-type">${fileType}</div>` : '';
                 const dateColumn = viewMode === 'list' ? `<div class="file-date">${dateStr}</div>` : '';
+                const nameContent = isEditing
+                    ? `<input class="inline-rename-input" value="${escapedName}" onblur="commitInlineRename('${escapedPath}')" onkeydown="handleInlineRenameKey(event, '${escapedPath}')" onclick="event.stopPropagation()">`
+                    : `<span class="file-name-text">${escapeHtml(f.name)}</span>`;
 
                 return `
                 <div class="file-item"
@@ -952,7 +988,7 @@
                      ondrop="handleDrop(event)">
                     <div class="file-item-content" onclick="handleItemClick(event, '${escapedPath}', ${f.is_dir})" ondblclick="handleItemDblClick(event, '${escapedPath}', ${f.is_dir})">
                         <div class="file-icon${hasThumb ? ' has-thumb' : ''}">${getFileIconHtml(f.name, f.is_dir, fullPath)}</div>
-                        <div class="file-name">${escapeHtml(f.name)}</div>
+                        <div class="file-name">${nameContent}</div>
                         ${typeColumn}
                         <div class="file-meta">${f.is_dir ? '—' : formatSize(f.size)}</div>
                         ${dateColumn}
@@ -984,7 +1020,7 @@
                                 <path d="M5 12h14M12 5l7 7-7 7"/>
                             </svg>
                         </button>
-                        <button class="file-action-btn" onclick="event.stopPropagation(); showRenameModal('${escapedPath}', '${escapedName}')" title="Rename">
+                        <button class="file-action-btn" onclick="event.stopPropagation(); triggerRename('${escapedPath}', '${escapedName}')" title="Rename">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -1000,6 +1036,11 @@
             `}).join('');
 
             grid.innerHTML = tableHeader + rows + tableFooter;
+
+            if (inlineRenamePath && !foundInlineRename) {
+                inlineRenamePath = null;
+                inlineRenameOriginal = '';
+            }
 
             // Maintain visual selection state after re-render
             updateSelectionUI();
@@ -1124,11 +1165,14 @@
             const bar = document.getElementById('selectionBar');
             const countEl = document.getElementById('selectionCount');
 
+            countEl.textContent = `${count} file${count === 1 ? '' : 's'} selected`;
+
             if (count > 0) {
                 bar.classList.add('show');
-                countEl.textContent = `${count} file${count === 1 ? '' : 's'} selected`;
+                bar.classList.remove('is-hidden');
             } else {
                 bar.classList.remove('show');
+                bar.classList.add('is-hidden');
             }
 
             // Update visual selection state on items
@@ -1409,52 +1453,215 @@
             return files;
         }
 
-        async function uploadFiles(files, relativePaths = null) {
+        function uploadFiles(files) {
             if (files.length === 0) return;
+            uploadQueue = uploadQueue
+                .then(() => runUpload(files))
+                .catch(() => {});
+        }
 
+        function dismissUploadProgress() {
             const progress = document.getElementById('uploadProgress');
             const fill = document.getElementById('progressFill');
+            const list = document.getElementById('uploadProgressList');
+            const meta = document.getElementById('uploadProgressMeta');
+            const closeBtn = document.getElementById('uploadProgressClose');
+            progress.classList.remove('show', 'show-close');
+            fill.style.width = '0%';
+            list.innerHTML = '';
+            meta.textContent = '';
+            closeBtn.setAttribute('aria-hidden', 'true');
+        }
+
+        function initUploadUI(files) {
+            const progress = document.getElementById('uploadProgress');
+            const list = document.getElementById('uploadProgressList');
+            const meta = document.getElementById('uploadProgressMeta');
+            const title = document.getElementById('uploadProgressTitle');
+            const closeBtn = document.getElementById('uploadProgressClose');
+
             progress.classList.add('show');
+            progress.classList.remove('show-close');
+            closeBtn.setAttribute('aria-hidden', 'true');
+            title.textContent = `Uploading ${files.length} file${files.length === 1 ? '' : 's'}...`;
+            meta.textContent = 'Starting...';
 
-            // Collect original modification times using relative paths
-            const mtimes = {};
-            for (const file of files) {
-                const path = file.name; // File.name contains the relative path for folder uploads
-                if (file.lastModified) {
-                    mtimes[path] = file.lastModified;
+            list.innerHTML = files.map(item => `
+                <div class="upload-progress-item" data-upload-id="${item.id}">
+                    <div class="upload-progress-row">
+                        <div class="upload-progress-name">${escapeHtml(item.name)}</div>
+                        <div class="upload-progress-status">Queued</div>
+                    </div>
+                    <div class="upload-progress-bar">
+                        <div class="upload-progress-bar-fill"></div>
+                    </div>
+                    <div class="upload-progress-error"></div>
+                </div>
+            `).join('');
+        }
+
+        function updateUploadItem(item) {
+            const row = document.querySelector(`.upload-progress-item[data-upload-id="${item.id}"]`);
+            if (!row) return;
+            const statusEl = row.querySelector('.upload-progress-status');
+            const fill = row.querySelector('.upload-progress-bar-fill');
+            const errorEl = row.querySelector('.upload-progress-error');
+            const pct = item.total > 0 ? Math.min(100, Math.round((item.loaded / item.total) * 100)) : 0;
+
+            row.classList.toggle('error', item.status === 'error');
+
+            if (item.status === 'done') {
+                statusEl.textContent = 'Done';
+                fill.style.width = '100%';
+            } else if (item.status === 'error') {
+                statusEl.textContent = 'Failed';
+                fill.style.width = '100%';
+                errorEl.textContent = item.error || 'Upload failed';
+            } else if (item.status === 'uploading') {
+                statusEl.textContent = `Uploading ${pct}%`;
+                fill.style.width = `${pct}%`;
+            } else {
+                statusEl.textContent = 'Queued';
+            }
+        }
+
+        function updateOverallUploadProgress(state) {
+            const fill = document.getElementById('progressFill');
+            const meta = document.getElementById('uploadProgressMeta');
+
+            const totalBytes = state.totalBytes || 1;
+            const loadedBytes = state.files.reduce((sum, item) => {
+                if (item.status === 'done' || item.status === 'error') {
+                    return sum + item.size;
                 }
-            }
+                return sum + Math.min(item.loaded || 0, item.size);
+            }, 0);
 
-            const formData = new FormData();
-            // Send mtimes first so backend can read it before processing files
-            formData.append('mtimes', new Blob([JSON.stringify(mtimes)], { type: 'application/json' }));
-            for (const file of files) {
-                formData.append('files', file, file.name);
-            }
+            const percent = Math.min(100, Math.round((loadedBytes / totalBytes) * 100));
+            const completed = state.files.filter(item => item.status === 'done').length;
 
+            fill.style.width = `${percent}%`;
+            meta.textContent = `${percent}% · ${completed}/${state.files.length} uploaded`;
+        }
+
+        function getUploadErrorText(xhr) {
+            const raw = xhr.responseText || '';
+            try {
+                const parsed = JSON.parse(raw);
+                if (parsed && parsed.error) {
+                    return parsed.error;
+                }
+            } catch (err) {}
+            if (raw) {
+                return raw;
+            }
+            return `Upload failed (${xhr.status})`;
+        }
+
+        function uploadSingleFile(fileItem, state, url) {
+            return new Promise((resolve) => {
+                const xhr = new XMLHttpRequest();
+
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        fileItem.total = e.total || fileItem.size;
+                        fileItem.loaded = e.loaded;
+                        updateUploadItem(fileItem);
+                        updateOverallUploadProgress(state);
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status === 200) {
+                        fileItem.status = 'done';
+                    } else {
+                        fileItem.status = 'error';
+                        fileItem.error = getUploadErrorText(xhr);
+                    }
+                    fileItem.loaded = fileItem.total || fileItem.size;
+                    updateUploadItem(fileItem);
+                    updateOverallUploadProgress(state);
+                    resolve();
+                };
+
+                xhr.onerror = () => {
+                    fileItem.status = 'error';
+                    fileItem.error = 'Upload failed';
+                    fileItem.loaded = fileItem.total || fileItem.size;
+                    updateUploadItem(fileItem);
+                    updateOverallUploadProgress(state);
+                    resolve();
+                };
+
+                const mtimes = {};
+                if (fileItem.file.lastModified) {
+                    mtimes[fileItem.file.name] = fileItem.file.lastModified;
+                }
+                const formData = new FormData();
+                formData.append('mtimes', new Blob([JSON.stringify(mtimes)], { type: 'application/json' }));
+                formData.append('files', fileItem.file, fileItem.file.name);
+
+                xhr.open('POST', url);
+                xhr.send(formData);
+            });
+        }
+
+        async function runUpload(files) {
             const url = currentPath ? `/api/upload?path=${encodeURIComponent(currentPath)}` : '/api/upload';
+            const items = files.map((file, index) => ({
+                id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
+                file,
+                name: file.name,
+                size: file.size || 0,
+                loaded: 0,
+                total: file.size || 0,
+                status: 'queued',
+                error: ''
+            }));
 
-            const xhr = new XMLHttpRequest();
-            xhr.upload.onprogress = (e) => {
-                if (e.lengthComputable) {
-                    fill.style.width = (e.loaded / e.total * 100) + '%';
-                }
+            const state = {
+                files: items,
+                totalBytes: items.reduce((sum, item) => sum + (item.size || 0), 0)
             };
-            xhr.onload = () => {
-                progress.classList.remove('show');
-                fill.style.width = '0%';
-                if (xhr.status === 200) {
-                    loadFiles();
-                    const count = files.length;
-                    showToast(`Uploaded ${count} file${count === 1 ? '' : 's'}`);
-                }
-            };
-            xhr.onerror = () => {
-                progress.classList.remove('show');
-                showToast('Upload failed');
-            };
-            xhr.open('POST', url);
-            xhr.send(formData);
+
+            initUploadUI(items);
+            updateOverallUploadProgress(state);
+
+            for (const item of items) {
+                item.status = 'uploading';
+                updateUploadItem(item);
+                updateOverallUploadProgress(state);
+                await uploadSingleFile(item, state, url);
+            }
+
+            const successCount = items.filter(item => item.status === 'done').length;
+            const errorCount = items.filter(item => item.status === 'error').length;
+            const title = document.getElementById('uploadProgressTitle');
+            const progress = document.getElementById('uploadProgress');
+            const closeBtn = document.getElementById('uploadProgressClose');
+
+            if (successCount > 0) {
+                loadFiles();
+            }
+
+            if (errorCount > 0) {
+                title.textContent = `Upload finished with ${errorCount} error${errorCount === 1 ? '' : 's'}`;
+                progress.classList.add('show-close');
+                closeBtn.setAttribute('aria-hidden', 'false');
+            } else {
+                title.textContent = 'Upload complete';
+                progress.classList.add('show-close');
+                closeBtn.setAttribute('aria-hidden', 'false');
+                setTimeout(() => dismissUploadProgress(), 2000);
+            }
+
+            if (successCount > 0 && errorCount > 0) {
+                showToast(`Uploaded ${successCount} file${successCount === 1 ? '' : 's'}, ${errorCount} failed`);
+            } else if (successCount > 0) {
+                showToast(`Uploaded ${successCount} file${successCount === 1 ? '' : 's'}`);
+            } else {
+                showToast(`Upload failed (${errorCount} file${errorCount === 1 ? '' : 's'})`);
+            }
         }
 
         function downloadFile(path) {
@@ -1499,6 +1706,43 @@
             clearSelection();
             loadFiles();
             showToast(`Deleted ${count} item${count === 1 ? '' : 's'}`);
+        }
+
+        function getFileEntryByPath(path) {
+            const prefix = currentPath ? currentPath + '/' : '';
+            return allFiles.find(f => (prefix + f.name) === path);
+        }
+
+        function downloadSelected() {
+            const selected = Array.from(selectedFiles);
+            if (selected.length === 0) return;
+
+            let downloaded = 0;
+            let skipped = 0;
+
+            selected.forEach(path => {
+                const entry = getFileEntryByPath(path);
+                if (entry && entry.is_dir) {
+                    skipped += 1;
+                    return;
+                }
+
+                const link = document.createElement('a');
+                link.href = `/api/download?path=${encodeURIComponent(path)}&download=1`;
+                link.rel = 'noopener';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                downloaded += 1;
+            });
+
+            if (downloaded === 0) {
+                showToast('No downloadable files selected');
+            } else if (skipped > 0) {
+                showToast(`Started ${downloaded} download${downloaded === 1 ? '' : 's'}, skipped ${skipped} folder${skipped === 1 ? '' : 's'}`);
+            } else {
+                showToast(`Started ${downloaded} download${downloaded === 1 ? '' : 's'}`);
+            }
         }
 
         function showBulkMoveModal() {
@@ -1609,6 +1853,14 @@
         }
 
         // Rename Modal
+        function triggerRename(path, currentName) {
+            if (viewMode === 'list') {
+                startInlineRename(path, currentName);
+            } else {
+                showRenameModal(path, currentName);
+            }
+        }
+
         function showRenameModal(path, currentName) {
             document.getElementById('renameModal').classList.add('active');
             document.getElementById('renamePath').value = path;
@@ -1624,11 +1876,65 @@
             document.getElementById('renameModal').classList.remove('active');
         }
 
-        async function renameItem() {
-            const path = document.getElementById('renamePath').value;
-            const newName = document.getElementById('renameName').value.trim();
-            if (!newName) return;
+        function startInlineRename(path, currentName) {
+            inlineRenamePath = path;
+            inlineRenameOriginal = currentName;
+            renderFiles(allFiles);
+            setTimeout(() => {
+                const input = document.querySelector('.inline-rename-input');
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }, 0);
+        }
 
+        function cancelInlineRename() {
+            if (!inlineRenamePath) return;
+            inlineRenamePath = null;
+            inlineRenameOriginal = '';
+            renderFiles(allFiles);
+        }
+
+        function handleInlineRenameKey(e, path) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                commitInlineRename(path);
+            }
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelInlineRename();
+            }
+        }
+
+        async function commitInlineRename(path) {
+            if (inlineRenamePath !== path) return;
+            const input = document.querySelector('.inline-rename-input');
+            if (!input) return;
+            const newName = input.value.trim();
+            if (!newName) {
+                showToast('Name cannot be empty');
+                return;
+            }
+            if (newName === inlineRenameOriginal) {
+                cancelInlineRename();
+                return;
+            }
+            inlineRenamePath = null;
+            inlineRenameOriginal = '';
+            const success = await renamePath(path, newName);
+            if (!success) {
+                renderFiles(allFiles);
+            }
+        }
+
+        function getRenamedPath(path, newName) {
+            const parts = path.split('/');
+            parts[parts.length - 1] = newName;
+            return parts.join('/');
+        }
+
+        async function renamePath(path, newName) {
             const res = await fetch('/api/rename', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1636,10 +1942,26 @@
             });
 
             if (res.ok) {
-                closeRenameModal();
+                const newPath = getRenamedPath(path, newName);
+                if (selectedFiles.has(path)) {
+                    selectedFiles.delete(path);
+                    selectedFiles.add(newPath);
+                }
                 loadFiles();
-            } else {
-                showToast('Rename failed');
+                return true;
+            }
+
+            showToast('Rename failed');
+            return false;
+        }
+
+        async function renameItem() {
+            const path = document.getElementById('renamePath').value;
+            const newName = document.getElementById('renameName').value.trim();
+            if (!newName) return;
+            const success = await renamePath(path, newName);
+            if (success) {
+                closeRenameModal();
             }
         }
 
@@ -2724,8 +3046,8 @@
                         </div>
                         <div class="kanban-column-content">
                             ${colTasks.length === 0 ? `
-                                <div class="tasks-empty" style="padding: 24px 12px;">
-                                    <p style="font-size: 13px; margin: 0;">No tasks</p>
+                                <div class="tasks-empty tasks-empty-inline">
+                                    <p>No tasks yet — click New Task</p>
                                 </div>
                             ` : colTasks.map(task => renderTaskCard(task)).join('')}
                         </div>
@@ -2854,7 +3176,7 @@
                             <path d="M9 11l3 3L22 4"/>
                             <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
                         </svg>
-                        <h3>No tasks yet</h3>
+                        <h3>No tasks yet — click New Task</h3>
                         <p>Create your first task to get started</p>
                         <button class="btn btn-primary" onclick="showTaskModal()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

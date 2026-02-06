@@ -15,7 +15,7 @@ Boxy is a lightweight file sharing UI built with Rust/Actix, serving a static we
 
 ### Key Characteristics
 
-- **Web UI**: drag-drop uploads, file grid with search/sort, move/rename/delete, downloads, theme toggle
+- **Web UI**: drag-drop uploads with progress + per-file errors, file grid/list with search/sort, inline rename in list view, bulk actions (move/delete/download), theme toggle
 - **APIs**: REST endpoints for file CRUD; WebSocket `/ws` for broadcast updates
 - **Storage**: local filesystem with server-side filename de-duplication
 - **Limits**: 200MB payload limit, 100 search results cap

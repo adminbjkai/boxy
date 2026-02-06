@@ -135,6 +135,19 @@ body::before {
     padding: 24px;
 }
 
+.files-sticky {
+    position: sticky;
+    top: 57px;
+    z-index: 45;
+    background: var(--bg);
+    margin: 0 -24px 16px;
+    padding: 16px 24px 0;
+}
+
+.files-sticky .toolbar {
+    margin-bottom: 12px;
+}
+
 /* Toolbar */
 .toolbar {
     display: flex;
@@ -151,12 +164,9 @@ body::before {
     justify-content: space-between;
     gap: 16px;
     padding: 10px 16px;
-    margin: 0 -24px 16px;
+    margin: 0 0 16px;
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 57px;
-    z-index: 40;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     min-height: 44px;
@@ -451,15 +461,15 @@ body::before {
 .file-table-header {
     display: flex;
     align-items: center;
-    padding: 10px 12px;
-    background: var(--bg-tertiary);
+    padding: 12px 16px;
+    background: linear-gradient(180deg, var(--bg-secondary), var(--bg-tertiary));
     border-bottom: 1px solid var(--border);
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--text-secondary);
-    gap: 12px;
+    color: var(--text);
+    gap: 16px;
 }
 
 .file-table-header .col {
@@ -538,10 +548,11 @@ body::before {
 .file-table .file-item {
     display: flex;
     align-items: center;
-    padding: 10px 12px;
+    padding: 12px 16px;
     border-radius: 0;
     text-align: left;
     border-bottom: 1px solid var(--border);
+    border-left: 2px solid transparent;
 }
 
 .file-table .file-item:last-child {
@@ -549,8 +560,14 @@ body::before {
 }
 
 .file-table .file-item:hover {
-    background: var(--bg-tertiary);
+    background: rgba(47, 109, 246, 0.05);
+    border-left-color: rgba(47, 109, 246, 0.35);
     box-shadow: none;
+}
+
+.file-table .file-item.selected {
+    background: rgba(47, 109, 246, 0.1);
+    border-left-color: var(--accent);
 }
 
 .file-table .file-item-content {
@@ -581,6 +598,23 @@ body::before {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.inline-rename-input {
+    display: block;
+    width: 100%;
+    padding: 4px 6px;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.inline-rename-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(47, 109, 246, 0.12);
 }
 
 .file-table .file-type {
@@ -1040,6 +1074,10 @@ body::before {
 
 .view-container.active {
     display: flex;
+}
+
+#filesView {
+    overflow: visible;
 }
 
 /* Tasks View */
@@ -1806,6 +1844,18 @@ body::before {
     margin-bottom: 16px;
 }
 
+.tasks-empty.tasks-empty-inline {
+    padding: 18px 12px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg);
+}
+
+.tasks-empty.tasks-empty-inline p {
+    margin: 0;
+    font-size: 13px;
+}
+
 /* Export/Import Buttons */
 .tasks-menu {
     position: relative;
@@ -1990,23 +2040,40 @@ body::before {
     pointer-events: none;
 }
 
+.selection-bar.is-hidden {
+    display: none;
+}
+
 .selection-bar.show {
     transform: translateX(-50%) translateY(0);
     opacity: 1;
     pointer-events: auto;
 }
 
+.selection-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
 .selection-count {
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--text);
-    padding-right: 16px;
-    border-right: 1px solid var(--border);
+}
+
+.selection-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-secondary);
 }
 
 .selection-actions {
     display: flex;
     gap: 8px;
+    padding-left: 12px;
+    border-left: 1px solid var(--border);
 }
 
 .selection-btn {
@@ -2099,13 +2166,104 @@ body::before {
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: 16px 20px;
-    min-width: 300px;
+    min-width: 320px;
+    max-width: 380px;
     box-shadow: 0 8px 32px var(--shadow-lg);
     display: none;
 }
 
 .upload-progress.show { display: block; }
-.upload-progress h4 { font-size: 14px; margin-bottom: 10px; }
+
+.upload-progress-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.upload-progress h4 {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.upload-progress-close {
+    display: none;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+}
+
+.upload-progress.show-close .upload-progress-close {
+    display: flex;
+}
+
+.upload-progress-close:hover {
+    border-color: var(--text-secondary);
+    color: var(--text);
+}
+
+.upload-progress-close svg {
+    width: 14px;
+    height: 14px;
+}
+
+.upload-progress-meta {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 8px;
+}
+
+.upload-progress-list {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.upload-progress-item {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+}
+
+.upload-progress-item.error {
+    border-color: var(--danger);
+    background: rgba(255, 59, 48, 0.08);
+}
+
+.upload-progress-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.upload-progress-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 210px;
+}
+
+.upload-progress-status {
+    font-size: 11px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
 
 .progress-bar {
     height: 6px;
@@ -2120,6 +2278,32 @@ body::before {
     width: 0%;
     transition: width 0.3s;
     border-radius: 3px;
+}
+
+.upload-progress-bar {
+    height: 4px;
+    background: var(--bg);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 6px;
+}
+
+.upload-progress-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    transition: width 0.2s ease;
+}
+
+.upload-progress-item.error .upload-progress-bar-fill {
+    background: var(--danger);
+}
+
+.upload-progress-error {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--danger);
+    word-break: break-word;
 }
 
 #fileInput { display: none; }
@@ -2137,7 +2321,8 @@ body::before {
     .drop-zone { padding: 20px 16px; }
     .header { padding: 12px 16px; }
     .toolbar-search input { width: 120px; }
-    .nav-bar { margin: 0 -16px 16px; top: 57px; padding: 10px 16px; }
+    .files-sticky { margin: 0 -16px 16px; padding: 12px 16px 0; top: 57px; }
+    .nav-bar { margin: 0 0 16px; padding: 10px 12px; }
     .tab-bar { margin-left: 12px; gap: 2px; flex-wrap: wrap; }
     .tab-btn { padding: 6px 10px; font-size: 13px; }
     .btn { padding: 8px 12px; font-size: 12px; }

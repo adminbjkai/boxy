@@ -1,4 +1,4 @@
-use actix_files::Files;
+use actix_files::{Files, NamedFile};
 use actix_multipart::Multipart;
 use actix_web::{
     middleware::{Compress, Logger},
@@ -769,6 +769,10 @@ async fn serve_index() -> Result<HttpResponse> {
         .body(include_str!("../static/index.html")))
 }
 
+async fn serve_favicon() -> Result<NamedFile> {
+    Ok(NamedFile::open("./static/favicon.ico")?)
+}
+
 async fn healthcheck() -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().json(serde_json::json!({"ok": true})))
 }
@@ -869,6 +873,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .wrap(Compress::default())
             .route("/", web::get().to(serve_index))
+            .route("/favicon.ico", web::get().to(serve_favicon))
             .route("/ws", web::get().to(ws_handler))
             .route("/api/files", web::get().to(list_files))
             .route("/api/upload", web::post().to(upload_file))

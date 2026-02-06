@@ -4,16 +4,19 @@ Boxy is a lightweight file sharing UI with real-time updates, drag-and-drop uplo
 
 ## Features
 - Drag-and-drop, clipboard paste, and folder uploads
+- Upload progress with per-file status and error reporting
 - Folder navigation, move, rename, delete
-- Multi-select with Ctrl/Cmd+click, Shift+click, bulk operations
+- Multi-select with Ctrl/Cmd+click, Shift+click, bulk operations (move/delete/download)
 - Live updates via WebSocket
 - Global search across all files (recursive)
 - File type filtering (All, Images, Documents, Code, Audio/Video)
 - Grid/list view toggle with persistent preference
+- Inline rename in list view
 - Image thumbnails with lazy loading in both views
 - Sortable table columns in list view (Name, Type, Size, Date Modified)
 - Keyboard navigation (arrows, space, enter, backspace, escape)
 - Preserved original file modification dates on upload
+- Sticky files toolbar/breadcrumb during scroll
 - Tasks/Kanban boards for project management
 - Dashboard with customizable tiles
 - Credentials vault (server-synced JSON; not secure for sensitive secrets)
@@ -67,6 +70,7 @@ See `docs/ARCHITECTURE.md` for full details.
 ## Docs
 - Architecture details: `docs/ARCHITECTURE.md`
 - UI walkthrough with screenshots: `docs/UI_WALKTHROUGH.md`
+- Implementation guide for AI/dev updates: `docs/IMPLEMENTATION_GUIDE.md`
 
 ## Run locally
 ```bash
