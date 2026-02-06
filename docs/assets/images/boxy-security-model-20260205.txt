@@ -1,3 +1,0 @@
-**Constructing Security Diagrams**
-
-I'm currently working on structuring a technical security diagram. I've begun with the concentric ring layout for the defense-in-depth model, establishing the outermost ring labeled "Path Sanitization." The next step involves populating these rings with appropriate security elements.

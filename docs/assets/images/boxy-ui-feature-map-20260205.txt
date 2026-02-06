@@ -1,3 +1,0 @@
-**Designing Boxy's Layout**
-
-I'm focused on the "Boxy" web application's layout. Currently, I'm thinking about the initial browser window, and how the header, content area, and sidebar should be arranged. My goal is to build a basic mockup for further refinement.

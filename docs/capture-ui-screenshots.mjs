@@ -14,7 +14,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const IMAGES_DIR = path.join(__dirname, 'assets', 'images');
 const PORT = process.env.BOX_PORT || 8086;
 const BASE_URL = `http://localhost:${PORT}`;
-const STAMP = '20260118';
+const STAMP = '20260206';
 
 // Ensure images directory exists
 if (!fs.existsSync(IMAGES_DIR)) {
@@ -41,10 +41,51 @@ async function closeAllModals(page) {
   await page.waitForTimeout(150);
 }
 
-async function captureScreenshot(page, slug, theme) {
+async function captureScreenshot(page, slug, theme, options = {}) {
   const filepath = imgPath(slug, theme);
-  await page.screenshot({ path: filepath, fullPage: true });
+  const fullPage = options.fullPage !== undefined ? options.fullPage : true;
+  await page.screenshot({ path: filepath, fullPage });
   console.log(`  Captured: ${path.basename(filepath)}`);
+}
+
+async function ensureView(page, mode) {
+  const current = await page.evaluate(() => localStorage.getItem('viewMode') || 'grid');
+  if (current !== mode) {
+    await page.locator('#viewToggle').click();
+    await page.waitForTimeout(200);
+  }
+}
+
+async function openFolder(page, name) {
+  const folder = page.locator('.file-item', { hasText: name }).first();
+  if (await folder.isVisible().catch(() => false)) {
+    await folder.click();
+    await page.waitForTimeout(400);
+  }
+}
+
+async function resetBoards(page) {
+  await page.evaluate(async () => {
+    const defaultColumns = [
+      { id: 'backlog', name: 'Backlog', order: 0 },
+      { id: 'todo', name: 'Todo', order: 1 },
+      { id: 'in-progress', name: 'In Progress', order: 2 },
+      { id: 'done', name: 'Done', order: 3 }
+    ];
+    const boards = [{
+      id: Date.now().toString(36),
+      name: 'My Board',
+      columns: defaultColumns,
+      tasks: [],
+      createdAt: Date.now()
+    }];
+    await fetch('/api/data/boards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(boards)
+    });
+  });
+  await page.waitForTimeout(300);
 }
 
 async function main() {
@@ -58,7 +99,13 @@ async function main() {
 
   // Create demo files
   const demoFilePath = '/tmp/boxy-demo-file.txt';
-  fs.writeFileSync(demoFilePath, 'Demo content for Boxy UI walkthrough screenshot.\nGenerated on 2026-01-18.\n');
+  const notesFilePath = '/tmp/boxy-notes.txt';
+  const extraFilePath = '/tmp/boxy-extra.txt';
+  const largeUploadPath = '/tmp/boxy-large-upload.bin';
+  fs.writeFileSync(demoFilePath, 'Demo content for Boxy UI walkthrough screenshot.\nGenerated on 2026-02-06.\n');
+  fs.writeFileSync(notesFilePath, 'Notes for Boxy UI walkthrough.\n');
+  fs.writeFileSync(extraFilePath, 'Extra file used for selection and list view screenshots.\n');
+  fs.writeFileSync(largeUploadPath, Buffer.alloc(50 * 1024 * 1024, 0));
 
   try {
     // A) Home screen (empty state)
@@ -95,21 +142,56 @@ async function main() {
       await captureScreenshot(page, 'folder-created', theme);
     }
 
-    // D) Upload file
-    console.log('\nD) Upload complete...');
-    await page.setInputFiles('#fileInput', demoFilePath);
-    await page.waitForSelector('.file-item:has-text("boxy-demo-file.txt")');
+    // D) Upload progress (per-file status)
+    console.log('\nD) Upload progress...');
+    await page.setInputFiles('#fileInput', [largeUploadPath, demoFilePath, notesFilePath, extraFilePath]);
+    await page.waitForSelector('.upload-progress.show');
+    await page.waitForSelector('.upload-progress-item');
     await page.waitForTimeout(300);
     for (const theme of ['light', 'dark']) {
       await setTheme(page, theme);
-      await captureScreenshot(page, 'upload-complete', theme);
+      await captureScreenshot(page, 'upload-progress', theme);
     }
+    await page.waitForSelector('.file-item:has-text("boxy-demo-file.txt")');
+    await page.waitForTimeout(300);
 
-    // E) Rename modal
-    console.log('\nE) Rename modal...');
+    // E) Inline rename (list view)
+    console.log('\nE) Inline rename...');
     for (const theme of ['light', 'dark']) {
       await closeAllModals(page);
       await setTheme(page, theme);
+      await ensureView(page, 'list');
+      const listRow = page.locator('.file-item', { hasText: 'boxy-notes.txt' }).first();
+      await listRow.hover();
+      await page.waitForTimeout(150);
+      await listRow.locator('button[title="Rename"]').click();
+      await page.waitForSelector('.inline-rename-input');
+      await captureScreenshot(page, 'inline-rename', theme);
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(150);
+    }
+
+    // F) Bulk selection bar
+    console.log('\nF) Bulk selection bar...');
+    for (const theme of ['light', 'dark']) {
+      await setTheme(page, theme);
+      await ensureView(page, 'grid');
+      const firstItem = page.locator('.file-item').nth(0);
+      const secondItem = page.locator('.file-item').nth(1);
+      await firstItem.click();
+      await secondItem.click({ modifiers: ['Control'] });
+      await page.waitForSelector('#selectionBar.show');
+      await captureScreenshot(page, 'bulk-selection', theme);
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(150);
+    }
+
+    // G) Rename modal
+    console.log('\nG) Rename modal...');
+    for (const theme of ['light', 'dark']) {
+      await closeAllModals(page);
+      await setTheme(page, theme);
+      await ensureView(page, 'grid');
       const fileCard = page.locator('.file-item', { hasText: 'boxy-demo-file.txt' }).first();
       await fileCard.hover();
       await page.waitForTimeout(100);
@@ -117,12 +199,14 @@ async function main() {
       await page.waitForSelector('#renameModal.active');
       await page.fill('#renameName', 'report-final.txt');
       await captureScreenshot(page, 'rename-modal', theme);
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(150);
     }
 
-    // F) Rename complete
-    console.log('\nF) Rename complete...');
+    // H) Rename complete
+    console.log('\nH) Rename complete...');
     await closeAllModals(page);
-    // Actually rename
+    await ensureView(page, 'grid');
     const fileCardRename = page.locator('.file-item', { hasText: 'boxy-demo-file.txt' }).first();
     await fileCardRename.hover();
     await fileCardRename.locator('button[title="Rename"]').click();
@@ -136,8 +220,8 @@ async function main() {
       await captureScreenshot(page, 'rename-complete', theme);
     }
 
-    // G) Move modal (light theme only - capture before move)
-    console.log('\nG) Move modal...');
+    // I) Move modal (light theme only - capture before move)
+    console.log('\nI) Move modal...');
     await closeAllModals(page);
     await setTheme(page, 'light');
     let fileCardMove = page.locator('.file-item', { hasText: 'report-final.txt' }).first();
@@ -153,20 +237,18 @@ async function main() {
     await page.waitForTimeout(100);
     await captureScreenshot(page, 'move-modal', 'dark');
 
-    // H) Folder view after move - actually perform the move
-    console.log('\nH) Folder view after move...');
+    // J) Folder view after move - actually perform the move
+    console.log('\nJ) Folder view after move...');
     await page.locator('#moveModal').getByRole('button', { name: 'Move here' }).click();
     await page.waitForTimeout(500);
-    // Navigate into Projects folder
-    await page.locator('.file-item', { hasText: 'Projects' }).click();
-    await page.waitForTimeout(500);
+    await openFolder(page, 'Projects');
     for (const theme of ['light', 'dark']) {
       await setTheme(page, theme);
       await captureScreenshot(page, 'folder-view', theme);
     }
 
-    // I) Search filtered
-    console.log('\nI) Search filtered...');
+    // K) Search filtered
+    console.log('\nK) Search filtered...');
     await page.goto(BASE_URL, { waitUntil: 'networkidle' });
     await page.waitForTimeout(200);
     for (const theme of ['light', 'dark']) {
@@ -178,8 +260,8 @@ async function main() {
       await page.waitForTimeout(200);
     }
 
-    // J) Sort applied
-    console.log('\nJ) Sort applied...');
+    // L) Sort applied
+    console.log('\nL) Sort applied...');
     await page.goto(BASE_URL, { waitUntil: 'networkidle' });
     for (const theme of ['light', 'dark']) {
       await setTheme(page, theme);
@@ -191,14 +273,13 @@ async function main() {
       await captureScreenshot(page, 'sort-applied', theme);
     }
 
-    // K) Download (hover to show download button)
-    console.log('\nK) Download...');
-    // Navigate to Projects folder which contains report-final.txt
-    await page.goto(BASE_URL + '?path=Projects', { waitUntil: 'networkidle' });
-    await page.waitForTimeout(500);
+    // M) Download (hover to show download button)
+    console.log('\nM) Download...');
+    await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+    await openFolder(page, 'Projects');
+    await page.waitForTimeout(200);
     for (const theme of ['light', 'dark']) {
       await setTheme(page, theme);
-      // Hover over any file item to show actions
       const dlCard = page.locator('.file-item').first();
       if (await dlCard.isVisible().catch(() => false)) {
         await dlCard.hover();
@@ -207,8 +288,8 @@ async function main() {
       await captureScreenshot(page, 'download', theme);
     }
 
-    // L) New file creation
-    console.log('\nL) New file...');
+    // N) New file creation
+    console.log('\nN) New file...');
     await page.goto(BASE_URL, { waitUntil: 'networkidle' });
     const newFileBtn = page.getByRole('button', { name: 'New File' });
     if (await newFileBtn.isVisible().catch(() => false)) {
@@ -227,10 +308,11 @@ async function main() {
       }
     }
 
-    // M) Edit content (double-click to preview/edit)
-    console.log('\nM) Edit content...');
-    await page.goto(BASE_URL + '?path=Projects', { waitUntil: 'networkidle' });
-    await page.waitForTimeout(500);
+    // O) Edit content (double-click to preview/edit)
+    console.log('\nO) Edit content...');
+    await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+    await openFolder(page, 'Projects');
+    await page.waitForTimeout(200);
     for (const theme of ['light', 'dark']) {
       await closeAllModals(page);
       await setTheme(page, theme);
@@ -242,8 +324,8 @@ async function main() {
       await captureScreenshot(page, 'edit-content', theme);
     }
 
-    // N) Delete
-    console.log('\nN) Delete...');
+    // P) Delete
+    console.log('\nP) Delete...');
     await page.goto(BASE_URL, { waitUntil: 'networkidle' });
     // Upload a file to delete
     const deleteFilePath = '/tmp/boxy-delete-me.txt';
@@ -264,10 +346,10 @@ async function main() {
     await delCard2.locator('button[title="Delete"]').click();
     await page.waitForTimeout(400);
 
-    // O) Tasks board
-    console.log('\nO) Tasks board...');
+    // Q) Tasks board (empty CTA)
+    console.log('\nQ) Tasks board (empty CTA)...');
     await page.goto(BASE_URL, { waitUntil: 'networkidle' });
-    // Look for tasks tab/button
+    await resetBoards(page);
     const tasksTab = page.locator('button:has-text("Tasks"), [data-tab="tasks"], .tab:has-text("Tasks")').first();
     if (await tasksTab.isVisible().catch(() => false)) {
       await tasksTab.click();
@@ -278,9 +360,8 @@ async function main() {
       await captureScreenshot(page, 'tasks-board', theme);
     }
 
-    // P) Tasks action
-    console.log('\nP) Tasks action...');
-    // Try to create a task if UI supports it
+    // R) Tasks action
+    console.log('\nR) Tasks action...');
     const addTaskBtn = page.locator('button:has-text("Add"), button:has-text("New Task"), .add-task').first();
     if (await addTaskBtn.isVisible().catch(() => false)) {
       await addTaskBtn.click();
@@ -291,8 +372,8 @@ async function main() {
       await captureScreenshot(page, 'tasks-action', theme);
     }
 
-    // Q) WebSocket sync (two tabs)
-    console.log('\nQ) WebSocket sync...');
+    // S) WebSocket sync (two tabs)
+    console.log('\nS) WebSocket sync...');
     const page2 = await context.newPage();
     await page2.goto(BASE_URL, { waitUntil: 'networkidle' });
     await page.goto(BASE_URL, { waitUntil: 'networkidle' });
@@ -314,6 +395,9 @@ async function main() {
   } finally {
     await browser.close();
     try { fs.unlinkSync(demoFilePath); } catch (e) {}
+    try { fs.unlinkSync(notesFilePath); } catch (e) {}
+    try { fs.unlinkSync(extraFilePath); } catch (e) {}
+    try { fs.unlinkSync(largeUploadPath); } catch (e) {}
     try { fs.unlinkSync('/tmp/boxy-delete-me.txt'); } catch (e) {}
   }
 }

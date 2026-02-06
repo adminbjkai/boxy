@@ -1,19 +1,9 @@
 # Boxy UI Walkthrough
 
-Captured on **2026-01-18** using Playwright + Chromium (headless) against a local build.
+Captured on **2026-02-06** using Playwright + Chromium (headless) against a local build.
 All screens shown in both **Light** and **Dark** themes.
 
 Server config: `BOX_UPLOAD_DIR=./uploads_docs BOX_PORT=8086`
-
-## Update Notes (Post-Capture)
-Since these screenshots were captured, Boxy has added:
-- Sticky Files toolbar/breadcrumb while scrolling
-- Upload progress with per-file status and error messaging
-- Inline rename in list view (Enter/Esc/blur)
-- Bulk actions (move/delete/download) shown only when items are selected
-- Tasks empty-state CTA guidance ("No tasks yet — click New Task")
-
-The screenshots below may not show these newer elements, but the behaviors are present in the current app.
 
 ---
 
@@ -21,10 +11,10 @@ The screenshots below may not show these newer elements, but the behaviors are p
 The initial view with upload drop zone, toolbar, and navigation.
 
 **Light**
-![Home light](assets/images/boxy-ui-home-light-20260118.png)
+![Home light](assets/images/boxy-ui-home-light-20260206.png)
 
 **Dark**
-![Home dark](assets/images/boxy-ui-home-dark-20260118.png)
+![Home dark](assets/images/boxy-ui-home-dark-20260206.png)
 
 ---
 
@@ -32,10 +22,10 @@ The initial view with upload drop zone, toolbar, and navigation.
 Click "New Folder" to open the folder creation dialog.
 
 **Light**
-![New folder modal light](assets/images/boxy-ui-new-folder-modal-light-20260118.png)
+![New folder modal light](assets/images/boxy-ui-new-folder-modal-light-20260206.png)
 
 **Dark**
-![New folder modal dark](assets/images/boxy-ui-new-folder-modal-dark-20260118.png)
+![New folder modal dark](assets/images/boxy-ui-new-folder-modal-dark-20260206.png)
 
 ---
 
@@ -43,164 +33,186 @@ Click "New Folder" to open the folder creation dialog.
 After creating a folder, it appears in the file grid.
 
 **Light**
-![Folder created light](assets/images/boxy-ui-folder-created-light-20260118.png)
+![Folder created light](assets/images/boxy-ui-folder-created-light-20260206.png)
 
 **Dark**
-![Folder created dark](assets/images/boxy-ui-folder-created-dark-20260118.png)
+![Folder created dark](assets/images/boxy-ui-folder-created-dark-20260206.png)
 
 ---
 
-## 4) Upload Complete
-File uploaded via the hidden file input; card appears with metadata.
+## 4) Upload Progress + Per-File Status
+Upload panel shows overall progress and per-file statuses/errors.
 
 **Light**
-![Upload complete light](assets/images/boxy-ui-upload-complete-light-20260118.png)
+![Upload progress light](assets/images/boxy-ui-upload-progress-light-20260206.png)
 
 **Dark**
-![Upload complete dark](assets/images/boxy-ui-upload-complete-dark-20260118.png)
+![Upload progress dark](assets/images/boxy-ui-upload-progress-dark-20260206.png)
 
 ---
 
-## 5) Rename Modal
-Hover a file card, click "Rename" to open the rename dialog.
+## 5) Inline Rename (List View)
+Rename a file directly inside the list view.
 
 **Light**
-![Rename modal light](assets/images/boxy-ui-rename-modal-light-20260118.png)
+![Inline rename light](assets/images/boxy-ui-inline-rename-light-20260206.png)
 
 **Dark**
-![Rename modal dark](assets/images/boxy-ui-rename-modal-dark-20260118.png)
+![Inline rename dark](assets/images/boxy-ui-inline-rename-dark-20260206.png)
 
 ---
 
-## 6) Rename Complete
+## 6) Bulk Selection Bar
+Multi-select reveals the bulk actions bar (move / download / delete).
+
+**Light**
+![Bulk selection light](assets/images/boxy-ui-bulk-selection-light-20260206.png)
+
+**Dark**
+![Bulk selection dark](assets/images/boxy-ui-bulk-selection-dark-20260206.png)
+
+---
+
+## 7) Rename Modal (Grid View)
+Grid view uses the rename modal for file renames.
+
+**Light**
+![Rename modal light](assets/images/boxy-ui-rename-modal-light-20260206.png)
+
+**Dark**
+![Rename modal dark](assets/images/boxy-ui-rename-modal-dark-20260206.png)
+
+---
+
+## 8) Rename Complete
 After confirming rename, the file card updates with the new name.
 
 **Light**
-![Rename complete light](assets/images/boxy-ui-rename-complete-light-20260118.png)
+![Rename complete light](assets/images/boxy-ui-rename-complete-light-20260206.png)
 
 **Dark**
-![Rename complete dark](assets/images/boxy-ui-rename-complete-dark-20260118.png)
+![Rename complete dark](assets/images/boxy-ui-rename-complete-dark-20260206.png)
 
 ---
 
-## 7) Move Modal
+## 9) Move Modal
 Select destination folder from the tree view to move a file.
 
 **Light**
-![Move modal light](assets/images/boxy-ui-move-modal-light-20260118.png)
+![Move modal light](assets/images/boxy-ui-move-modal-light-20260206.png)
 
 **Dark**
-![Move modal dark](assets/images/boxy-ui-move-modal-dark-20260118.png)
+![Move modal dark](assets/images/boxy-ui-move-modal-dark-20260206.png)
 
 ---
 
-## 8) Folder View (After Move)
+## 10) Folder View (After Move)
 Navigate into a folder to see moved files; breadcrumb updates.
 
 **Light**
-![Folder view light](assets/images/boxy-ui-folder-view-light-20260118.png)
+![Folder view light](assets/images/boxy-ui-folder-view-light-20260206.png)
 
 **Dark**
-![Folder view dark](assets/images/boxy-ui-folder-view-dark-20260118.png)
+![Folder view dark](assets/images/boxy-ui-folder-view-dark-20260206.png)
 
 ---
 
-## 9) Search Filtered
-Enter search term to filter files recursively across all folders.
+## 11) Search Filtered
+Enter a search term to filter files by name.
 
 **Light**
-![Search filtered light](assets/images/boxy-ui-search-filtered-light-20260118.png)
+![Search filtered light](assets/images/boxy-ui-search-filtered-light-20260206.png)
 
 **Dark**
-![Search filtered dark](assets/images/boxy-ui-search-filtered-dark-20260118.png)
+![Search filtered dark](assets/images/boxy-ui-search-filtered-dark-20260206.png)
 
 ---
 
-## 10) Sort Applied
-Use the sort dropdown to order files by name, size, type, or date.
+## 12) Sort Applied
+Use the sort dropdown to order files by name, size, or modified date.
 
 **Light**
-![Sort applied light](assets/images/boxy-ui-sort-applied-light-20260118.png)
+![Sort applied light](assets/images/boxy-ui-sort-applied-light-20260206.png)
 
 **Dark**
-![Sort applied dark](assets/images/boxy-ui-sort-applied-dark-20260118.png)
+![Sort applied dark](assets/images/boxy-ui-sort-applied-dark-20260206.png)
 
 ---
 
-## 11) Download / Preview
+## 13) Download / Preview
 Hover a file to reveal action buttons including download.
 
 **Light**
-![Download light](assets/images/boxy-ui-download-light-20260118.png)
+![Download light](assets/images/boxy-ui-download-light-20260206.png)
 
 **Dark**
-![Download dark](assets/images/boxy-ui-download-dark-20260118.png)
+![Download dark](assets/images/boxy-ui-download-dark-20260206.png)
 
 ---
 
-## 12) New File
+## 14) New File
 Create a new empty file using the "New File" button.
 
 **Light**
-![New file light](assets/images/boxy-ui-new-file-light-20260118.png)
+![New file light](assets/images/boxy-ui-new-file-light-20260206.png)
 
 **Dark**
-![New file dark](assets/images/boxy-ui-new-file-dark-20260118.png)
+![New file dark](assets/images/boxy-ui-new-file-dark-20260206.png)
 
 ---
 
-## 13) Edit Content
+## 15) Edit Content
 Double-click a text file to preview or edit its contents.
 
 **Light**
-![Edit content light](assets/images/boxy-ui-edit-content-light-20260118.png)
+![Edit content light](assets/images/boxy-ui-edit-content-light-20260206.png)
 
 **Dark**
-![Edit content dark](assets/images/boxy-ui-edit-content-dark-20260118.png)
+![Edit content dark](assets/images/boxy-ui-edit-content-dark-20260206.png)
 
 ---
 
-## 14) Delete
+## 16) Delete
 Hover a file and click "Delete" to remove it.
 
 **Light**
-![Delete light](assets/images/boxy-ui-delete-light-20260118.png)
+![Delete light](assets/images/boxy-ui-delete-light-20260206.png)
 
 **Dark**
-![Delete dark](assets/images/boxy-ui-delete-dark-20260118.png)
+![Delete dark](assets/images/boxy-ui-delete-dark-20260206.png)
 
 ---
 
-## 15) Tasks / Kanban Board
-Switch to Tasks view to see the kanban-style task board (stored server-side in `BOX_DATA_DIR` and synced via WebSocket `data_sync`).
+## 17) Tasks / Kanban Board (Empty CTA)
+Tasks view shows empty-state guidance when no tasks exist.
 
 **Light**
-![Tasks board light](assets/images/boxy-ui-tasks-board-light-20260118.png)
+![Tasks board light](assets/images/boxy-ui-tasks-board-light-20260206.png)
 
 **Dark**
-![Tasks board dark](assets/images/boxy-ui-tasks-board-dark-20260118.png)
+![Tasks board dark](assets/images/boxy-ui-tasks-board-dark-20260206.png)
 
 ---
 
-## 16) Tasks Action
+## 18) Tasks Action
 Create and manage tasks within the kanban board.
 
 **Light**
-![Tasks action light](assets/images/boxy-ui-tasks-action-light-20260118.png)
+![Tasks action light](assets/images/boxy-ui-tasks-action-light-20260206.png)
 
 **Dark**
-![Tasks action dark](assets/images/boxy-ui-tasks-action-dark-20260118.png)
+![Tasks action dark](assets/images/boxy-ui-tasks-action-dark-20260206.png)
 
 ---
 
-## 17) WebSocket Sync
+## 19) WebSocket Sync
 Multiple browser windows stay in sync via WebSocket broadcast.
 
 **Light**
-![WebSocket sync light](assets/images/boxy-ui-websocket-sync-light-20260118.png)
+![WebSocket sync light](assets/images/boxy-ui-websocket-sync-light-20260206.png)
 
 **Dark**
-![WebSocket sync dark](assets/images/boxy-ui-websocket-sync-dark-20260118.png)
+![WebSocket sync dark](assets/images/boxy-ui-websocket-sync-dark-20260206.png)
 
 ---
 

@@ -1,3 +1,0 @@
-**Designing a Diagram's Flow**
-
-I'm starting with a title and background for the diagram, focusing on a "Boxy File Upload & Real-Time Update Flow." The plan is to visualize the process in distinct steps, beginning with the user's action and progressing through the system's response. I will be using a light grid to help with layout.
