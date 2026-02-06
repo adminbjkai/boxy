@@ -65,6 +65,14 @@ Reconnection uses a fixed 2-second retry interval via `connectWS()`.
 | **XSS prevention** | `escapeHtml()` / `escapeAttr()` | All user content escaped before innerHTML |
 | **Payload limit** | 200MB default (`BOX_MAX_UPLOAD_BYTES`) | Prevents memory exhaustion |
 
+![Boxy Architecture & Tech Stack](docs/assets/images/boxy-architecture-techstack-20260206.png)
+
+### Premium Architecture Diagrams
+
+![Boxy Backend Architecture (Premium)](docs/assets/images/boxy-backend-architecture-premium-20260206.png)
+
+![Boxy Frontend Tech Stack (Premium)](docs/assets/images/boxy-frontend-techstack-premium-20260206.png)
+
 See `docs/ARCHITECTURE.md` for full details.
 
 ## Docs
