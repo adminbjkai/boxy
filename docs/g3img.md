@@ -59,3 +59,15 @@ Operational rules:
 - Always return: final filepath(s), where you placed it in the repo, and the README/doc snippet if you updated docs.
 
 Now acknowledge these rules and wait for my first image request.
+
+Style registry (prompt templates)
+- Bento grid infographic (default for explanations):
+  Create a clean, educational infographic titled "[TOPIC]". Layout: bento grid with rounded corners and clear sections. Visual style: flat vector art, minimal shading, pastel palette + dark gray text. Content: header + 3 concise sections with icons/diagrams. Text must be legible and sans-serif.
+- Technical sketch overlay (architecture/hardware):
+  Create a technical infographic of [TOPIC], combining a photorealistic render with ink-style annotation overlays on a white background. Include labels, cutaway outlines, and arrows indicating data flow. Engineering manual aesthetic.
+- Surreal brand visual (marketing/hero):
+  Ultra-high-end surreal visual of [TOPIC]. Centered, hyper-realistic 3D render in a clean studio backdrop. Soft global illumination. No text overlays, no logos.
+- UI mockup (feature previews):
+  High-fidelity UI mockup of a [APP TYPE] screen showing [SPECIFIC CONTENT]. Clean modern aesthetic, rounded corners, soft shadows, large readable text. No copied UI.
+
+For deeper prompt best practices, see `docs/g3img_guide.md`.

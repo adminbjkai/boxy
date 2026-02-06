@@ -1259,14 +1259,6 @@
             }
         }
 
-        function handleClick(e, path, isDir) {
-            if (isDir) {
-                navigate(path);
-            } else {
-                downloadFile(path);
-            }
-        }
-
         // Drag and drop to folders
         function handleDragStart(e) {
             draggedItem = e.target.closest('.file-item');

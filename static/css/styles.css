@@ -418,9 +418,6 @@ body::before {
     overflow: hidden;
 }
 
-.file-list .file-icon.has-thumb {
-    border-radius: 4px;
-}
 
 /* Icon Colors */
 .icon-folder { color: var(--folder); }
@@ -1086,11 +1083,6 @@ body::before {
 
 #filesView {
     overflow: visible;
-}
-
-/* Tasks View */
-.tasks-view {
-    padding: 0;
 }
 
 .tasks-toolbar {

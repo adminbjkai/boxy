@@ -5,6 +5,16 @@ All screens shown in both **Light** and **Dark** themes.
 
 Server config: `BOX_UPLOAD_DIR=./uploads_docs BOX_PORT=8086`
 
+## Update Notes (Post-Capture)
+Since these screenshots were captured, Boxy has added:
+- Sticky Files toolbar/breadcrumb while scrolling
+- Upload progress with per-file status and error messaging
+- Inline rename in list view (Enter/Esc/blur)
+- Bulk actions (move/delete/download) shown only when items are selected
+- Tasks empty-state CTA guidance ("No tasks yet — click New Task")
+
+The screenshots below may not show these newer elements, but the behaviors are present in the current app.
+
 ---
 
 ## 1) Home Screen (Empty State)
