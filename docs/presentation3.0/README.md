@@ -6,6 +6,7 @@ This folder contains a g3img-generated presentation deck for the current state o
 
 - Slide PNGs: `01-*.png` … `12-*.png`
 - PDF deck: `boxy-presentation-3.0.pdf`
+- GitHub-renderable deck: `DECK.md`
 - Reproducible prompts: `prompts/*.md`
 
 ## Regenerating
