@@ -163,7 +163,7 @@ body::before {
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 10px 16px;
+    padding: 10px 20px;
     margin: 0 0 16px;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
@@ -182,6 +182,7 @@ body::before {
     font-size: 14px;
     overflow-x: auto;
     padding: 2px 0;
+    padding-left: 2px;
 }
 
 .breadcrumb-item {
@@ -207,6 +208,7 @@ body::before {
     color: var(--text-secondary);
     white-space: nowrap;
     line-height: 1.4;
+    padding-right: 2px;
 }
 
 .toolbar-actions { display: flex; gap: 8px; }
@@ -480,7 +482,6 @@ body::before {
     align-items: center;
     gap: 4px;
     padding: 4px 8px;
-    margin: -4px -8px;
     border-radius: 4px;
     transition: all var(--transition);
     user-select: none;
@@ -528,12 +529,14 @@ body::before {
 .file-table-header .col-size {
     width: 80px;
     text-align: right;
+    justify-content: flex-end;
     flex-shrink: 0;
 }
 
 .file-table-header .col-date {
     width: 140px;
     text-align: right;
+    justify-content: flex-end;
     flex-shrink: 0;
 }
 
