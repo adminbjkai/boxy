@@ -73,6 +73,10 @@ Reconnection uses a fixed 2-second retry interval via `connectWS()`.
 
 ![Boxy Frontend Tech Stack (Premium)](docs/assets/images/boxy-frontend-techstack-premium-20260206.png)
 
+### Dark Mode Neon Tech Stack
+
+![Boxy Technology Stack (Neon)](docs/assets/images/boxy-techstack-neon-20260206.png)
+
 See `docs/ARCHITECTURE.md` for full details.
 
 ## Docs
