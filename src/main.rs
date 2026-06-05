@@ -12,7 +12,18 @@ use tokio::sync::broadcast;
 
 const DEFAULT_UPLOAD_DIR: &str = "./uploads";
 const DEFAULT_PORT: u16 = 8086;
+const DEFAULT_BIND_ADDR: &str = "127.0.0.1"; // localhost-only; nginx terminates TLS in front
 const DEFAULT_MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 200; // 200 MB
+/// Cap recursion in folder/search walks to avoid stack/CPU blowup on deep trees or symlink loops.
+const MAX_RECURSION_DEPTH: usize = 64;
+/// Max length for user-supplied names (folder, file, rename) — matches common filesystem limits.
+const MAX_NAME_LEN: usize = 255;
+/// Max length for a search query.
+const MAX_SEARCH_LEN: usize = 256;
+/// Cap bytes read for the upload `mtimes` metadata field before JSON parsing (memory-DoS guard).
+const MAX_MTIMES_BYTES: usize = 1024 * 1024; // 1 MiB
+/// Upper bound on filename de-dupe attempts before falling back to a uuid suffix.
+const MAX_DEDUPE_ATTEMPTS: u32 = 10_000;
 const EDITABLE_EXTENSIONS: &[&str] = &[
     "txt", "csv", "py", "json", "md", "rs", "js", "html", "css", "toml", "yaml", "yml",
 ];
@@ -37,12 +48,12 @@ type Broadcaster = broadcast::Sender<String>;
 struct AppState {
     broadcaster: Broadcaster,
     upload_dir: PathBuf,
-    max_upload_bytes: usize,
 }
 
 struct Settings {
     upload_dir: PathBuf,
     port: u16,
+    bind_addr: String,
     max_upload_bytes: usize,
 }
 
@@ -56,6 +67,8 @@ impl Settings {
                 .ok()
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(DEFAULT_PORT),
+            bind_addr: env::var("BOX_BIND_ADDR")
+                .unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string()),
             max_upload_bytes: env::var("BOX_MAX_UPLOAD_BYTES")
                 .ok()
                 .and_then(|p| p.parse().ok())
@@ -85,10 +98,16 @@ async fn ws_handler(
         loop {
             tokio::select! {
                 msg = rx.recv() => {
-                    if let Ok(text) = msg {
-                        if session.text(text).await.is_err() {
-                            break;
+                    match msg {
+                        Ok(text) => {
+                            if session.text(text).await.is_err() {
+                                break;
+                            }
                         }
+                        Err(broadcast::error::RecvError::Lagged(skipped)) => {
+                            eprintln!("warn: WebSocket client lagged behind; {skipped} update(s) dropped");
+                        }
+                        Err(broadcast::error::RecvError::Closed) => break,
                     }
                 }
                 msg = msg_stream.next() => {
@@ -116,13 +135,19 @@ struct PathQuery {
 
 fn clean_relative_path(path: &str) -> PathBuf {
     let mut clean = PathBuf::new();
-    for segment in path.split('/') {
+    // Split on both separators so Windows-style backslash segments can't smuggle traversal.
+    for segment in path.split(['/', '\\']) {
         if segment.is_empty() || segment == "." || segment == ".." {
             continue;
         }
         clean.push(segment);
     }
     clean
+}
+
+/// Reject user-supplied names that are empty or longer than the filesystem-safe limit.
+fn valid_name_len(name: &str) -> bool {
+    !name.is_empty() && name.len() <= MAX_NAME_LEN
 }
 
 fn resolve_path(base: &Path, path: Option<&String>) -> PathBuf {
@@ -228,6 +253,9 @@ async fn upload_file(
             let mut bytes = Vec::new();
             while let Some(chunk) = field.next().await {
                 bytes.extend_from_slice(&chunk?);
+                if bytes.len() > MAX_MTIMES_BYTES {
+                    return Err(actix_web::error::ErrorBadRequest("mtimes metadata too large"));
+                }
             }
             if let Ok(parsed) = serde_json::from_slice::<std::collections::HashMap<String, u64>>(&bytes) {
                 mtimes = parsed;
@@ -292,7 +320,7 @@ async fn get_unique_filepath(original: &Path) -> PathBuf {
     let ext = original.extension().and_then(|s| s.to_str());
 
     let mut counter = 1;
-    loop {
+    while counter <= MAX_DEDUPE_ATTEMPTS {
         let new_name = match ext {
             Some(e) => format!("{}_{}.{}", stem, counter, e),
             None => format!("{}_{}", stem, counter),
@@ -303,6 +331,13 @@ async fn get_unique_filepath(original: &Path) -> PathBuf {
         }
         counter += 1;
     }
+
+    // Fallback after too many collisions: a guaranteed-unique uuid suffix.
+    let unique = match ext {
+        Some(e) => format!("{}_{}.{}", stem, uuid::Uuid::new_v4(), e),
+        None => format!("{}_{}", stem, uuid::Uuid::new_v4()),
+    };
+    parent.join(unique)
 }
 
 #[derive(Deserialize)]
@@ -315,6 +350,10 @@ async fn create_folder(
     body: web::Json<CreateFolderReq>,
     state: web::Data<AppState>,
 ) -> Result<HttpResponse> {
+    if !valid_name_len(&body.name) {
+        return Err(actix_web::error::ErrorBadRequest("Folder name length invalid"));
+    }
+
     let base = resolve_path_safe(&state.upload_dir, body.path.as_ref())
         .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
 
@@ -349,6 +388,10 @@ async fn rename_item(
     body: web::Json<RenameReq>,
     state: web::Data<AppState>,
 ) -> Result<HttpResponse> {
+    if !valid_name_len(&body.new_name) {
+        return Err(actix_web::error::ErrorBadRequest("New name length invalid"));
+    }
+
     let old_path = resolve_path_safe(&state.upload_dir, Some(&body.path))
         .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
     let safe_name = body.new_name.replace(['/', '\\', '\0'], "_");
@@ -410,12 +453,15 @@ async fn move_item(body: web::Json<MoveReq>, state: web::Data<AppState>) -> Resu
 
 async fn list_all_folders(state: web::Data<AppState>) -> Result<HttpResponse> {
     let mut folders = vec![String::from("/")];
-    collect_folders(state.upload_dir.clone(), String::new(), &mut folders).await;
+    collect_folders(state.upload_dir.clone(), String::new(), &mut folders, 0).await;
     Ok(HttpResponse::Ok().json(folders))
 }
 
 #[async_recursion::async_recursion]
-async fn collect_folders(path: PathBuf, prefix: String, folders: &mut Vec<String>) {
+async fn collect_folders(path: PathBuf, prefix: String, folders: &mut Vec<String>, depth: usize) {
+    if depth >= MAX_RECURSION_DEPTH {
+        return;
+    }
     if let Ok(mut dir) = tokio::fs::read_dir(&path).await {
         while let Ok(Some(entry)) = dir.next_entry().await {
             if let Ok(meta) = entry.metadata().await {
@@ -427,7 +473,7 @@ async fn collect_folders(path: PathBuf, prefix: String, folders: &mut Vec<String
                         format!("{}/{}", prefix, name)
                     };
                     folders.push(full_path.clone());
-                    collect_folders(entry.path(), full_path, folders).await;
+                    collect_folders(entry.path(), full_path, folders, depth + 1).await;
                 }
             }
         }
@@ -452,6 +498,9 @@ async fn search_files(
     state: web::Data<AppState>,
     query: web::Query<SearchQuery>,
 ) -> Result<HttpResponse> {
+    if query.q.len() > MAX_SEARCH_LEN {
+        return Err(actix_web::error::ErrorBadRequest("Search query too long"));
+    }
     let search_term = query.q.to_lowercase();
     if search_term.is_empty() {
         return Ok(HttpResponse::Ok().json(Vec::<SearchResult>::new()));
@@ -463,6 +512,7 @@ async fn search_files(
         String::new(),
         &search_term,
         &mut results,
+        0,
     )
     .await;
 
@@ -482,7 +532,11 @@ async fn collect_search_results(
     prefix: String,
     search_term: &str,
     results: &mut Vec<SearchResult>,
+    depth: usize,
 ) {
+    if depth >= MAX_RECURSION_DEPTH {
+        return;
+    }
     if let Ok(mut dir) = tokio::fs::read_dir(&path).await {
         while let Ok(Some(entry)) = dir.next_entry().await {
             if let Ok(meta) = entry.metadata().await {
@@ -513,7 +567,8 @@ async fn collect_search_results(
 
                 // Recurse into directories
                 if meta.is_dir() {
-                    collect_search_results(entry.path(), full_path, search_term, results).await;
+                    collect_search_results(entry.path(), full_path, search_term, results, depth + 1)
+                        .await;
                 }
             }
         }
@@ -618,6 +673,9 @@ async fn create_new_file(
     state: web::Data<AppState>,
 ) -> Result<HttpResponse> {
     // Validate filename has an editable extension
+    if !valid_name_len(&body.filename) {
+        return Err(actix_web::error::ErrorBadRequest("Filename length invalid"));
+    }
     let filename = body.filename.replace(['/', '\\', '\0'], "_");
     let filepath_check = Path::new(&filename);
 
@@ -750,16 +808,19 @@ async fn main() -> std::io::Result<()> {
     let settings = Settings::from_env();
     tokio::fs::create_dir_all(&settings.upload_dir).await?;
 
-    let (tx, _) = broadcast::channel::<String>(100);
+    let (tx, _) = broadcast::channel::<String>(256);
     let state = AppState {
         broadcaster: tx,
         upload_dir: settings.upload_dir.clone(),
-        max_upload_bytes: settings.max_upload_bytes,
     };
 
+    let max_upload_bytes = settings.max_upload_bytes;
+    let bind = (settings.bind_addr.clone(), settings.port);
+
     println!(
-        "Boxy running on http://0.0.0.0:{} (uploads at {})",
-        settings.port,
+        "Boxy running on http://{}:{} (uploads at {})",
+        bind.0,
+        bind.1,
         state.upload_dir.to_string_lossy()
     );
 
@@ -767,7 +828,7 @@ async fn main() -> std::io::Result<()> {
         let app_state = state.clone();
         App::new()
             .app_data(web::Data::new(app_state.clone()))
-            .app_data(web::PayloadConfig::new(app_state.max_upload_bytes))
+            .app_data(web::PayloadConfig::new(max_upload_bytes))
             .wrap(Logger::default())
             .wrap(Compress::default())
             .route("/", web::get().to(serve_index))
@@ -786,7 +847,7 @@ async fn main() -> std::io::Result<()> {
             .route("/api/newfile", web::post().to(create_new_file))
             .route("/api/health", web::get().to(healthcheck))
     })
-    .bind(("0.0.0.0", settings.port))?
+    .bind(bind)?
     .run()
     .await
 }

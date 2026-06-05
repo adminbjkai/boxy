@@ -1,0 +1,58 @@
+# Boxy Deployment
+
+Boxy runs as a **localhost-bound systemd service behind nginx** (nginx terminates TLS with the
+existing wildcard certificate). The app never binds a public interface directly.
+
+## Topology
+```
+Internet ──HTTPS──▶ nginx (boxy.bjk.ai, :443) ──proxy──▶ 127.0.0.1:8086 ──▶ boxy (systemd)
+```
+
+## Build & restart (the core loop)
+The frontend (`static/index.html`) is embedded into the binary at compile time, so **any change to
+the backend or the frontend requires a rebuild and restart**:
+```bash
+cargo build --release
+sudo systemctl restart boxy
+systemctl is-active boxy
+curl -s http://127.0.0.1:8086/api/health     # {"ok":true}
+curl -I  https://boxy.bjk.ai
+```
+Tip: keep a rollback copy before restarting — `cp target/release/boxy target/release/boxy.bak`.
+
+## systemd unit
+`/etc/systemd/system/boxy.service` runs `/apps/boxy/target/release/boxy` as user `bjkai` with
+working directory `/apps/boxy`. Configuration is via environment (see `docs/ARCHITECTURE.md`):
+`BOX_PORT`, `BOX_BIND_ADDR` (default `127.0.0.1`), `BOX_UPLOAD_DIR`, `BOX_MAX_UPLOAD_BYTES`.
+
+```bash
+systemctl status boxy
+journalctl -u boxy -n 50 --no-pager
+```
+
+## nginx site
+`/etc/nginx/sites-enabled/boxy.bjk.ai` (symlinked from `sites-available`):
+- `listen 80` → 301 redirect to HTTPS
+- `listen 443 ssl` with the wildcard cert
+  (`/etc/letsencrypt/live/bjk.ai/fullchain.pem` / `privkey.pem` — do **not** run certbot for this app)
+- `proxy_pass http://127.0.0.1:8086;`
+- standard proxy headers (`Host`, `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`)
+- WebSocket upgrade headers (`Upgrade`, `Connection "upgrade"`) + `proxy_read_timeout 86400`
+- `client_max_body_size 500M`
+
+After editing nginx:
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+## Constraints
+- Bind **localhost only**; do not expose the app port publicly or open firewall ports.
+- Reuse the existing wildcard TLS cert; do not generate new certs.
+- Do not restart unrelated services.
+
+## Docker (alternative)
+```bash
+docker compose up --build
+# or
+docker build -t boxy . && docker run -p 8086:8086 -v $(pwd)/uploads:/app/uploads boxy
+```

@@ -77,6 +77,24 @@ broadcast_update(&state.broadcaster, "upload", &path);
 | POST | `/api/rename` | Rename item |
 | POST | `/api/move` | Move item |
 | POST | `/api/delete` | Delete item |
+| GET | `/api/content?path=` | Read editable text file |
+| POST | `/api/content` | Save editable text file |
+| POST | `/api/newfile` | Create empty editable file |
+
+### Backend safeguards (keep these in mind)
+- Use `resolve_path_safe()` (canonicalises + verifies containment), never raw `resolve_path()`.
+- Names are length-capped (`MAX_NAME_LEN = 255`); search query capped (`MAX_SEARCH_LEN`).
+- Recursive walks (`collect_folders`, `collect_search_results`) take a `depth` arg capped at
+  `MAX_RECURSION_DEPTH = 64`.
+- Bind defaults to `127.0.0.1` via `BOX_BIND_ADDR`. The frontend is embedded, so **rebuild +
+  `sudo systemctl restart boxy` after any change** (see `docs/DEPLOYMENT.md`).
+
+### Files-view UI components (static/index.html)
+- **Sidebar folder tree:** `loadSidebarTree` / `renderSidebar` (reuses `buildFolderTree`); drop a
+  file onto a node to move it. Collapsed state + expanded set persist in `localStorage`.
+- **Context menu:** `showContextMenu(e, path, name, isDir)` → `#contextMenu`; closes on outside
+  click / Esc / scroll.
+- **Inline rename:** `startInlineRename(itemEl)` (context menu or `F2`); commits via `/api/rename`.
 
 ## Kanban Board System (Frontend)
 

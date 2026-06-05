@@ -1,6 +1,24 @@
-# Boxy UI Walkthrough (Screenshots)
+# Boxy UI Walkthrough
 
-Captured on 2026-01-12 against a local build (`BOX_UPLOAD_DIR=./uploads_docs`, `BOX_PORT=8086`) using Playwright + Chromium. Each screenshot shows the live UI performing a core action.
+> **Note:** The screenshots below were captured 2026-01-12 and predate the June 2026 dark-mode-first
+> overhaul. The flows still apply, but the current UI is dark by default and adds the elements listed
+> under "What's new" below. Regenerate images with the Playwright script at the end of this file.
+
+## What's new (June 2026 overhaul)
+- **Dark-mode-first** theme (toggle still available; preference persists). Refined tokens, calmer
+  gradients, `prefers-reduced-motion` support, visible focus styles.
+- **Collapsible sidebar folder tree** in the Files view — click to navigate, expand/collapse nodes,
+  collapse the whole panel, and **drag files onto a node to move them**.
+- **Inline rename** — right-click → Rename or press `F2` on the focused item to edit the name in place.
+- **Right-click context menu** on files/folders (Preview, Download, Copy URL, Edit, Rename, Move, Delete).
+- **Toast variants** (success/error/info), skeleton loaders on first paint, debounced search, and
+  WebSocket reconnect with exponential backoff.
+
+---
+
+## Legacy screenshots (2026-01-12)
+
+Captured against a local build (`BOX_UPLOAD_DIR=./uploads_docs`, `BOX_PORT=8086`) using Playwright + Chromium. Each screenshot shows the live UI performing a core action.
 
 ## 1) Home screen
 ![Home screen](assets/images/boxy-ui-home-20260112.png)

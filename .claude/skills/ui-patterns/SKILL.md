@@ -39,16 +39,27 @@ alwaysApply: false
     --text-secondary: #a2a5ad;
 }
 ```
+Also defined as tokens (use these instead of hardcoded values):
+`--radius-{sm,md,lg,xl}`, motion (`--ease`, `--motion`, `--motion-fast`),
+priority accents (`--priority-{high,medium,low}`), layout (`--sidebar-width`, `--z-menu`).
 
-### Theme Toggle Pattern
+### Theme: dark-mode-first
+Default to dark when no preference is stored:
 ```javascript
-function toggleTheme() {
-    const current = document.documentElement.dataset.theme;
-    const next = current === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = next;
-    localStorage.setItem('theme', next);
-}
+const savedTheme = localStorage.getItem('theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
+// toggleTheme() flips data-theme and persists to localStorage('theme')
 ```
+
+### Resource discipline
+- Keep `backdrop-filter` to the header/nav only.
+- Always ship a `@media (prefers-reduced-motion: reduce)` block that zeroes animations/transitions.
+
+### Components added in the overhaul
+- **Sidebar tree** (`.files-sidebar` / `.sb-item`), **context menu** (`.context-menu`),
+  **inline rename** (`.inline-rename`), **toast variants** (`.toast.success/.error/.info`),
+  **skeleton loaders** (`.skeleton` + `@keyframes shimmer`).
+- `showToast(msg, type)` builds an icon + sets the text via `textContent` (XSS-safe).
 
 ## Animation Patterns
 

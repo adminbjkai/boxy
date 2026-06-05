@@ -16,9 +16,9 @@ Run through this before committing changes.
 ## Backend (src/main.rs)
 
 ### Security
-- [ ] All user paths go through `clean_relative_path()`
+- [ ] All user paths go through `resolve_path_safe()` (canonicalised + containment-checked)
 - [ ] No `unwrap()` on user input - use proper error handling
-- [ ] File operations use `resolve_path()` for full paths
+- [ ] User-supplied names length-validated; recursive walks carry a depth cap
 - [ ] No hardcoded secrets or paths
 
 ### Code Quality
