@@ -1,3 +1,4 @@
+use actix_files::{Files, NamedFile};
 use actix_multipart::Multipart;
 use actix_web::{
     middleware::{Compress, Logger},
@@ -11,6 +12,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::broadcast;
 
 const DEFAULT_UPLOAD_DIR: &str = "./uploads";
+const DEFAULT_DATA_DIR: &str = "./data";
 const DEFAULT_PORT: u16 = 8086;
 const DEFAULT_BIND_ADDR: &str = "127.0.0.1"; // localhost-only; nginx terminates TLS in front
 const DEFAULT_MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 200; // 200 MB
@@ -53,6 +55,7 @@ struct AppState {
 
 struct Settings {
     upload_dir: PathBuf,
+    data_dir: PathBuf,
     port: u16,
     bind_addr: String,
     max_upload_bytes: usize,
@@ -64,6 +67,9 @@ impl Settings {
             upload_dir: env::var("BOX_UPLOAD_DIR")
                 .map(PathBuf::from)
                 .unwrap_or_else(|_| PathBuf::from(DEFAULT_UPLOAD_DIR)),
+            data_dir: env::var("BOX_DATA_DIR")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| PathBuf::from(DEFAULT_DATA_DIR)),
             port: env::var("BOX_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
@@ -258,7 +264,9 @@ async fn upload_file(
                     return Err(actix_web::error::ErrorBadRequest("mtimes metadata too large"));
                 }
             }
-            if let Ok(parsed) = serde_json::from_slice::<std::collections::HashMap<String, u64>>(&bytes) {
+            if let Ok(parsed) =
+                serde_json::from_slice::<std::collections::HashMap<String, u64>>(&bytes)
+            {
                 mtimes = parsed;
             }
             continue;
@@ -291,7 +299,10 @@ async fn upload_file(
 
         // Preserve original modification time if provided
         if let Some(&mtime_ms) = mtimes.get(&filename) {
-            let mtime = filetime::FileTime::from_unix_time((mtime_ms / 1000) as i64, ((mtime_ms % 1000) * 1_000_000) as u32);
+            let mtime = filetime::FileTime::from_unix_time(
+                (mtime_ms / 1000) as i64,
+                ((mtime_ms % 1000) * 1_000_000) as u32,
+            );
             let _ = filetime::set_file_mtime(&filepath, mtime);
         }
 
@@ -538,6 +549,8 @@ struct SearchResult {
     modified: u64,
 }
 
+const MAX_SEARCH_RESULTS: usize = 100;
+
 #[derive(Deserialize)]
 struct SearchQuery {
     q: String,
@@ -588,6 +601,11 @@ async fn collect_search_results(
     }
     if let Ok(mut dir) = tokio::fs::read_dir(&path).await {
         while let Ok(Some(entry)) = dir.next_entry().await {
+            // Check limit before processing each entry
+            if results.len() >= limit {
+                return;
+            }
+
             if let Ok(meta) = entry.metadata().await {
                 let name = entry.file_name().to_string_lossy().to_string();
                 let full_path = if prefix.is_empty() {
@@ -828,13 +846,13 @@ async fn download_file(
     if force_download {
         response.insert_header((
             "Content-Disposition",
-            format!("attachment; filename=\"{}\"", filename.replace('"', "\\\""))
+            format!("attachment; filename=\"{}\"", filename.replace('"', "\\\"")),
         ));
     } else {
         // Explicit inline directive for preview - required by Edge for PDF viewing
         response.insert_header((
             "Content-Disposition",
-            format!("inline; filename=\"{}\"", filename.replace('"', "\\\""))
+            format!("inline; filename=\"{}\"", filename.replace('"', "\\\"")),
         ));
     }
 
@@ -980,11 +998,84 @@ async fn download_zip_multi(
 async fn serve_index() -> Result<HttpResponse> {
     Ok(HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
+        .insert_header(("Cache-Control", "no-cache, no-store, must-revalidate"))
+        .insert_header(("Pragma", "no-cache"))
+        .insert_header(("Expires", "0"))
         .body(include_str!("../static/index.html")))
+}
+
+async fn serve_favicon() -> Result<NamedFile> {
+    Ok(NamedFile::open("./static/favicon.ico")?)
 }
 
 async fn healthcheck() -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().json(serde_json::json!({"ok": true})))
+}
+
+// === Server-side Data Storage API ===
+// Stores JSON data in uploads/.boxy/ for cross-browser sync
+
+#[derive(Deserialize)]
+struct DataPath {
+    data_type: String,
+}
+
+async fn get_data(
+    state: web::Data<AppState>,
+    path: web::Path<DataPath>,
+) -> Result<HttpResponse> {
+    let data_type = &path.data_type;
+
+    // Whitelist allowed data types
+    let allowed = ["boards", "tiles", "credentials"];
+    if !allowed.contains(&data_type.as_str()) {
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "Invalid data type"
+        })));
+    }
+
+    let file_path = state.data_dir.join(format!("{}.json", data_type));
+
+    match std::fs::read_to_string(&file_path) {
+        Ok(content) => Ok(HttpResponse::Ok()
+            .content_type("application/json")
+            .insert_header(("Cache-Control", "no-cache"))
+            .body(content)),
+        Err(_) => Ok(HttpResponse::Ok()
+            .content_type("application/json")
+            .body("null")),
+    }
+}
+
+async fn save_data(
+    state: web::Data<AppState>,
+    path: web::Path<DataPath>,
+    body: web::Bytes,
+) -> Result<HttpResponse> {
+    let data_type = &path.data_type;
+
+    // Whitelist allowed data types
+    let allowed = ["boards", "tiles", "credentials"];
+    if !allowed.contains(&data_type.as_str()) {
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "Invalid data type"
+        })));
+    }
+
+    let file_path = state.data_dir.join(format!("{}.json", data_type));
+
+    match std::fs::write(&file_path, &body) {
+        Ok(_) => {
+            // Broadcast to all clients for real-time sync
+            broadcast_update(&state.broadcaster, "data_sync", data_type);
+            Ok(HttpResponse::Ok().json(serde_json::json!({
+                "success": true
+            })))
+        }
+        Err(e) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": e.to_string()
+        }))),
+    }
 }
 
 #[actix_web::main]
@@ -993,6 +1084,7 @@ async fn main() -> std::io::Result<()> {
 
     let settings = Settings::from_env();
     tokio::fs::create_dir_all(&settings.upload_dir).await?;
+    tokio::fs::create_dir_all(&settings.data_dir).await?;
 
     let (tx, _) = broadcast::channel::<String>(256);
     let state = AppState {
@@ -1018,6 +1110,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .wrap(Compress::default())
             .route("/", web::get().to(serve_index))
+            .route("/favicon.ico", web::get().to(serve_favicon))
             .route("/ws", web::get().to(ws_handler))
             .route("/api/files", web::get().to(list_files))
             .route("/api/upload", web::post().to(upload_file))
@@ -1035,6 +1128,9 @@ async fn main() -> std::io::Result<()> {
             .route("/api/newfile", web::post().to(create_new_file))
             .route("/api/duplicate", web::post().to(duplicate_item))
             .route("/api/health", web::get().to(healthcheck))
+            .route("/api/data/{data_type}", web::get().to(get_data))
+            .route("/api/data/{data_type}", web::post().to(save_data))
+            .service(Files::new("/static", "./static").prefer_utf8(true))
     })
     .bind(bind)?
     .run()

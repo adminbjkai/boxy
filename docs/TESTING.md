@@ -34,4 +34,5 @@ cargo clippy              # optional lint pass
 - `BOX_PORT` (default 8086)
 - `BOX_BIND_ADDR` (default `127.0.0.1`)
 - `BOX_UPLOAD_DIR` (default `./uploads`)
+- `BOX_DATA_DIR` (default `./data`)
 - `BOX_MAX_UPLOAD_BYTES` (default `209715200`)

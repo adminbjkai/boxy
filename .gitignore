@@ -1,10 +1,21 @@
 /target
 /node_modules
 /uploads
+/data
 /uploads_docs
 /_ai_images
+**/_ai_images
 /dist
 npm-debug.log*
 yarn-error.log*
 .DS_Store
 .env
+
+# Test artifacts
+/test-results
+
+# TLDR cache
+/.tldr
+
+# TLDR local config
+.tldrignore

@@ -107,3 +107,19 @@ If the server is already running on the configured port, Playwright reuses it.
 ```bash
 docker compose up --build      # or: docker build -t boxy . && docker run -p 8086:8086 -v $(pwd)/uploads:/app/uploads boxy
 ```
+
+## Diagram Generation
+
+Architecture diagrams are generated using AI image tools (g3img, DALL-E, etc.) with reproducible prompts stored in `docs/prompts/`:
+
+| Diagram | Prompt File | Description |
+|---------|-------------|-------------|
+| System Architecture | `01-system-architecture.md` | Three-layer architecture with Docker boundary |
+| File Upload Flow | `02-file-upload-flow.md` | Upload cycle with broadcast and error paths |
+| Request Lifecycle | `03-request-lifecycle.md` | Sequence diagram for rename operation |
+| WebSocket Model | `04-websocket-model.md` | Fan-out topology and reconnection behavior |
+| Security Model | `05-security-model.md` | Defense-in-depth layers and threat mitigation |
+| UI Feature Map | `06-ui-feature-map.md` | Frontend capabilities overview |
+| Deployment View | `07-deployment-view.md` | Containerized deployment architecture |
+
+Generated images are saved to `docs/assets/images/` with date suffixes (e.g., `boxy-system-architecture-20260205.png`).

@@ -16,21 +16,27 @@ alwaysApply: false
 ## Project Structure
 ```
 boxy/
-├── src/main.rs          # Monolithic backend (all handlers)
-├── static/index.html    # Complete frontend (HTML + CSS + JS)
-├── tests/ui.spec.ts     # Playwright e2e tests
-├── docs/                # Architecture docs
-├── uploads/             # File storage (gitignored)
-├── Cargo.toml           # Rust config
-└── package.json         # Playwright config
+├── src/main.rs              # Backend (all handlers)
+├── static/
+│   ├── index.html           # Main app (HTML + JS)
+│   └── css/styles.css       # Extracted CSS
+├── data/                    # App data (gitignored)
+│   ├── boards.json          # Kanban boards + tasks
+│   ├── tiles.json           # Dashboard tiles
+│   └── credentials.json     # Stored credentials
+├── uploads/                 # File storage (gitignored)
+├── tests/ui.spec.ts         # Playwright e2e tests
+├── docs/                    # Architecture docs
+├── Cargo.toml               # Rust config
+└── package.json             # Playwright config
 ```
 
 ## Backend Patterns (src/main.rs)
 
 ### Architecture
 - **Single-file design** - all handlers in main.rs
-- **AppState** holds: broadcaster, upload_dir, max_upload_bytes
-- **Settings from env**: `BOX_PORT`, `BOX_UPLOAD_DIR`, `BOX_MAX_UPLOAD_BYTES`
+- **AppState** holds: broadcaster, upload_dir, data_dir, max_upload_bytes
+- **Settings from env**: `BOX_PORT`, `BOX_UPLOAD_DIR`, `BOX_DATA_DIR`, `BOX_MAX_UPLOAD_BYTES`
 
 ### Security (CRITICAL)
 ```rust
@@ -72,6 +78,7 @@ broadcast_update(&state.broadcaster, "upload", &path);
 | GET | `/api/folders` | All folder paths |
 | GET | `/api/download?path=` | Download/preview file |
 | GET | `/api/health` | Healthcheck |
+| GET | `/api/data/{type}` | Load app data (boards, tiles, credentials) |
 | POST | `/api/upload?path=` | Upload (multipart, supports folders) |
 | POST | `/api/folder` | Create folder |
 | POST | `/api/rename` | Rename item |
@@ -96,6 +103,11 @@ broadcast_update(&state.broadcaster, "upload", &path);
   click / Esc / scroll.
 - **Inline rename:** `startInlineRename(itemEl)` (context menu or `F2`); commits via `/api/rename`.
 
+### Cross-Browser Sync
+- Data stored server-side in `data/` directory
+- WebSocket broadcasts `data_sync` events on save
+- All connected browsers auto-update when data changes
+
 ## Quick Commands
 ```bash
 cargo run                    # Dev server (port 8086)
@@ -106,11 +118,13 @@ docker compose up --build   # Docker deployment
 
 ## Rules
 1. Keep backend in single main.rs (no module splitting unless >1000 lines)
-2. Frontend stays embedded via `include_str!`
+2. CSS is extracted to `static/css/styles.css`, JS remains in index.html
 3. Always sanitize paths before filesystem access
-4. Broadcast all mutations via WebSocket
+4. Broadcast all mutations via WebSocket (including `data_sync` for app data)
 5. Use env vars for config with sensible defaults
+6. **Use TLDR before reading files** — see tldr-first skill
 
 ## Related Skills
+- **tldr-first**: Token-efficient exploration (TLDR commands first)
 - **ui-patterns**: Frontend CSS/JS patterns
 - **quality-checklist**: Pre-commit verification

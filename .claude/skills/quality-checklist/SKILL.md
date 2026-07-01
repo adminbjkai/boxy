@@ -8,6 +8,15 @@ alwaysApply: false
 
 Run through this before committing changes.
 
+## TLDR-First (Code Review/Refactor)
+```bash
+tldr extract src/main.rs       # Signatures + call graph
+tldr impact <function>         # Find all callers (reverse call graph)
+tldr calls .                   # Project-level call graph
+# Only read specific line ranges after identifying targets
+```
+**WARNING:** Never run `tldr extract static/index.html` — output exceeds 6000 lines.
+
 ## Build Verification
 - [ ] `cargo build` passes without warnings
 - [ ] `cargo clippy` shows no issues

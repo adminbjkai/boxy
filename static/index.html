@@ -1770,6 +1770,11 @@
                 </button>
             </div>
         </div>
+        <div class="nav-bar">
+            <nav class="breadcrumb" id="breadcrumb"></nav>
+            <div class="nav-meta" id="navMeta"></div>
+        </div>
+        </div>
 
         <div class="drop-zone" id="dropZone">
             <svg class="drop-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -1797,6 +1802,39 @@
         </div><!-- end filesView -->
 
     </main>
+
+    <!-- Tile Modal -->
+    <div class="modal" id="tileModal">
+        <div class="modal-content">
+            <h3 id="tileModalTitle">Add Tile</h3>
+            <input type="text" id="tileName" placeholder="Tile name" autocomplete="off">
+            <input type="text" id="tileUrl" placeholder="URL (https://...)" autocomplete="off">
+            <input type="text" id="tileIcon" placeholder="Emoji icon (optional, e.g. 📧)" autocomplete="off">
+            <input type="text" id="tileIconUrl" placeholder="Icon URL (optional, overrides emoji)" autocomplete="off">
+            <input type="hidden" id="tileEditId">
+            <div class="modal-actions">
+                <button class="btn" onclick="closeTileModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveTile()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Credential Modal -->
+    <div class="modal" id="credentialModal">
+        <div class="modal-content">
+            <h3 id="credentialModalTitle">Add Credential</h3>
+            <input type="text" id="credentialTitle" placeholder="Title (e.g. Gmail)" autocomplete="off">
+            <input type="text" id="credentialUsername" placeholder="Username / Email" autocomplete="off">
+            <input type="password" id="credentialPassword" placeholder="Password" autocomplete="off">
+            <input type="text" id="credentialUrl" placeholder="URL (optional)" autocomplete="off">
+            <textarea id="credentialNotes" placeholder="Notes (optional)" rows="3"></textarea>
+            <input type="hidden" id="credentialEditId">
+            <div class="modal-actions">
+                <button class="btn" onclick="closeCredentialModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveCredential()">Save</button>
+            </div>
+        </div>
+    </div>
 
     <!-- New Folder Modal -->
     <div class="modal" id="folderModal">
@@ -1915,8 +1953,11 @@
     <div class="col-filter-dropdown" id="colFilterDropdown"></div>
 
     <!-- Selection Action Bar -->
-    <div class="selection-bar" id="selectionBar">
-        <span class="selection-count" id="selectionCount">0 selected</span>
+    <div class="selection-bar is-hidden" id="selectionBar">
+        <div class="selection-summary">
+            <span class="selection-count" id="selectionCount">0 selected</span>
+            <span class="selection-label">Bulk actions</span>
+        </div>
         <div class="selection-actions">
             <button class="selection-btn" onclick="showBulkMoveModal()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1945,10 +1986,19 @@
     </div>
 
     <div class="upload-progress" id="uploadProgress">
-        <h4>Uploading...</h4>
+        <div class="upload-progress-header">
+            <h4 id="uploadProgressTitle">Uploading...</h4>
+            <button class="upload-progress-close" id="uploadProgressClose" onclick="dismissUploadProgress()" title="Dismiss">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
         <div class="progress-bar">
             <div class="progress-bar-fill" id="progressFill"></div>
         </div>
+        <div class="upload-progress-meta" id="uploadProgressMeta"></div>
+        <div class="upload-progress-list" id="uploadProgressList"></div>
     </div>
 
     <div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
@@ -2026,6 +2076,35 @@
         const savedTheme = localStorage.getItem('theme') || 'dark';
         document.documentElement.setAttribute('data-theme', savedTheme);
         updateThemeIcon();
+
+        // === SERVER-SIDE DATA API ===
+        // Data is stored on server in uploads/.boxy/ for cross-browser sync
+        async function loadServerData(dataType) {
+            try {
+                const resp = await fetch(`/api/data/${dataType}`);
+                if (!resp.ok) throw new Error('Failed to load');
+                const data = await resp.json();
+                return data;
+            } catch (err) {
+                console.error(`Error loading ${dataType}:`, err);
+                return null;
+            }
+        }
+
+        async function saveServerData(dataType, data) {
+            try {
+                const resp = await fetch(`/api/data/${dataType}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!resp.ok) throw new Error('Failed to save');
+                return true;
+            } catch (err) {
+                console.error(`Error saving ${dataType}:`, err);
+                return false;
+            }
+        }
 
         // File type icons
         function getFileIcon(name, isDir) {
@@ -2137,6 +2216,7 @@
             };
 
             ws.onclose = () => {
+                console.log('WebSocket closed, reconnecting in 2s...');
                 document.getElementById('statusDot').classList.remove('connected');
                 document.getElementById('statusText').textContent = 'Reconnecting...';
                 // Exponential backoff with jitter (1s → ~30s cap) avoids thundering-herd on restart.
@@ -2176,6 +2256,11 @@
             const grid = document.getElementById('fileGrid');
             const empty = document.getElementById('emptyState');
             const meta = document.getElementById('navMeta');
+
+            if (viewMode !== 'list' && inlineRenamePath) {
+                inlineRenamePath = null;
+                inlineRenameOriginal = '';
+            }
 
             const visible = applyFilters(files);
             meta.textContent = `${visible.length} item${visible.length === 1 ? '' : 's'}`;
@@ -2219,6 +2304,10 @@
                 const escapedName = escapeAttr(f.name);
                 const hasThumb = !f.is_dir && isImageFile(f.name);
                 const fileType = getFileType(f.name, f.is_dir);
+                const isEditing = viewMode === 'list' && inlineRenamePath === fullPath;
+                if (isEditing) {
+                    foundInlineRename = true;
+                }
 
                 const typeColumn = viewMode === 'list' ? `<div class="file-type">${fileType}</div>` : '';
                 const datePart = f.modified ? formatDatePart(f.modified) : '';
@@ -2283,7 +2372,7 @@
                                 <path d="M5 12h14M12 5l7 7-7 7"/>
                             </svg>
                         </button>
-                        <button class="file-action-btn" onclick="event.stopPropagation(); showRenameModal('${escapedPath}', '${escapedName}')" title="Rename">
+                        <button class="file-action-btn" onclick="event.stopPropagation(); triggerRename('${escapedPath}', '${escapedName}')" title="Rename">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -2328,6 +2417,11 @@
             }).join('');
 
             grid.innerHTML = tableHeader + rows + tableFooter;
+
+            if (inlineRenamePath && !foundInlineRename) {
+                inlineRenamePath = null;
+                inlineRenameOriginal = '';
+            }
 
             // Maintain visual selection state after re-render
             updateSelectionUI();
@@ -2464,11 +2558,14 @@
             const bar = document.getElementById('selectionBar');
             const countEl = document.getElementById('selectionCount');
 
+            countEl.textContent = `${count} file${count === 1 ? '' : 's'} selected`;
+
             if (count > 0) {
                 bar.classList.add('show');
-                countEl.textContent = `${count} file${count === 1 ? '' : 's'} selected`;
+                bar.classList.remove('is-hidden');
             } else {
                 bar.classList.remove('show');
+                bar.classList.add('is-hidden');
             }
 
             // Update visual selection state on items
@@ -2547,14 +2644,6 @@
                 const link = document.createElement('a');
                 link.href = url; link.target = '_blank'; link.rel = 'noopener noreferrer';
                 document.body.appendChild(link); link.click(); document.body.removeChild(link);
-            }
-        }
-
-        function handleClick(e, path, isDir) {
-            if (isDir) {
-                navigate(path);
-            } else {
-                downloadFile(path);
             }
         }
 
@@ -2770,52 +2859,215 @@
             return files;
         }
 
-        async function uploadFiles(files, relativePaths = null) {
+        function uploadFiles(files) {
             if (files.length === 0) return;
+            uploadQueue = uploadQueue
+                .then(() => runUpload(files))
+                .catch(() => {});
+        }
 
+        function dismissUploadProgress() {
             const progress = document.getElementById('uploadProgress');
             const fill = document.getElementById('progressFill');
+            const list = document.getElementById('uploadProgressList');
+            const meta = document.getElementById('uploadProgressMeta');
+            const closeBtn = document.getElementById('uploadProgressClose');
+            progress.classList.remove('show', 'show-close');
+            fill.style.width = '0%';
+            list.innerHTML = '';
+            meta.textContent = '';
+            closeBtn.setAttribute('aria-hidden', 'true');
+        }
+
+        function initUploadUI(files) {
+            const progress = document.getElementById('uploadProgress');
+            const list = document.getElementById('uploadProgressList');
+            const meta = document.getElementById('uploadProgressMeta');
+            const title = document.getElementById('uploadProgressTitle');
+            const closeBtn = document.getElementById('uploadProgressClose');
+
             progress.classList.add('show');
+            progress.classList.remove('show-close');
+            closeBtn.setAttribute('aria-hidden', 'true');
+            title.textContent = `Uploading ${files.length} file${files.length === 1 ? '' : 's'}...`;
+            meta.textContent = 'Starting...';
 
-            // Collect original modification times using relative paths
-            const mtimes = {};
-            for (const file of files) {
-                const path = file.name; // File.name contains the relative path for folder uploads
-                if (file.lastModified) {
-                    mtimes[path] = file.lastModified;
+            list.innerHTML = files.map(item => `
+                <div class="upload-progress-item" data-upload-id="${item.id}">
+                    <div class="upload-progress-row">
+                        <div class="upload-progress-name">${escapeHtml(item.name)}</div>
+                        <div class="upload-progress-status">Queued</div>
+                    </div>
+                    <div class="upload-progress-bar">
+                        <div class="upload-progress-bar-fill"></div>
+                    </div>
+                    <div class="upload-progress-error"></div>
+                </div>
+            `).join('');
+        }
+
+        function updateUploadItem(item) {
+            const row = document.querySelector(`.upload-progress-item[data-upload-id="${item.id}"]`);
+            if (!row) return;
+            const statusEl = row.querySelector('.upload-progress-status');
+            const fill = row.querySelector('.upload-progress-bar-fill');
+            const errorEl = row.querySelector('.upload-progress-error');
+            const pct = item.total > 0 ? Math.min(100, Math.round((item.loaded / item.total) * 100)) : 0;
+
+            row.classList.toggle('error', item.status === 'error');
+
+            if (item.status === 'done') {
+                statusEl.textContent = 'Done';
+                fill.style.width = '100%';
+            } else if (item.status === 'error') {
+                statusEl.textContent = 'Failed';
+                fill.style.width = '100%';
+                errorEl.textContent = item.error || 'Upload failed';
+            } else if (item.status === 'uploading') {
+                statusEl.textContent = `Uploading ${pct}%`;
+                fill.style.width = `${pct}%`;
+            } else {
+                statusEl.textContent = 'Queued';
+            }
+        }
+
+        function updateOverallUploadProgress(state) {
+            const fill = document.getElementById('progressFill');
+            const meta = document.getElementById('uploadProgressMeta');
+
+            const totalBytes = state.totalBytes || 1;
+            const loadedBytes = state.files.reduce((sum, item) => {
+                if (item.status === 'done' || item.status === 'error') {
+                    return sum + item.size;
                 }
-            }
+                return sum + Math.min(item.loaded || 0, item.size);
+            }, 0);
 
-            const formData = new FormData();
-            // Send mtimes first so backend can read it before processing files
-            formData.append('mtimes', new Blob([JSON.stringify(mtimes)], { type: 'application/json' }));
-            for (const file of files) {
-                formData.append('files', file, file.name);
-            }
+            const percent = Math.min(100, Math.round((loadedBytes / totalBytes) * 100));
+            const completed = state.files.filter(item => item.status === 'done').length;
 
+            fill.style.width = `${percent}%`;
+            meta.textContent = `${percent}% · ${completed}/${state.files.length} uploaded`;
+        }
+
+        function getUploadErrorText(xhr) {
+            const raw = xhr.responseText || '';
+            try {
+                const parsed = JSON.parse(raw);
+                if (parsed && parsed.error) {
+                    return parsed.error;
+                }
+            } catch (err) {}
+            if (raw) {
+                return raw;
+            }
+            return `Upload failed (${xhr.status})`;
+        }
+
+        function uploadSingleFile(fileItem, state, url) {
+            return new Promise((resolve) => {
+                const xhr = new XMLHttpRequest();
+
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        fileItem.total = e.total || fileItem.size;
+                        fileItem.loaded = e.loaded;
+                        updateUploadItem(fileItem);
+                        updateOverallUploadProgress(state);
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status === 200) {
+                        fileItem.status = 'done';
+                    } else {
+                        fileItem.status = 'error';
+                        fileItem.error = getUploadErrorText(xhr);
+                    }
+                    fileItem.loaded = fileItem.total || fileItem.size;
+                    updateUploadItem(fileItem);
+                    updateOverallUploadProgress(state);
+                    resolve();
+                };
+
+                xhr.onerror = () => {
+                    fileItem.status = 'error';
+                    fileItem.error = 'Upload failed';
+                    fileItem.loaded = fileItem.total || fileItem.size;
+                    updateUploadItem(fileItem);
+                    updateOverallUploadProgress(state);
+                    resolve();
+                };
+
+                const mtimes = {};
+                if (fileItem.file.lastModified) {
+                    mtimes[fileItem.file.name] = fileItem.file.lastModified;
+                }
+                const formData = new FormData();
+                formData.append('mtimes', new Blob([JSON.stringify(mtimes)], { type: 'application/json' }));
+                formData.append('files', fileItem.file, fileItem.file.name);
+
+                xhr.open('POST', url);
+                xhr.send(formData);
+            });
+        }
+
+        async function runUpload(files) {
             const url = currentPath ? `/api/upload?path=${encodeURIComponent(currentPath)}` : '/api/upload';
+            const items = files.map((file, index) => ({
+                id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
+                file,
+                name: file.name,
+                size: file.size || 0,
+                loaded: 0,
+                total: file.size || 0,
+                status: 'queued',
+                error: ''
+            }));
 
-            const xhr = new XMLHttpRequest();
-            xhr.upload.onprogress = (e) => {
-                if (e.lengthComputable) {
-                    fill.style.width = (e.loaded / e.total * 100) + '%';
-                }
+            const state = {
+                files: items,
+                totalBytes: items.reduce((sum, item) => sum + (item.size || 0), 0)
             };
-            xhr.onload = () => {
-                progress.classList.remove('show');
-                fill.style.width = '0%';
-                if (xhr.status === 200) {
-                    loadFiles();
-                    const count = files.length;
-                    showToast(`Uploaded ${count} file${count === 1 ? '' : 's'}`);
-                }
-            };
-            xhr.onerror = () => {
-                progress.classList.remove('show');
-                showToast('Upload failed');
-            };
-            xhr.open('POST', url);
-            xhr.send(formData);
+
+            initUploadUI(items);
+            updateOverallUploadProgress(state);
+
+            for (const item of items) {
+                item.status = 'uploading';
+                updateUploadItem(item);
+                updateOverallUploadProgress(state);
+                await uploadSingleFile(item, state, url);
+            }
+
+            const successCount = items.filter(item => item.status === 'done').length;
+            const errorCount = items.filter(item => item.status === 'error').length;
+            const title = document.getElementById('uploadProgressTitle');
+            const progress = document.getElementById('uploadProgress');
+            const closeBtn = document.getElementById('uploadProgressClose');
+
+            if (successCount > 0) {
+                loadFiles();
+            }
+
+            if (errorCount > 0) {
+                title.textContent = `Upload finished with ${errorCount} error${errorCount === 1 ? '' : 's'}`;
+                progress.classList.add('show-close');
+                closeBtn.setAttribute('aria-hidden', 'false');
+            } else {
+                title.textContent = 'Upload complete';
+                progress.classList.add('show-close');
+                closeBtn.setAttribute('aria-hidden', 'false');
+                setTimeout(() => dismissUploadProgress(), 2000);
+            }
+
+            if (successCount > 0 && errorCount > 0) {
+                showToast(`Uploaded ${successCount} file${successCount === 1 ? '' : 's'}, ${errorCount} failed`);
+            } else if (successCount > 0) {
+                showToast(`Uploaded ${successCount} file${successCount === 1 ? '' : 's'}`);
+            } else {
+                showToast(`Upload failed (${errorCount} file${errorCount === 1 ? '' : 's'})`);
+            }
         }
 
         function downloadFile(path) {
@@ -2930,6 +3182,43 @@
             showToast(`Deleted ${count} item${count === 1 ? '' : 's'}`);
         }
 
+        function getFileEntryByPath(path) {
+            const prefix = currentPath ? currentPath + '/' : '';
+            return allFiles.find(f => (prefix + f.name) === path);
+        }
+
+        function downloadSelected() {
+            const selected = Array.from(selectedFiles);
+            if (selected.length === 0) return;
+
+            let downloaded = 0;
+            let skipped = 0;
+
+            selected.forEach(path => {
+                const entry = getFileEntryByPath(path);
+                if (entry && entry.is_dir) {
+                    skipped += 1;
+                    return;
+                }
+
+                const link = document.createElement('a');
+                link.href = `/api/download?path=${encodeURIComponent(path)}&download=1`;
+                link.rel = 'noopener';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                downloaded += 1;
+            });
+
+            if (downloaded === 0) {
+                showToast('No downloadable files selected');
+            } else if (skipped > 0) {
+                showToast(`Started ${downloaded} download${downloaded === 1 ? '' : 's'}, skipped ${skipped} folder${skipped === 1 ? '' : 's'}`);
+            } else {
+                showToast(`Started ${downloaded} download${downloaded === 1 ? '' : 's'}`);
+            }
+        }
+
         function showBulkMoveModal() {
             if (selectedFiles.size === 0) return;
 
@@ -3038,6 +3327,14 @@
         }
 
         // Rename Modal
+        function triggerRename(path, currentName) {
+            if (viewMode === 'list') {
+                startInlineRename(path, currentName);
+            } else {
+                showRenameModal(path, currentName);
+            }
+        }
+
         function showRenameModal(path, currentName) {
             document.getElementById('renameModal').classList.add('active');
             document.getElementById('renamePath').value = path;
@@ -3053,11 +3350,65 @@
             document.getElementById('renameModal').classList.remove('active');
         }
 
-        async function renameItem() {
-            const path = document.getElementById('renamePath').value;
-            const newName = document.getElementById('renameName').value.trim();
-            if (!newName) return;
+        function startInlineRename(path, currentName) {
+            inlineRenamePath = path;
+            inlineRenameOriginal = currentName;
+            renderFiles(allFiles);
+            setTimeout(() => {
+                const input = document.querySelector('.inline-rename-input');
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }, 0);
+        }
 
+        function cancelInlineRename() {
+            if (!inlineRenamePath) return;
+            inlineRenamePath = null;
+            inlineRenameOriginal = '';
+            renderFiles(allFiles);
+        }
+
+        function handleInlineRenameKey(e, path) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                commitInlineRename(path);
+            }
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelInlineRename();
+            }
+        }
+
+        async function commitInlineRename(path) {
+            if (inlineRenamePath !== path) return;
+            const input = document.querySelector('.inline-rename-input');
+            if (!input) return;
+            const newName = input.value.trim();
+            if (!newName) {
+                showToast('Name cannot be empty');
+                return;
+            }
+            if (newName === inlineRenameOriginal) {
+                cancelInlineRename();
+                return;
+            }
+            inlineRenamePath = null;
+            inlineRenameOriginal = '';
+            const success = await renamePath(path, newName);
+            if (!success) {
+                renderFiles(allFiles);
+            }
+        }
+
+        function getRenamedPath(path, newName) {
+            const parts = path.split('/');
+            parts[parts.length - 1] = newName;
+            return parts.join('/');
+        }
+
+        async function renamePath(path, newName) {
             const res = await fetch('/api/rename', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -3065,10 +3416,26 @@
             });
 
             if (res.ok) {
-                closeRenameModal();
+                const newPath = getRenamedPath(path, newName);
+                if (selectedFiles.has(path)) {
+                    selectedFiles.delete(path);
+                    selectedFiles.add(newPath);
+                }
                 loadFiles();
-            } else {
-                showToast('Rename failed');
+                return true;
+            }
+
+            showToast('Rename failed');
+            return false;
+        }
+
+        async function renameItem() {
+            const path = document.getElementById('renamePath').value;
+            const newName = document.getElementById('renameName').value.trim();
+            if (!newName) return;
+            const success = await renamePath(path, newName);
+            if (success) {
+                closeRenameModal();
             }
         }
 
@@ -3476,9 +3843,11 @@
 
         function escapeAttr(str) {
             return str
-                .replace(/\\/g, '\\\\')  // Escape backslashes first
-                .replace(/'/g, "\\'")    // Escape single quotes for JS strings
-                .replace(/"/g, '&quot;'); // Escape double quotes for HTML attributes
+                .replace(/\\/g, '\\\\')   // Escape backslashes first
+                .replace(/'/g, "\\'")     // Escape single quotes for JS strings
+                .replace(/"/g, '&quot;')  // Escape double quotes for HTML attributes
+                .replace(/`/g, '\\`')     // Escape backticks for template literals
+                .replace(/\$/g, '\\$');   // Escape $ to prevent template interpolation
         }
 
         // Drag & Drop zone
@@ -4176,6 +4545,691 @@
         // Global error boundary so a thrown exception never leaves a frozen UI silently.
         window.addEventListener('error', () => showToast('Something went wrong', 'error'));
         window.addEventListener('unhandledrejection', () => showToast('A request failed', 'error'));
+
+        // ============================================
+        // DASHBOARD TILES
+        // ============================================
+        let dashboardTiles = [];
+
+        async function loadTiles() {
+            const serverTiles = await loadServerData('tiles');
+
+            if (serverTiles && Array.isArray(serverTiles)) {
+                dashboardTiles = serverTiles;
+            } else {
+                // Migration from localStorage
+                const localTiles = localStorage.getItem('boxy_tiles');
+                if (localTiles) {
+                    dashboardTiles = JSON.parse(localTiles);
+                    await saveServerData('tiles', dashboardTiles);
+                    localStorage.removeItem('boxy_tiles');
+                } else {
+                    dashboardTiles = [];
+                }
+            }
+        }
+
+        async function saveTiles() {
+            await saveServerData('tiles', dashboardTiles);
+        }
+
+        function renderDashboard() {
+            const grid = document.getElementById('dashboardGrid');
+            if (!grid) return;
+
+            const tilesHtml = dashboardTiles.map(tile => `
+                <a class="dashboard-tile" href="${escapeAttr(tile.url)}" target="_blank" data-tile-id="${tile.id}" onpointerdown="startTileDrag(event, '${tile.id}')" onclick="event.stopPropagation()">
+                    <div class="dashboard-tile-actions">
+                        <button class="dashboard-tile-btn" onclick="event.preventDefault(); event.stopPropagation(); editTile('${tile.id}')" title="Edit">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                        </button>
+                        <button class="dashboard-tile-btn danger" onclick="event.preventDefault(); event.stopPropagation(); deleteTile('${tile.id}')" title="Delete">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="dashboard-tile-icon">${tile.iconUrl ? `<img src="${escapeAttr(tile.iconUrl)}" class="dashboard-tile-img" alt="" onerror="this.style.display='none';this.parentElement.innerHTML='${tile.icon || '🔗'}'">` : (tile.icon || '🔗')}</div>
+                    <span class="dashboard-tile-name">${escapeHtml(tile.name)}</span>
+                </a>
+            `).join('');
+
+            const addTileHtml = `
+                <div class="dashboard-tile dashboard-add-tile" onclick="showTileModal()">
+                    <div class="dashboard-tile-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                    </div>
+                    <span class="dashboard-tile-name">Add Tile</span>
+                </div>
+            `;
+
+            grid.innerHTML = tilesHtml + addTileHtml;
+        }
+
+        function showTileModal(tileId) {
+            const modal = document.getElementById('tileModal');
+            const title = document.getElementById('tileModalTitle');
+            const nameInput = document.getElementById('tileName');
+            const urlInput = document.getElementById('tileUrl');
+            const iconInput = document.getElementById('tileIcon');
+            const iconUrlInput = document.getElementById('tileIconUrl');
+            const editIdInput = document.getElementById('tileEditId');
+
+            if (tileId) {
+                const tile = dashboardTiles.find(t => t.id === tileId);
+                if (tile) {
+                    title.textContent = 'Edit Tile';
+                    nameInput.value = tile.name;
+                    urlInput.value = tile.url;
+                    iconInput.value = tile.icon || '';
+                    iconUrlInput.value = tile.iconUrl || '';
+                    editIdInput.value = tileId;
+                }
+            } else {
+                title.textContent = 'Add Tile';
+                nameInput.value = '';
+                urlInput.value = '';
+                iconInput.value = '';
+                iconUrlInput.value = '';
+                editIdInput.value = '';
+            }
+
+            modal.classList.add('active');
+            nameInput.focus();
+        }
+
+        function closeTileModal() {
+            document.getElementById('tileModal').classList.remove('active');
+        }
+
+        let savingTile = false; // Guard against duplicate saves
+        function saveTile() {
+            if (savingTile) return; // Prevent double execution
+            savingTile = true;
+
+            const name = document.getElementById('tileName').value.trim();
+            let url = document.getElementById('tileUrl').value.trim();
+            const icon = document.getElementById('tileIcon').value.trim();
+            const iconUrl = document.getElementById('tileIconUrl').value.trim();
+            const editId = document.getElementById('tileEditId').value;
+
+            if (!name || !url) {
+                showToast('Name and URL are required');
+                savingTile = false;
+                return;
+            }
+
+            // Auto-add https if missing
+            if (!/^https?:\/\//i.test(url)) {
+                url = 'https://' + url;
+            }
+
+            if (editId) {
+                const tile = dashboardTiles.find(t => t.id === editId);
+                if (tile) {
+                    tile.name = name;
+                    tile.url = url;
+                    tile.icon = icon;
+                    tile.iconUrl = iconUrl;
+                }
+            } else {
+                dashboardTiles.push({
+                    id: Date.now().toString(36),
+                    name,
+                    url,
+                    icon,
+                    iconUrl
+                });
+            }
+
+            saveTiles();
+            closeTileModal();
+            renderDashboard();
+            showToast(editId ? 'Tile updated' : 'Tile added');
+            savingTile = false; // Reset guard
+        }
+
+        function editTile(tileId) {
+            showTileModal(tileId);
+        }
+
+        function deleteTile(tileId) {
+            if (!confirm('Delete this tile?')) return;
+            dashboardTiles = dashboardTiles.filter(t => t.id !== tileId);
+            saveTiles();
+            renderDashboard();
+            showToast('Tile deleted');
+        }
+
+        // Tile modal keyboard handling
+        document.getElementById('tileName').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('tileUrl').focus();
+            }
+            if (e.key === 'Escape') closeTileModal();
+        });
+        document.getElementById('tileUrl').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('tileIcon').focus();
+            }
+            if (e.key === 'Escape') closeTileModal();
+        });
+        document.getElementById('tileIcon').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                document.getElementById('tileIconUrl').focus();
+            }
+            if (e.key === 'Escape') closeTileModal();
+        });
+        document.getElementById('tileIconUrl').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                saveTile();
+            }
+            if (e.key === 'Escape') closeTileModal();
+        });
+
+        // Dashboard tile drag-and-drop (optimized)
+        let tileDragState = null;
+        let tileGhostEl = null;
+        let tilePlaceholderEl = null;
+        let cachedTileRects = null;
+        let tileDragRafId = null;
+
+        function startTileDrag(e, tileId) {
+            // Ignore if clicking on action buttons
+            if (e.target.closest('.dashboard-tile-btn')) return;
+            if (e.button !== 0) return; // Only left click
+
+            const tile = e.target.closest('.dashboard-tile');
+            if (!tile || tile.classList.contains('dashboard-add-tile')) return;
+
+            e.preventDefault();
+
+            const rect = tile.getBoundingClientRect();
+            const grid = document.getElementById('dashboardGrid');
+
+            // Cache all tile positions at drag start (avoid DOM queries during drag)
+            cachedTileRects = [...grid.querySelectorAll('.dashboard-tile:not(.dashboard-add-tile)')]
+                .map(t => ({
+                    el: t,
+                    id: t.dataset.tileId,
+                    rect: t.getBoundingClientRect()
+                }));
+
+            tileDragState = {
+                tileId,
+                startX: e.clientX,
+                startY: e.clientY,
+                offsetX: e.clientX - rect.left,
+                offsetY: e.clientY - rect.top,
+                width: rect.width,
+                height: rect.height,
+                isDragging: false,
+                originalTile: tile,
+                lastX: e.clientX,
+                lastY: e.clientY
+            };
+
+            // Attach listeners to document for reliable capture
+            document.addEventListener('pointermove', onTileDragMove);
+            document.addEventListener('pointerup', onTileDragEnd);
+            document.addEventListener('pointercancel', onTileDragEnd);
+        }
+
+        function initTileDragVisuals() {
+            tileDragState.isDragging = true;
+            const tile = tileDragState.originalTile;
+            const grid = document.getElementById('dashboardGrid');
+
+            grid.classList.add('is-dragging');
+            tile.classList.add('dragging');
+
+            // Create ghost element
+            tileGhostEl = tile.cloneNode(true);
+            tileGhostEl.classList.remove('dragging');
+            tileGhostEl.classList.add('drag-ghost');
+
+            // Clear inherited transitions to prevent animation from origin
+            tileGhostEl.style.animation = 'none';
+            tileGhostEl.style.transition = 'none';
+            tileGhostEl.style.width = tileDragState.width + 'px';
+            tileGhostEl.style.height = tileDragState.height + 'px';
+
+            // Position BEFORE appending to prevent flash at origin
+            const initialX = tileDragState.lastX - tileDragState.offsetX;
+            const initialY = tileDragState.lastY - tileDragState.offsetY;
+            tileGhostEl.style.transform = `translate(${initialX}px, ${initialY}px) scale(1.02) rotate(1deg)`;
+
+            document.body.appendChild(tileGhostEl);
+
+            // Create placeholder
+            tilePlaceholderEl = document.createElement('div');
+            tilePlaceholderEl.className = 'dashboard-tile dashboard-tile-placeholder';
+            tilePlaceholderEl.style.width = tileDragState.width + 'px';
+            tilePlaceholderEl.style.height = tileDragState.height + 'px';
+            tile.parentNode.insertBefore(tilePlaceholderEl, tile);
+
+            // Hide original
+            tile.style.display = 'none';
+
+            // Initial position
+            updateTileDragPosition();
+        }
+
+        function onTileDragMove(e) {
+            if (!tileDragState) return;
+
+            // Always update position first (before checking isDragging)
+            tileDragState.lastX = e.clientX;
+            tileDragState.lastY = e.clientY;
+
+            const dx = Math.abs(e.clientX - tileDragState.startX);
+            const dy = Math.abs(e.clientY - tileDragState.startY);
+
+            // Start drag if moved enough (8px threshold)
+            if (!tileDragState.isDragging && (dx > 8 || dy > 8)) {
+                initTileDragVisuals();
+                // Immediately update position (don't wait for RAF)
+                updateTileDragPosition();
+                return;
+            }
+
+            // Use RAF for smooth 60fps updates on subsequent moves
+            if (tileDragState.isDragging && !tileDragRafId) {
+                tileDragRafId = requestAnimationFrame(updateTileDragPosition);
+            }
+        }
+
+        function updateTileDragPosition() {
+            tileDragRafId = null;
+            if (!tileDragState || !tileDragState.isDragging) return;
+
+            const x = tileDragState.lastX - tileDragState.offsetX;
+            const y = tileDragState.lastY - tileDragState.offsetY;
+
+            // Use transform for GPU-accelerated positioning
+            if (tileGhostEl) {
+                tileGhostEl.style.transform = `translate(${x}px, ${y}px) scale(1.02) rotate(1deg)`;
+            }
+
+            // Update placeholder position
+            updateTilePlaceholderPosition(tileDragState.lastX, tileDragState.lastY);
+        }
+
+        function updateTilePlaceholderPosition(x, y) {
+            if (!tilePlaceholderEl || !cachedTileRects) return;
+
+            const grid = document.getElementById('dashboardGrid');
+            if (!grid) return;
+
+            // Find insertion point based on cursor position
+            // Use 33% threshold for more responsive feel (like task cards)
+            let insertBeforeEl = null;
+
+            for (const item of cachedTileRects) {
+                if (item.id === tileDragState.tileId) continue;
+
+                // For horizontal grid: use left third of tile as threshold
+                const thresholdX = item.rect.left + item.rect.width * 0.33;
+                // For vertical positioning: use top third
+                const thresholdY = item.rect.top + item.rect.height * 0.33;
+
+                // Insert before this tile if cursor is in the left/top region
+                if (x < thresholdX && y < item.rect.bottom) {
+                    insertBeforeEl = item.el;
+                    break;
+                }
+                // Also handle vertical stacking (when tiles wrap to next row)
+                if (y < thresholdY && x >= item.rect.left && x <= item.rect.right) {
+                    insertBeforeEl = item.el;
+                    break;
+                }
+            }
+
+            // Move placeholder only if position changed
+            if (insertBeforeEl) {
+                if (tilePlaceholderEl.nextElementSibling !== insertBeforeEl) {
+                    grid.insertBefore(tilePlaceholderEl, insertBeforeEl);
+                }
+            } else {
+                // Insert before the add-tile button
+                const addTile = grid.querySelector('.dashboard-add-tile');
+                if (addTile && tilePlaceholderEl.nextElementSibling !== addTile) {
+                    grid.insertBefore(tilePlaceholderEl, addTile);
+                }
+            }
+        }
+
+        function onTileDragEnd(e) {
+            // Remove document listeners
+            document.removeEventListener('pointermove', onTileDragMove);
+            document.removeEventListener('pointerup', onTileDragEnd);
+            document.removeEventListener('pointercancel', onTileDragEnd);
+
+            // Cancel any pending RAF
+            if (tileDragRafId) {
+                cancelAnimationFrame(tileDragRafId);
+                tileDragRafId = null;
+            }
+
+            if (!tileDragState) return;
+
+            const grid = document.getElementById('dashboardGrid');
+            if (grid) grid.classList.remove('is-dragging');
+
+            if (tileDragState.isDragging) {
+                const tile = tileDragState.originalTile;
+                tile.classList.remove('dragging');
+                tile.style.display = '';
+
+                // Remove ghost
+                if (tileGhostEl) {
+                    tileGhostEl.remove();
+                    tileGhostEl = null;
+                }
+
+                // Commit reorder based on placeholder position
+                if (tilePlaceholderEl && tilePlaceholderEl.parentNode) {
+                    // Build new order from current DOM state
+                    const newOrder = [];
+                    const allElements = grid.querySelectorAll('.dashboard-tile:not(.dashboard-add-tile), .dashboard-tile-placeholder');
+
+                    allElements.forEach(el => {
+                        if (el === tilePlaceholderEl) {
+                            // Insert dragged tile at placeholder position
+                            const draggedTile = dashboardTiles.find(t => t.id === tileDragState.tileId);
+                            if (draggedTile) newOrder.push(draggedTile);
+                        } else if (el.dataset.tileId && el.dataset.tileId !== tileDragState.tileId) {
+                            const t = dashboardTiles.find(tile => tile.id === el.dataset.tileId);
+                            if (t) newOrder.push(t);
+                        }
+                    });
+
+                    dashboardTiles = newOrder;
+                    saveTiles();
+
+                    tilePlaceholderEl.remove();
+                    tilePlaceholderEl = null;
+
+                    renderDashboard();
+                }
+            }
+
+            tileDragState = null;
+            cachedTileRects = null;
+        }
+
+        // ============================================
+        // CREDENTIALS
+        // ============================================
+        let credentials = [];
+        let revealedPasswords = new Set();
+
+        async function loadCredentials() {
+            const serverCreds = await loadServerData('credentials');
+
+            if (serverCreds && Array.isArray(serverCreds)) {
+                credentials = serverCreds;
+            } else {
+                // Migration from localStorage
+                const localCreds = localStorage.getItem('boxy_credentials');
+                if (localCreds) {
+                    credentials = JSON.parse(localCreds);
+                    await saveServerData('credentials', credentials);
+                    localStorage.removeItem('boxy_credentials');
+                } else {
+                    credentials = [];
+                }
+            }
+        }
+
+        async function saveCredentials() {
+            await saveServerData('credentials', credentials);
+        }
+
+        function renderCredentials() {
+            const list = document.getElementById('credentialsList');
+            if (!list) return;
+
+            if (credentials.length === 0) {
+                list.innerHTML = `
+                    <div class="credentials-empty">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        <p>No credentials stored</p>
+                        <button class="btn btn-primary" onclick="showCredentialModal()" style="margin-top: 16px">
+                            Add Your First Credential
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = credentials.map(cred => {
+                const isRevealed = revealedPasswords.has(cred.id);
+                const passwordDisplay = isRevealed ? escapeHtml(cred.password) : '••••••••';
+                return `
+                    <div class="credential-card">
+                        <div class="credential-header">
+                            <div class="credential-title">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                                ${escapeHtml(cred.title)}
+                            </div>
+                            <div class="credential-actions">
+                                <button class="credential-btn" onclick="editCredential('${cred.id}')" title="Edit">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                    </svg>
+                                </button>
+                                <button class="credential-btn danger" onclick="deleteCredential('${cred.id}')" title="Delete">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="credential-fields">
+                            ${cred.username ? `
+                            <div class="credential-field">
+                                <span class="credential-field-label">Username</span>
+                                <div class="credential-field-value">
+                                    <span>${escapeHtml(cred.username)}</span>
+                                    <button class="credential-copy-btn" onclick="copyToClipboard('${escapeAttr(cred.username)}')" title="Copy">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            ` : ''}
+                            ${cred.password ? `
+                            <div class="credential-field">
+                                <span class="credential-field-label">Password</span>
+                                <div class="credential-field-value ${isRevealed ? '' : 'masked'}">
+                                    <span>${passwordDisplay}</span>
+                                    <div style="display: flex; gap: 4px;">
+                                        <button class="credential-copy-btn" onclick="togglePasswordReveal('${cred.id}')" title="${isRevealed ? 'Hide' : 'Show'}">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                ${isRevealed ?
+                                                    '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>' :
+                                                    '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+                                                }
+                                            </svg>
+                                        </button>
+                                        <button class="credential-copy-btn" onclick="copyToClipboard('${escapeAttr(cred.password)}')" title="Copy">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            ` : ''}
+                            ${cred.url ? `
+                            <div class="credential-field">
+                                <span class="credential-field-label">URL</span>
+                                <div class="credential-field-value">
+                                    <a href="${escapeAttr(cred.url)}" target="_blank" style="color: var(--accent); text-decoration: none;">${escapeHtml(cred.url)}</a>
+                                    <button class="credential-copy-btn" onclick="copyToClipboard('${escapeAttr(cred.url)}')" title="Copy">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                        ${cred.notes ? `<div class="credential-notes">${escapeHtml(cred.notes)}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function togglePasswordReveal(credId) {
+            if (revealedPasswords.has(credId)) {
+                revealedPasswords.delete(credId);
+            } else {
+                revealedPasswords.add(credId);
+            }
+            renderCredentials();
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Copied to clipboard');
+            }).catch(() => {
+                showToast('Failed to copy');
+            });
+        }
+
+        function showCredentialModal(credId) {
+            const modal = document.getElementById('credentialModal');
+            const title = document.getElementById('credentialModalTitle');
+            const titleInput = document.getElementById('credentialTitle');
+            const usernameInput = document.getElementById('credentialUsername');
+            const passwordInput = document.getElementById('credentialPassword');
+            const urlInput = document.getElementById('credentialUrl');
+            const notesInput = document.getElementById('credentialNotes');
+            const editIdInput = document.getElementById('credentialEditId');
+
+            if (credId) {
+                const cred = credentials.find(c => c.id === credId);
+                if (cred) {
+                    title.textContent = 'Edit Credential';
+                    titleInput.value = cred.title;
+                    usernameInput.value = cred.username || '';
+                    passwordInput.value = cred.password || '';
+                    urlInput.value = cred.url || '';
+                    notesInput.value = cred.notes || '';
+                    editIdInput.value = credId;
+                }
+            } else {
+                title.textContent = 'Add Credential';
+                titleInput.value = '';
+                usernameInput.value = '';
+                passwordInput.value = '';
+                urlInput.value = '';
+                notesInput.value = '';
+                editIdInput.value = '';
+            }
+
+            modal.classList.add('active');
+            titleInput.focus();
+        }
+
+        function closeCredentialModal() {
+            document.getElementById('credentialModal').classList.remove('active');
+        }
+
+        function saveCredential() {
+            const title = document.getElementById('credentialTitle').value.trim();
+            const username = document.getElementById('credentialUsername').value.trim();
+            const password = document.getElementById('credentialPassword').value;
+            const url = document.getElementById('credentialUrl').value.trim();
+            const notes = document.getElementById('credentialNotes').value.trim();
+            const editId = document.getElementById('credentialEditId').value;
+
+            if (!title) {
+                showToast('Title is required');
+                return;
+            }
+
+            if (editId) {
+                const cred = credentials.find(c => c.id === editId);
+                if (cred) {
+                    cred.title = title;
+                    cred.username = username;
+                    cred.password = password;
+                    cred.url = url;
+                    cred.notes = notes;
+                    cred.updatedAt = Date.now();
+                }
+            } else {
+                credentials.push({
+                    id: Date.now().toString(36),
+                    title,
+                    username,
+                    password,
+                    url,
+                    notes,
+                    createdAt: Date.now()
+                });
+            }
+
+            saveCredentials();
+            closeCredentialModal();
+            renderCredentials();
+            showToast(editId ? 'Credential updated' : 'Credential added');
+        }
+
+        function editCredential(credId) {
+            showCredentialModal(credId);
+        }
+
+        function deleteCredential(credId) {
+            if (!confirm('Delete this credential?')) return;
+            credentials = credentials.filter(c => c.id !== credId);
+            saveCredentials();
+            renderCredentials();
+            showToast('Credential deleted');
+        }
+
+        // Credential modal keyboard handling
+        document.getElementById('credentialTitle').addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeCredentialModal();
+        });
+        document.getElementById('credentialPassword').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveCredential();
+            }
+            if (e.key === 'Escape') closeCredentialModal();
+        });
+
+        // ============================================
+        // END DASHBOARD & CREDENTIALS
+        // ============================================
 
         // Init
         document.getElementById('filterSelect').value = filterType;

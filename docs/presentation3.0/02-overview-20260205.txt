@@ -1,0 +1,3 @@
+**Planning the Layout**
+
+I am currently working on the layout. I am focused on the 16:9 aspect ratio and replicating the style and structure of the first slide. My goal is to use a light warm background, the blue accent, rounded cards, and clean typography.
