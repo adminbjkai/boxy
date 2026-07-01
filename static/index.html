@@ -1576,7 +1576,7 @@
             border-left: 2px solid var(--accent) !important;
             opacity: 0.92;
         }
-        .file-item--inline-child .file-name { padding-left: 4px; }
+        .file-item--inline-child .file-item-content { padding-left: calc(4px + var(--inline-depth, 0) * 20px); }
         .file-item.folder-expanded {
             border-bottom: none;
         }
@@ -2282,17 +2282,45 @@
             renderSidebar();
         }
 
+        function buildInlineChildren(folderPath, depth) {
+            const children = expandedFolderContents[folderPath] || [];
+            if (!children.length) return '';
+            return children.map(child => {
+                const childPath = folderPath + '/' + child.name;
+                const childEscaped = escapeAttr(childPath);
+                const childIsExpanded = child.is_dir && expandedFolderPaths.has(childPath);
+                const childDatePart = child.modified ? formatDatePart(child.modified) : '';
+                const childTimePart = child.modified ? formatTimePart(child.modified) : '';
+                const childFileType = getFileType(child.name, child.is_dir);
+                const expandBtn = child.is_dir
+                    ? `<div class="folder-expand-indicator ${childIsExpanded ? 'open' : ''}" onclick="event.stopPropagation(); toggleFolderInlineExpand('${childEscaped}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>`
+                    : `<div class="folder-expand-indicator" style="visibility:hidden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>`;
+                let html = `<div class="file-item file-item--inline-child${childIsExpanded ? ' folder-expanded' : ''}" style="--inline-depth:${depth}"
+                                 data-path="${childEscaped}" data-name="${escapeAttr(child.name)}" data-is-dir="${child.is_dir}"
+                                 ondblclick="handleItemDblClick(event,'${childEscaped}',${child.is_dir})"
+                                 onclick="handleItemClick(event,'${childEscaped}',${child.is_dir})"
+                                 oncontextmenu="showContextMenu(event,'${childEscaped}','${escapeAttr(child.name)}',${child.is_dir})">
+                                <div class="file-item-content">
+                                    <div class="file-icon">${getFileIconHtml(child.name, child.is_dir, childPath)}</div>
+                                    ${expandBtn}
+                                    <div class="file-name">${escapeHtml(child.name)}</div>
+                                    <div class="file-type">${childFileType}</div>
+                                    <div class="file-meta">${child.is_dir ? '—' : formatSize(child.size)}</div>
+                                    <div class="file-date-part">${childDatePart}</div>
+                                    <div class="file-time-part">${childTimePart}</div>
+                                </div>
+                            </div>`;
+                if (child.is_dir && childIsExpanded) {
+                    html += buildInlineChildren(childPath, depth + 1);
+                }
+                return html;
+            }).join('');
+        }
+
         function renderFiles(files) {
             const grid = document.getElementById('fileGrid');
             const empty = document.getElementById('emptyState');
             const meta = document.getElementById('navMeta');
-
-            foundInlineRename = false;
-
-            if (viewMode !== 'list' && inlineRenamePath) {
-                inlineRenamePath = null;
-                inlineRenameOriginal = '';
-            }
 
             const visible = applyFilters(files);
             meta.textContent = `${visible.length} item${visible.length === 1 ? '' : 's'}`;
@@ -2336,11 +2364,6 @@
                 const escapedName = escapeAttr(f.name);
                 const hasThumb = !f.is_dir && isImageFile(f.name);
                 const fileType = getFileType(f.name, f.is_dir);
-                const isEditing = viewMode === 'list' && inlineRenamePath === fullPath;
-                if (isEditing) {
-                    foundInlineRename = true;
-                }
-
                 const typeColumn = viewMode === 'list' ? `<div class="file-type">${fileType}</div>` : '';
                 const datePart = f.modified ? formatDatePart(f.modified) : '';
                 const timePart = f.modified ? formatTimePart(f.modified) : '';
@@ -2421,39 +2444,12 @@
 
                 let result = rowHtml;
                 if (viewMode === 'list' && f.is_dir && expandedFolderPaths.has(fullPath)) {
-                    const children = expandedFolderContents[fullPath] || [];
-                    result += children.map(child => {
-                        const childPath = fullPath + '/' + child.name;
-                        const childEscaped = escapeAttr(childPath);
-                        const childDatePart = child.modified ? formatDatePart(child.modified) : '';
-                        const childTimePart = child.modified ? formatTimePart(child.modified) : '';
-                        const childFileType = getFileType(child.name, child.is_dir);
-                        return `<div class="file-item file-item--inline-child"
-                                     data-path="${childEscaped}" data-name="${escapeAttr(child.name)}" data-is-dir="${child.is_dir}"
-                                     ondblclick="handleItemDblClick(event,'${childEscaped}',${child.is_dir})"
-                                     onclick="handleItemClick(event,'${childEscaped}',${child.is_dir})"
-                                     oncontextmenu="showContextMenu(event,'${childEscaped}','${escapeAttr(child.name)}',${child.is_dir})">
-                                    <div class="file-item-content">
-                                        <div class="file-icon">${getFileIconHtml(child.name, child.is_dir, childPath)}</div>
-                                        <div class="folder-expand-indicator" style="visibility:hidden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
-                                        <div class="file-name">${escapeHtml(child.name)}</div>
-                                        <div class="file-type">${childFileType}</div>
-                                        <div class="file-meta">${child.is_dir ? '—' : formatSize(child.size)}</div>
-                                        <div class="file-date-part">${childDatePart}</div>
-                                        <div class="file-time-part">${childTimePart}</div>
-                                    </div>
-                                </div>`;
-                    }).join('');
+                    result += buildInlineChildren(fullPath, 1);
                 }
                 return result;
             }).join('');
 
             grid.innerHTML = tableHeader + rows + tableFooter;
-
-            if (inlineRenamePath && !foundInlineRename) {
-                inlineRenamePath = null;
-                inlineRenameOriginal = '';
-            }
 
             // Maintain visual selection state after re-render
             updateSelectionUI();
@@ -3372,8 +3368,9 @@
 
         // Rename Modal
         function triggerRename(path, currentName) {
-            if (viewMode === 'list') {
-                startInlineRename(path, currentName);
+            const itemEl = document.querySelector(`.file-item[data-path="${CSS.escape(path)}"]`);
+            if (itemEl) {
+                startInlineRename(itemEl);
             } else {
                 showRenameModal(path, currentName);
             }
@@ -3394,57 +3391,6 @@
             document.getElementById('renameModal').classList.remove('active');
         }
 
-        function startInlineRename(path, currentName) {
-            inlineRenamePath = path;
-            inlineRenameOriginal = currentName;
-            renderFiles(allFiles);
-            setTimeout(() => {
-                const input = document.querySelector('.inline-rename-input');
-                if (input) {
-                    input.focus();
-                    input.select();
-                }
-            }, 0);
-        }
-
-        function cancelInlineRename() {
-            if (!inlineRenamePath) return;
-            inlineRenamePath = null;
-            inlineRenameOriginal = '';
-            renderFiles(allFiles);
-        }
-
-        function handleInlineRenameKey(e, path) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                commitInlineRename(path);
-            }
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                cancelInlineRename();
-            }
-        }
-
-        async function commitInlineRename(path) {
-            if (inlineRenamePath !== path) return;
-            const input = document.querySelector('.inline-rename-input');
-            if (!input) return;
-            const newName = input.value.trim();
-            if (!newName) {
-                showToast('Name cannot be empty');
-                return;
-            }
-            if (newName === inlineRenameOriginal) {
-                cancelInlineRename();
-                return;
-            }
-            inlineRenamePath = null;
-            inlineRenameOriginal = '';
-            const success = await renamePath(path, newName);
-            if (!success) {
-                renderFiles(allFiles);
-            }
-        }
 
         function getRenamedPath(path, newName) {
             const parts = path.split('/');
@@ -3825,15 +3771,11 @@
 
         function formatDatePart(timestamp) {
             if (!timestamp) return '';
-            const date = new Date(timestamp * 1000);
-            const days = Math.floor((Date.now() - date) / 86400000);
-            if (days === 0) return 'Today';
-            if (days === 1) return 'Yesterday';
-            if (days < 7) return date.toLocaleDateString([], { weekday: 'short' });
-            return date.toLocaleDateString([], {
-                month: 'short', day: 'numeric',
-                year: new Date().getFullYear() !== date.getFullYear() ? 'numeric' : undefined
-            });
+            const d = new Date(timestamp * 1000);
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            return `${mm}/${dd}/${yyyy}`;
         }
 
         function formatTimePart(timestamp) {
