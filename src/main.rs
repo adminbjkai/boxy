@@ -26,6 +26,7 @@ const MAX_MTIMES_BYTES: usize = 1024 * 1024; // 1 MiB
 const MAX_DEDUPE_ATTEMPTS: u32 = 10_000;
 const EDITABLE_EXTENSIONS: &[&str] = &[
     "txt", "csv", "py", "json", "md", "rs", "js", "html", "css", "toml", "yaml", "yml",
+    "sql", "m3u", "ts", "sh", "go", "rb", "php", "xml",
 ];
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -130,7 +131,7 @@ async fn ws_handler(
 #[derive(Deserialize)]
 struct PathQuery {
     path: Option<String>,
-    download: Option<bool>,
+    download: Option<String>,
 }
 
 fn clean_relative_path(path: &str) -> PathBuf {
@@ -338,6 +339,54 @@ async fn get_unique_filepath(original: &Path) -> PathBuf {
         None => format!("{}_{}", stem, uuid::Uuid::new_v4()),
     };
     parent.join(unique)
+}
+
+#[derive(Deserialize)]
+struct DuplicateReq {
+    path: String,
+}
+
+async fn duplicate_item(
+    body: web::Json<DuplicateReq>,
+    state: web::Data<AppState>,
+) -> Result<HttpResponse> {
+    let src = resolve_path_safe(&state.upload_dir, Some(&body.path))
+        .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
+
+    if !src.exists() {
+        return Err(actix_web::error::ErrorNotFound("Source not found"));
+    }
+
+    let dest = get_unique_filepath(&src).await;
+
+    if src.is_dir() {
+        copy_dir_all(&src, &dest).await?;
+    } else {
+        tokio::fs::copy(&src, &dest).await?;
+    }
+
+    let rel = dest
+        .strip_prefix(&state.upload_dir)
+        .unwrap_or(&dest)
+        .to_string_lossy()
+        .replace('\\', "/");
+    broadcast_update(&state.broadcaster, "upload", &rel);
+    Ok(HttpResponse::Ok().json(serde_json::json!({ "path": rel })))
+}
+
+#[async_recursion::async_recursion]
+async fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
+    tokio::fs::create_dir_all(dst).await?;
+    let mut dir = tokio::fs::read_dir(src).await?;
+    while let Some(entry) = dir.next_entry().await? {
+        let dst_path = dst.join(entry.file_name());
+        if entry.file_type().await?.is_dir() {
+            copy_dir_all(&entry.path(), &dst_path).await?;
+        } else {
+            tokio::fs::copy(entry.path(), dst_path).await?;
+        }
+    }
+    Ok(())
 }
 
 #[derive(Deserialize)]
@@ -775,7 +824,8 @@ async fn download_file(
     response.insert_header(("Cache-Control", "private, max-age=3600"));
 
     // Set Content-Disposition: attachment for download, inline for preview
-    if query.download.unwrap_or(false) {
+    let force_download = query.download.as_deref().map(|v| v == "true" || v == "1").unwrap_or(false);
+    if force_download {
         response.insert_header((
             "Content-Disposition",
             format!("attachment; filename=\"{}\"", filename.replace('"', "\\\""))
@@ -789,6 +839,142 @@ async fn download_file(
     }
 
     Ok(response.body(file_content))
+}
+
+async fn download_zip(
+    state: web::Data<AppState>,
+    query: web::Query<PathQuery>,
+) -> Result<HttpResponse> {
+    let path = query
+        .path
+        .as_ref()
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("path required"))?;
+
+    let dirpath = resolve_path_safe(&state.upload_dir, Some(path))
+        .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
+
+    if !dirpath.exists() || !dirpath.is_dir() {
+        return Err(actix_web::error::ErrorNotFound("Directory not found"));
+    }
+
+    let dirname = dirpath
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("archive")
+        .to_string();
+
+    let buf = tokio::task::spawn_blocking(move || -> std::io::Result<Vec<u8>> {
+        let cursor = std::io::Cursor::new(Vec::new());
+        let mut zip = zip::ZipWriter::new(cursor);
+        let options = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Deflated);
+
+        fn add_dir(
+            zip: &mut zip::ZipWriter<std::io::Cursor<Vec<u8>>>,
+            base: &Path,
+            dir: &Path,
+            options: zip::write::SimpleFileOptions,
+        ) -> std::io::Result<()> {
+            for entry in std::fs::read_dir(dir)? {
+                let entry = entry?;
+                let entry_path = entry.path();
+                let rel = entry_path.strip_prefix(base).unwrap_or(&entry_path);
+                let rel_str = rel.to_string_lossy().replace('\\', "/");
+                if entry_path.is_dir() {
+                    zip.add_directory(&rel_str, options)?;
+                    add_dir(zip, base, &entry_path, options)?;
+                } else {
+                    zip.start_file(&rel_str, options)?;
+                    let data = std::fs::read(&entry_path)?;
+                    std::io::Write::write_all(zip, &data)?;
+                }
+            }
+            Ok(())
+        }
+
+        add_dir(&mut zip, &dirpath, &dirpath, options)?;
+        let cursor = zip.finish()?;
+        Ok(cursor.into_inner())
+    })
+    .await
+    .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?
+    .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?;
+
+    Ok(HttpResponse::Ok()
+        .insert_header(("Content-Type", "application/zip"))
+        .insert_header(("Content-Disposition", format!("attachment; filename=\"{}.zip\"", dirname.replace('"', "\\\""))))
+        .insert_header(("Content-Length", buf.len().to_string()))
+        .body(buf))
+}
+
+#[derive(Deserialize)]
+struct ZipMultiReq {
+    paths: Vec<String>,
+}
+
+async fn download_zip_multi(
+    state: web::Data<AppState>,
+    body: web::Json<ZipMultiReq>,
+) -> Result<HttpResponse> {
+    if body.paths.is_empty() {
+        return Err(actix_web::error::ErrorBadRequest("paths required"));
+    }
+
+    let upload_dir = state.upload_dir.clone();
+    let paths: Vec<PathBuf> = body
+        .paths
+        .iter()
+        .filter_map(|p| resolve_path_safe(&upload_dir, Some(p)))
+        .collect();
+
+    if paths.is_empty() {
+        return Err(actix_web::error::ErrorForbidden("No valid paths"));
+    }
+
+    let buf = tokio::task::spawn_blocking(move || -> std::io::Result<Vec<u8>> {
+        let cursor = std::io::Cursor::new(Vec::new());
+        let mut zip = zip::ZipWriter::new(cursor);
+        let options = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Deflated);
+
+        fn add_entry(
+            zip: &mut zip::ZipWriter<std::io::Cursor<Vec<u8>>>,
+            base_name: &str,
+            entry_path: &Path,
+            options: zip::write::SimpleFileOptions,
+        ) -> std::io::Result<()> {
+            if entry_path.is_dir() {
+                zip.add_directory(base_name, options)?;
+                for child in std::fs::read_dir(entry_path)? {
+                    let child = child?;
+                    let child_name = format!("{}/{}", base_name, child.file_name().to_string_lossy());
+                    add_entry(zip, &child_name, &child.path(), options)?;
+                }
+            } else {
+                zip.start_file(base_name, options)?;
+                let data = std::fs::read(entry_path)?;
+                std::io::Write::write_all(zip, &data)?;
+            }
+            Ok(())
+        }
+
+        for p in &paths {
+            let name = p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "file".to_string());
+            add_entry(&mut zip, &name, p, options)?;
+        }
+
+        let cursor = zip.finish()?;
+        Ok(cursor.into_inner())
+    })
+    .await
+    .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?
+    .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?;
+
+    Ok(HttpResponse::Ok()
+        .insert_header(("Content-Type", "application/zip"))
+        .insert_header(("Content-Disposition", "attachment; filename=\"selection.zip\""))
+        .insert_header(("Content-Length", buf.len().to_string()))
+        .body(buf))
 }
 
 async fn serve_index() -> Result<HttpResponse> {
@@ -841,10 +1027,13 @@ async fn main() -> std::io::Result<()> {
             .route("/api/move", web::post().to(move_item))
             .route("/api/folders", web::get().to(list_all_folders))
             .route("/api/download", web::get().to(download_file))
+            .route("/api/download-zip", web::get().to(download_zip))
+            .route("/api/download-zip-multi", web::post().to(download_zip_multi))
             .route("/api/search", web::get().to(search_files))
             .route("/api/content", web::get().to(get_content))
             .route("/api/content", web::post().to(save_content))
             .route("/api/newfile", web::post().to(create_new_file))
+            .route("/api/duplicate", web::post().to(duplicate_item))
             .route("/api/health", web::get().to(healthcheck))
     })
     .bind(bind)?

@@ -96,40 +96,6 @@ broadcast_update(&state.broadcaster, "upload", &path);
   click / Esc / scroll.
 - **Inline rename:** `startInlineRename(itemEl)` (context menu or `F2`); commits via `/api/rename`.
 
-## Kanban Board System (Frontend)
-
-### Data Structure
-```javascript
-// localStorage keys
-boxy_boards         // Array of all boards
-boxy_current_board  // ID of active board
-
-// Board structure
-{
-  id: 'abc123',
-  name: 'My Board',
-  columns: [{ id: 'todo', name: 'Todo', order: 0 }, ...],
-  tasks: [{ id, title, description, status, priority, dueDate, tags, createdAt }, ...],
-  createdAt: 1705400000000
-}
-```
-
-### Key Functions
-- `loadBoards()` - Load from localStorage, auto-migrates old `boxy_tasks`/`boxy_columns` format
-- `saveBoards()` - Persist all boards
-- `saveCurrentBoard()` - Sync working `tasks`/`columns` to active board
-- `switchBoard(boardId)` - Change active board, updates UI
-- `renderBoardSelector()` - Update board dropdown
-- `showBoardModal(boardId?)` - Create/rename board modal
-
-### Working Variables
-```javascript
-let boards = [];           // All boards array
-let currentBoardId = null; // Active board
-let tasks = [];            // Current board's tasks (working copy)
-let columns = [];          // Current board's columns (working copy)
-```
-
 ## Quick Commands
 ```bash
 cargo run                    # Dev server (port 8086)

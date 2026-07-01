@@ -14,7 +14,6 @@ FROM debian:bookworm-slim
 RUN useradd -m boxy
 WORKDIR /app
 COPY --from=builder /app/target/release/boxy /app/boxy
-COPY --from=builder /app/static /app/static
 RUN mkdir -p /app/uploads && chown -R boxy:boxy /app
 USER boxy
 EXPOSE 8086

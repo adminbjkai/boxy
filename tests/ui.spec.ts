@@ -39,13 +39,6 @@ test('defaults to dark theme and renders the sidebar tree', async ({ page }) => 
   await expect(page.locator('#sidebarTree .sb-item').first()).toBeVisible();
 });
 
-test('switches between Files and Tasks tabs', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('.tab-btn[data-tab="tasks"]').click();
-  await expect(page.locator('#tasksView.active')).toBeVisible();
-  await page.locator('.tab-btn[data-tab="files"]').click();
-  await expect(page.locator('#filesView.active')).toBeVisible();
-});
 
 test('context menu opens on right-click and closes on Escape', async ({ page }) => {
   await page.goto('/');

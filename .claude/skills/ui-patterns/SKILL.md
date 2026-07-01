@@ -14,14 +14,18 @@ alwaysApply: false
 ## CSS Architecture
 
 ### Theme Variables
+The app is **dark-mode-first**: `:root` (and `[data-theme="dark"]`) holds the dark palette;
+`[data-theme="light"]` overrides to the light palette.
+
 ```css
-:root {
-    --bg: #f3f1ed;
-    --bg-secondary: #ffffff;
-    --bg-tertiary: #ece9e3;
-    --border: #d8d2c9;
-    --text: #1a1a1a;
-    --text-secondary: #6d6d6d;
+:root,
+[data-theme="dark"] {
+    --bg: #161719;
+    --bg-secondary: #212327;
+    --bg-tertiary: #2b2f35;
+    --border: #343944;
+    --text: #f4f2ee;
+    --text-secondary: #a2a5ad;
     --accent: #2f6df6;
     --accent-hover: #2a61d9;
     --danger: #ff3b30;
@@ -30,13 +34,13 @@ alwaysApply: false
     --transition: 0.2s ease;
 }
 
-[data-theme="dark"] {
-    --bg: #161719;
-    --bg-secondary: #212327;
-    --bg-tertiary: #2b2f35;
-    --border: #343944;
-    --text: #f4f2ee;
-    --text-secondary: #a2a5ad;
+[data-theme="light"] {
+    --bg: #f3f1ed;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #ece9e3;
+    --border: #d8d2c9;
+    --text: #1a1a1a;
+    --text-secondary: #6d6d6d;
 }
 ```
 Also defined as tokens (use these instead of hardcoded values):
@@ -84,10 +88,11 @@ items.forEach((item, i) => {
 
 ### Toast Notifications
 ```javascript
-function showToast(message) {
+// type: 'success' | 'error' | 'info'
+function showToast(msg, type) {
     const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.classList.add('show');
+    toast.textContent = msg;          // XSS-safe (textContent, not innerHTML)
+    toast.className = `toast show ${type ?? 'info'}`;
     setTimeout(() => toast.classList.remove('show'), 3000);
 }
 ```

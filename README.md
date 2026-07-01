@@ -1,9 +1,9 @@
 # Boxy
 
-Boxy is a fast, self-hosted **file sharing + task board** web app. It pairs a real-time file
-manager (drag-and-drop uploads, folders, inline editing, live updates) with a built-in Kanban
-board — all in a single Rust binary that serves one embedded HTML page. No database, no build
-step for the frontend, no external JS/CSS dependencies (web fonts only).
+Boxy is a fast, self-hosted **file sharing** web app. It provides a real-time file
+manager (drag-and-drop uploads, folders, inline editing, live updates) — all in a single Rust
+binary that serves one embedded HTML page. No database, no build step for the frontend, no
+external JS/CSS dependencies (web fonts only).
 
 - **Backend:** Rust + Actix-web 4 (single file, `src/main.rs`)
 - **Frontend:** Vanilla JS + CSS embedded in `static/index.html` (served via `include_str!`)
@@ -16,22 +16,24 @@ step for the frontend, no external JS/CSS dependencies (web fonts only).
 ### Files
 - Drag-and-drop, clipboard paste, and whole-folder uploads (original modification dates preserved)
 - **Collapsible sidebar folder tree** for fast navigation; drop files onto a folder to move them
-- Folder navigation with breadcrumbs; create / move / **inline-rename** / delete
+- Folder navigation with breadcrumbs and **URL hash navigation** (current folder reflected in the URL); create / move / **inline-rename** / delete
 - **Right-click context menu** (Preview, Download, Copy URL, Edit, Rename, Move, Delete)
-- Multi-select (Ctrl/Cmd+click, Shift+click) with bulk move / delete
+- Multi-select (Ctrl/Cmd+click, Shift+click, or **multi-select mode toggle**) with bulk move / delete / **ZIP download**
 - Drag-and-drop move (onto a folder card **or** onto the sidebar tree)
 - Global recursive search (`/`) and per-folder filter by name + type (Images, Documents, Code, Media)
-- Grid / list view toggle (persisted); sortable list columns (Name, Type, Size, Date)
+- **Per-column Excel-style filters** in list view (Name, Type, Date) with a Clear option
+- Grid / list view toggle (persisted); sortable list columns (Name, Type, Size, Date, Time); **folders always sorted first**
+- **List view**: separate Date + Time columns; single-click folder row to **inline expand** contents
+- **Zoom slider** in toolbar — resizes grid cards (80–200px) or adjusts list row density
+- **Live path bar** — editable address input, press Enter to navigate to any path
+- **Sidebar toolbar**: toggle showing files in tree, expand-all, collapse-all buttons
 - Image thumbnails with lazy loading; skeleton loaders on first paint
-- In-browser text editor for editable types (`txt, csv, py, json, md, rs, js, html, css, toml, yaml, yml`)
-- Create new empty text files in-app
-
-### Tasks (Kanban)
-- Multiple boards (create / rename / delete / switch), persisted in `localStorage`
-- Customisable columns (add / rename / delete / collapse); drag tasks between and within columns
-- Tasks with title, description, priority, due date, and tags
-- Kanban **and** sortable list views; search + status/priority filtering
-- Export a board to JSON and import/merge boards back in
+- **Image lightbox** — full-screen viewer with keyboard arrow navigation
+- In-browser text editor for editable types (`txt, csv, py, json, md, rs, js, ts, html, css, toml, yaml, yml, sql, m3u, sh, go, rb, php, xml`)
+- **Syntax highlighting** (Prism.js) and **rendered Markdown preview** in editor view mode
+- **Autosave** — 2-second debounce saves changes automatically while editing
+- Create new empty text files in-app; **Duplicate** any file or folder via context menu
+- **ZIP downloads**: per-directory (`?download=1` on folder URLs) or multi-selection
 
 ### Platform
 - Live updates across clients via WebSocket, with exponential-backoff reconnect
@@ -69,6 +71,9 @@ Configuration (all optional, via environment variables):
 | POST | `/api/rename` | Rename `{ path, new_name }` |
 | POST | `/api/move` | Move `{ path, dest_dir? }` |
 | POST | `/api/delete` | Delete `{ path }` |
+| POST | `/api/duplicate` | Duplicate file or folder `{ path }` → `{ path }` |
+| GET | `/api/download-zip?path=` | Download directory as ZIP |
+| POST | `/api/download-zip-multi` | Download selected paths as `selection.zip` `{ paths: [...] }` |
 | GET | `/api/health` | Healthcheck |
 
 WebSocket messages are `{ action, path }` where `action` is one of
