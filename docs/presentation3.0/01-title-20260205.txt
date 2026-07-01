@@ -1,3 +1,0 @@
-**Designing the Slide**
-
-I've started with the presentation slide. It's set to the 16:9 ratio, and I am working on the background now. I'm using a very light, warm tone with a subtle gradient effect.

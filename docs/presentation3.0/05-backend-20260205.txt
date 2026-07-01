@@ -1,3 +1,0 @@
-**Framing the Architecture**
-
-I'm starting by establishing the visual framework. The aspect ratio is set, the style is defined, and a title has been chosen, along with font attributes. Now focusing on the actual architecture visualization.

@@ -97,29 +97,27 @@ npm run test:e2e
 If the server is already running on the configured port, Playwright reuses it.
 
 ## Documentation
-- `docs/ARCHITECTURE.md` — components, data flow, subsystems
+- `docs/ARCHITECTURE.md` — components, data flow, API surface, env config
 - `docs/DEPLOYMENT.md` — production deployment (systemd + nginx reverse proxy)
-- `docs/TESTING.md` — e2e + manual test checklist
-- `docs/UI_WALKTHROUGH.md` — UI tour
-- `docs/code-audit.md` — security/code audit (current status)
+- `docs/TESTING.md` — e2e + manual test checklist for all current features
+- `docs/UI_WALKTHROUGH.md` — UI tour with feature descriptions
+- `docs/IMPLEMENTATION_GUIDE.md` — feature inventory, patterns, and dev checklist for AI/human contributors
+- `docs/code-audit.md` — security posture and accepted trade-offs
 
 ## Docker
 ```bash
 docker compose up --build      # or: docker build -t boxy . && docker run -p 8086:8086 -v $(pwd)/uploads:/app/uploads boxy
 ```
 
-## Diagram Generation
+## Diagrams and screenshots
 
-Architecture diagrams are generated using AI image tools (g3img, DALL-E, etc.) with reproducible prompts stored in `docs/prompts/`:
+Previously generated architecture diagrams and UI screenshots are archived in `docs/archive/`
+(images in `docs/archive/assets/images/`, prompts in `docs/archive/prompts/`, presentation decks in
+`docs/archive/presentation*/`). These predate the current UI and are kept for reference only.
 
-| Diagram | Prompt File | Description |
-|---------|-------------|-------------|
-| System Architecture | `01-system-architecture.md` | Three-layer architecture with Docker boundary |
-| File Upload Flow | `02-file-upload-flow.md` | Upload cycle with broadcast and error paths |
-| Request Lifecycle | `03-request-lifecycle.md` | Sequence diagram for rename operation |
-| WebSocket Model | `04-websocket-model.md` | Fan-out topology and reconnection behavior |
-| Security Model | `05-security-model.md` | Defense-in-depth layers and threat mitigation |
-| UI Feature Map | `06-ui-feature-map.md` | Frontend capabilities overview |
-| Deployment View | `07-deployment-view.md` | Containerized deployment architecture |
-
-Generated images are saved to `docs/assets/images/` with date suffixes (e.g., `boxy-system-architecture-20260205.png`).
+To regenerate UI screenshots against the current build, run:
+```bash
+BOX_UPLOAD_DIR=./uploads_docs BOX_PORT=8086 cargo run --release &
+node docs/capture-ui-screenshots.mjs
+```
+Output is written to `docs/assets/images/`.

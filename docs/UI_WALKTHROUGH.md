@@ -1,246 +1,203 @@
 # Boxy UI Walkthrough
 
-> **Note:** The screenshots below were captured 2026-01-12 and predate the June 2026 dark-mode-first
-> overhaul. The flows still apply, but the current UI is dark by default and adds the elements listed
-> under "What's new" below. Regenerate images with the Playwright script at the end of this file.
-
-## What's new (June 2026 overhaul)
-- **Dark-mode-first** theme (toggle still available; preference persists). Refined tokens, calmer
-  gradients, `prefers-reduced-motion` support, visible focus styles.
-- **Collapsible sidebar folder tree** in the Files view — click to navigate, expand/collapse nodes,
-  collapse the whole panel, and **drag files onto a node to move them**.
-- **Inline rename** — right-click → Rename or press `F2` on the focused item to edit the name in place.
-- **Right-click context menu** on files/folders (Preview, Download, Copy URL, Edit, Rename, Move, Delete).
-- **Toast variants** (success/error/info), skeleton loaders on first paint, debounced search, and
-  WebSocket reconnect with exponential backoff.
+> Screenshots from earlier builds are archived in `docs/archive/`. The flows below describe
+> the current (July 2026) UI. Regenerate screenshots with the capture script when the UI is stable.
 
 ---
 
-## Legacy screenshots (2026-01-12)
+## Layout overview
 
-Captured against a local build (`BOX_UPLOAD_DIR=./uploads_docs`, `BOX_PORT=8086`) using Playwright + Chromium. Each screenshot shows the live UI performing a core action.
+The app is a single-page file manager with three persistent regions:
 
-Server config: `BOX_UPLOAD_DIR=./uploads_docs BOX_PORT=8086`
-
----
-
-## 1) Home Screen (Empty State)
-The initial view with upload drop zone, toolbar, and navigation.
-
-**Light**
-![Home light](assets/images/boxy-ui-home-light-20260206.png)
-
-**Dark**
-![Home dark](assets/images/boxy-ui-home-dark-20260206.png)
-
----
-
-## 2) Create Folder Modal
-Click "New Folder" to open the folder creation dialog.
-
-**Light**
-![New folder modal light](assets/images/boxy-ui-new-folder-modal-light-20260206.png)
-
-**Dark**
-![New folder modal dark](assets/images/boxy-ui-new-folder-modal-dark-20260206.png)
+```
+┌─────────────────────────────────────────────────────┐
+│  nav-bar: breadcrumb · path bar · meta count · icons │
+├──────────────┬──────────────────────────────────────┤
+│  sidebar     │  toolbar (view · zoom · upload · …)  │
+│  (folder     │  ─────────────────────────────────── │
+│   tree)      │  file grid / list view               │
+│              │                                       │
+│              │  (drop zone when empty)               │
+└──────────────┴──────────────────────────────────────┘
+```
 
 ---
 
-## 3) Folder Created
-After creating a folder, it appears in the file grid.
+## 1. Nav bar
 
-**Light**
-![Folder created light](assets/images/boxy-ui-folder-created-light-20260206.png)
-
-**Dark**
-![Folder created dark](assets/images/boxy-ui-folder-created-dark-20260206.png)
-
----
-
-## 4) Upload Progress + Per-File Status
-Upload panel shows overall progress and per-file statuses/errors.
-
-**Light**
-![Upload progress light](assets/images/boxy-ui-upload-progress-light-20260206.png)
-
-**Dark**
-![Upload progress dark](assets/images/boxy-ui-upload-progress-dark-20260206.png)
+- **Breadcrumb** — current folder path as clickable segments; click any segment to navigate up.
+- **Live path bar** — editable `<input>` showing the current path; press Enter to jump to any path
+  directly (useful for deep folder trees).
+- **Item count** — "N items" reflects the filtered view.
+- **Theme toggle** — sun/moon icon; persists in `localStorage`.
+- **Global search** — magnifier icon opens a full-screen search overlay; results are recursive.
 
 ---
 
-## 5) Inline Rename (List View)
-Rename a file directly inside the list view.
+## 2. Sidebar (folder tree)
 
-**Light**
-![Inline rename light](assets/images/boxy-ui-inline-rename-light-20260206.png)
-
-**Dark**
-![Inline rename dark](assets/images/boxy-ui-inline-rename-dark-20260206.png)
-
----
-
-## 6) Bulk Selection Bar
-Multi-select reveals the bulk actions bar (move / download / delete).
-
-**Light**
-![Bulk selection light](assets/images/boxy-ui-bulk-selection-light-20260206.png)
-
-**Dark**
-![Bulk selection dark](assets/images/boxy-ui-bulk-selection-dark-20260206.png)
+- **Navigation:** click any folder to navigate into it.
+- **Expand/collapse:** the chevron next to each folder expands or collapses that node in the tree.
+  State persists in `localStorage` (`boxy_sidebar_expanded`).
+- **Collapse panel:** the `‹` button in the sidebar header collapses the entire sidebar;
+  the `›` button on the left edge reopens it.
+- **Sidebar toolbar** (three small buttons at the sidebar top):
+  - **Show files** — toggles file entries (not just folders) visible in the tree.
+  - **Expand all** — expands every tree node.
+  - **Collapse all** — collapses all tree nodes.
+- **Drop target:** drag a file card and drop it onto a sidebar folder node to move it.
 
 ---
 
-## 7) Rename Modal (Grid View)
-Grid view uses the rename modal for file renames.
+## 3. Main toolbar
 
-**Light**
-![Rename modal light](assets/images/boxy-ui-rename-modal-light-20260206.png)
+| Button | Action |
+|--------|--------|
+| Grid / List icon | Toggle between card grid and sortable list view (persists) |
+| Global search icon | Open recursive search overlay |
+| Multi-select icon | Toggle multi-select mode (single-click selects; bulk action bar appears) |
+| Zoom slider | Resize grid cards 80–200 px, or adjust list row density |
+| Upload | Open file picker (drag-drop also works anywhere) |
+| New Folder | Open "Create folder" modal |
+| New File | Create an empty text file in the current folder |
 
-**Dark**
-![Rename modal dark](assets/images/boxy-ui-rename-modal-dark-20260206.png)
-
----
-
-## 8) Rename Complete
-After confirming rename, the file card updates with the new name.
-
-**Light**
-![Rename complete light](assets/images/boxy-ui-rename-complete-light-20260206.png)
-
-**Dark**
-![Rename complete dark](assets/images/boxy-ui-rename-complete-dark-20260206.png)
+All buttons have tooltip labels on hover.
 
 ---
 
-## 9) Move Modal
-Select destination folder from the tree view to move a file.
+## 4. Grid view
 
-**Light**
-![Move modal light](assets/images/boxy-ui-move-modal-light-20260206.png)
+Files and folders appear as cards with icons (thumbnails for images, type-colour icons for others).
 
-**Dark**
-![Move modal dark](assets/images/boxy-ui-move-modal-dark-20260206.png)
-
----
-
-## 10) Folder View (After Move)
-Navigate into a folder to see moved files; breadcrumb updates.
-
-**Light**
-![Folder view light](assets/images/boxy-ui-folder-view-light-20260206.png)
-
-**Dark**
-![Folder view dark](assets/images/boxy-ui-folder-view-dark-20260206.png)
+- **Single click** — select/deselect (multi-select mode) or navigate into folder (normal mode).
+- **Double click** — navigate into folder or open file in the editor.
+- **Drag** — move a file to a folder card or the sidebar tree.
+- **Hover** — reveals action buttons: Copy URL, Download, Edit, Move, Rename, Delete (plus
+  ZIP Download for folders).
+- **Right-click** — context menu: Preview, Download, Copy URL, Edit, Rename, Move, Duplicate, Delete.
 
 ---
 
-## 11) Search Filtered
-Enter a search term to filter files by name.
+## 5. List view
 
-**Light**
-![Search filtered light](assets/images/boxy-ui-search-filtered-light-20260206.png)
+A full-width table with sortable column headers:
 
-**Dark**
-![Search filtered dark](assets/images/boxy-ui-search-filtered-dark-20260206.png)
+| Column | Sortable | Notes |
+|--------|----------|-------|
+| Name | yes | Folders always first |
+| Type | yes | Detected from extension |
+| Size | yes | Human-readable; "—" for folders |
+| Date | yes | MM/DD/YYYY |
+| Time | yes | 12-hour local time |
+| Actions | — | Icon buttons: ZIP/Copy URL, Download, Edit, Move, Rename, Delete |
 
----
+**Column filters** — each column header has a filter icon (▾). Clicking it opens a dropdown with:
+- A text input for substring search.
+- Checkboxes for each distinct value in that column.
+- A **Clear** button that resets both text and checkbox filters.
 
-## 12) Sort Applied
-Use the sort dropdown to order files by name, size, or modified date.
-
-**Light**
-![Sort applied light](assets/images/boxy-ui-sort-applied-light-20260206.png)
-
-**Dark**
-![Sort applied dark](assets/images/boxy-ui-sort-applied-dark-20260206.png)
-
----
-
-## 13) Download / Preview
-Hover a file to reveal action buttons including download.
-
-**Light**
-![Download light](assets/images/boxy-ui-download-light-20260206.png)
-
-**Dark**
-![Download dark](assets/images/boxy-ui-download-dark-20260206.png)
+**Inline folder expand** — single-clicking a folder row (or its triangle) expands it inline,
+inserting child items directly below it with a left-side accent bar. Subdirectories inside also
+get their own triangle and can be expanded recursively. Indentation increases 20 px per depth
+level. Single-clicking again (or clicking the triangle) collapses.
 
 ---
 
-## 14) New File
-Create a new empty file using the "New File" button.
+## 6. Upload
 
-**Light**
-![New file light](assets/images/boxy-ui-new-file-light-20260206.png)
-
-**Dark**
-![New file dark](assets/images/boxy-ui-new-file-dark-20260206.png)
-
----
-
-## 15) Edit Content
-Double-click a text file to preview or edit its contents.
-
-**Light**
-![Edit content light](assets/images/boxy-ui-edit-content-light-20260206.png)
-
-**Dark**
-![Edit content dark](assets/images/boxy-ui-edit-content-dark-20260206.png)
+- **Drag-and-drop** — drop files or folders anywhere on the page.
+- **File picker** — click the Upload button; supports multi-file selection.
+- **Clipboard paste** — Ctrl/Cmd+V pastes clipboard files.
+- **Folder uploads** preserve nested structure and original modification dates.
+- The **Upload progress panel** appears during upload showing overall progress and per-file
+  status with progress bars and error messages.
 
 ---
 
-## 16) Delete
-Hover a file and click "Delete" to remove it.
+## 7. Multi-select
 
-**Light**
-![Delete light](assets/images/boxy-ui-delete-light-20260206.png)
+Two ways to multi-select:
 
-**Dark**
-![Delete dark](assets/images/boxy-ui-delete-dark-20260206.png)
+1. **Ctrl/Cmd+click** or **Shift+click** items at any time.
+2. **Multi-select mode toggle** (toolbar button) — switches to single-click selection.
 
----
-
-## 17) Tasks / Kanban Board (Empty CTA)
-Tasks view shows empty-state guidance when no tasks exist.
-
-**Light**
-![Tasks board light](assets/images/boxy-ui-tasks-board-light-20260206.png)
-
-**Dark**
-![Tasks board dark](assets/images/boxy-ui-tasks-board-dark-20260206.png)
+When ≥ 1 item is selected, the **selection bar** appears at the bottom with:
+- Item count.
+- **Move** — opens the move modal pre-seeded with all selected items.
+- **Download ZIP** — downloads all selected files and folders as `selection.zip`.
+- **Delete** — bulk-deletes all selected items after confirmation.
+- **Clear** — deselects all.
 
 ---
 
-## 18) Tasks Action
-Create and manage tasks within the kanban board.
+## 8. In-browser editor
 
-**Light**
-![Tasks action light](assets/images/boxy-ui-tasks-action-light-20260206.png)
+Double-click any editable file (`txt, csv, py, json, md, rs, js, ts, html, css, toml, yaml,
+yml, sql, m3u, sh, go, rb, php, xml`) to open the editor modal.
 
-**Dark**
-![Tasks action dark](assets/images/boxy-ui-tasks-action-dark-20260206.png)
-
----
-
-## 19) WebSocket Sync
-Multiple browser windows stay in sync via WebSocket broadcast.
-
-**Light**
-![WebSocket sync light](assets/images/boxy-ui-websocket-sync-light-20260206.png)
-
-**Dark**
-![WebSocket sync dark](assets/images/boxy-ui-websocket-sync-dark-20260206.png)
+- **Syntax highlighting:** Prism.js highlights the file based on its extension.
+- **Rendered Markdown preview:** `.md` files have a toggle to switch between raw edit and a
+  rendered HTML preview (via marked.js).
+- **Autosave:** edits are auto-saved with a 2-second debounce; a status indicator shows
+  "Saving…" / "Saved".
+- **Manual save:** Ctrl/Cmd+S saves immediately.
+- **Close:** Esc or the × button.
 
 ---
 
-## Reproducing Screenshots
+## 9. Image lightbox
+
+Clicking an image file opens a full-screen lightbox:
+- Left/right arrows (or keyboard ← →) navigate between images in the current folder.
+- Esc or clicking the backdrop closes it.
+
+---
+
+## 10. Context menu
+
+Right-click any file or folder:
+
+| Action | Available on |
+|--------|-------------|
+| Preview | Files |
+| Download | Files |
+| Copy URL | Files |
+| Edit | Editable text files |
+| Rename | Files and folders |
+| Move | Files and folders |
+| Duplicate | Files and folders |
+| Download ZIP | Folders |
+| Delete | Files and folders |
+
+**Duplicate** clones the item in the same folder, appending `_1`, `_2`, … to avoid conflicts.
+
+---
+
+## 11. Keyboard shortcuts
+
+| Key | Action |
+|-----|--------|
+| `/` | Open global search |
+| `F2` | Rename focused item (inline) |
+| `Backspace` | Navigate up one folder |
+| `↑ ↓` | Move focus between items |
+| `Enter` | Open focused item |
+| `Esc` | Close modal / context menu / editor / lightbox |
+| `Ctrl/Cmd+S` | Save in editor |
+| `← →` | Navigate lightbox images |
+
+---
+
+## Regenerating screenshots
+
+Screenshots are archived in `docs/archive/`. To generate fresh ones against the current UI:
 
 1. Start the server with a clean uploads root:
    ```bash
    BOX_UPLOAD_DIR=./uploads_docs BOX_PORT=8086 cargo run --release
    ```
 
-2. Install Playwright dependencies:
+2. Install Playwright:
    ```bash
    npm install
    npx playwright install --with-deps chromium
@@ -250,5 +207,3 @@ Multiple browser windows stay in sync via WebSocket broadcast.
    ```bash
    node docs/capture-ui-screenshots.mjs
    ```
-
-The script generates all screenshots in `docs/assets/images/` with both light and dark theme variants.

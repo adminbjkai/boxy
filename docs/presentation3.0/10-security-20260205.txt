@@ -1,3 +1,0 @@
-**Designing a Slide Layout**
-
-I'm currently focused on the slide's aesthetic and structural elements. I've decided on a 16:9 aspect ratio and a "Boxy" design, which I believe will present the information clearly. The primary title "Security Model" will be the most prominent element. I will continue to work on the slide content after finalizing the visual format.

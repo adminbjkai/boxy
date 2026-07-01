@@ -1,3 +1,0 @@
-**Examining Design Constraints**
-
-I'm currently focused on the design constraints, specifically the "Boxy slide style." This involves imagining how elements will be arranged in a card-based layout, and what visual cues will be used to enhance clarity. I'm exploring the implications of card-based design in terms of hierarchy and information density.

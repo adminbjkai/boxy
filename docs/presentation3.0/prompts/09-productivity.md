@@ -1,1 +1,0 @@
-Create a 16:9 presentation slide titled "Productivity" in the same Boxy slide style. Show three mini mock panels: Tasks board (kanban columns + empty-state CTA), Dashboard tiles grid, Credentials vault card with a warning banner "Not secure for sensitive secrets". Add a small callout: "Server-synced JSON (BOX_DATA_DIR) + data_sync". Keep mock UI generic and readable.

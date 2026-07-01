@@ -1,3 +1,0 @@
-**Analyzing Presentation Design**
-
-I'm currently focused on the presentation slide's layout. I'm aiming for a "Boxy" aesthetic, starting with the 16:9 canvas and the title "Real-time Sync". I'm considering modular elements with rounded corners and how to make the design easy to grasp.

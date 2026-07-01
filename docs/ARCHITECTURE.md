@@ -17,7 +17,7 @@ Actix-web (src/main.rs) ─ broadcast::Sender fan-out ─┘
 ```
 
 ## Components
-- **Web UI** (`static/index.html`): single Files view — collapsible sidebar folder tree,
+- **Web UI** (`static/index.html`, ~5325 lines): single Files view — collapsible sidebar folder tree,
   grid/list browser, drag-and-drop upload/move, right-click context menu, inline rename,
   multi-select with bulk ZIP download, search/filter/sort, in-browser text editor with syntax
   highlighting and markdown rendered preview, URL hash navigation. Dark-mode-first theme with
@@ -33,7 +33,7 @@ Actix-web (src/main.rs) ─ broadcast::Sender fan-out ─┘
   - **Duplicate**: context-menu option to clone any file or folder (appends `_1`, `_2`, …)
   UI preferences (`viewMode`, `filterType`, `listSortCol`, `listSortDir`, `boxy_sidebar_expanded`,
   `boxy_sidebar_collapsed`, `itemScale`, `sidebarShowFiles`) are persisted in `localStorage`.
-- **HTTP API** (`src/main.rs`): one async handler per endpoint; all mutations broadcast over WS.
+- **HTTP API** (`src/main.rs`, ~1065 lines): one async handler per endpoint; all mutations broadcast over WS.
 - **WebSocket** (`/ws`): each client subscribes to a `tokio::sync::broadcast` channel; every
   mutation sends `{ action, path }` to all clients. Lagged clients are logged, not dropped silently.
 - **Storage**: `tokio::fs` reads/writes under the upload root; filenames de-duped server-side

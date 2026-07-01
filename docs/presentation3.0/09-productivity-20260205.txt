@@ -1,3 +1,0 @@
-**Planning a Slide Design**
-
-I'm currently focused on the slide's visual structure. I plan to use a modular "Boxy" aesthetic with flat colors and thick lines. The slide will be 16:9, and I'm arranging three mini panels horizontally.
