@@ -2072,6 +2072,7 @@
         let lastSelectedIndex = -1;
         let focusedIndex = -1;
         let currentEditPath = '';
+        let uploadQueue = Promise.resolve();
         let inlineRenamePath = null;
         let inlineRenameOriginal = '';
         let foundInlineRename = false;
