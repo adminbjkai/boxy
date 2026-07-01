@@ -256,6 +256,18 @@
         }
         .view-toggle svg { width: 18px; height: 18px; }
 
+        /* CSS Tooltips */
+        [data-tip] { position: relative; }
+        [data-tip]::after {
+            content: attr(data-tip);
+            position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+            background: var(--bg-tertiary); color: var(--text); border: 1px solid var(--border);
+            font-size: 11px; font-weight: 500; white-space: nowrap; pointer-events: none;
+            padding: 4px 8px; border-radius: 4px; box-shadow: 0 4px 12px var(--shadow);
+            opacity: 0; transition: opacity 0.15s ease; z-index: 500;
+        }
+        [data-tip]:hover::after { opacity: 1; }
+
         /* Multi-select active state (1I) */
         .view-toggle.active {
             background: color-mix(in srgb, var(--accent) 16%, var(--bg-secondary));
@@ -699,9 +711,9 @@
             transform: none;
             background: none;
             padding: 0;
-            margin-left: 8px;
+            margin-left: 0;
             pointer-events: none;
-            min-width: 196px;
+            width: 196px;
             flex-shrink: 0;
             justify-content: flex-end;
         }
@@ -1541,8 +1553,22 @@
         .col-filter-item input[type="checkbox"] { width: 13px; height: 13px; accent-color: var(--accent); cursor: pointer; }
         .col-filter-count {
             font-size: 10px; color: var(--text-secondary); background: var(--bg-tertiary);
-            padding: 1px 5px; border-radius: 10px; margin-left: auto;
+            padding: 1px 5px; border-radius: 10px; margin-left: auto; flex-shrink: 0;
         }
+        .col-filter-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .col-filter-search-wrap {
+            display: flex; align-items: center; gap: 6px;
+            padding: 4px 6px; margin-bottom: 2px;
+        }
+        .col-filter-search-wrap svg { flex-shrink: 0; color: var(--text-secondary); }
+        .col-filter-search {
+            flex: 1; border: 1px solid var(--border); background: var(--bg);
+            color: var(--text); font-size: 12px; padding: 4px 8px;
+            border-radius: var(--radius-sm); outline: none;
+        }
+        .col-filter-search:focus { border-color: var(--accent); }
+        .col-filter-search::placeholder { color: var(--text-secondary); }
+        .col-filter-divider { height: 1px; background: var(--border); margin: 4px 6px 6px; }
 
         /* Inline folder expand (1K) */
         .file-item--inline-child {
@@ -1677,18 +1703,18 @@
                 </button>
             </div>
             <div class="sidebar-toolbar">
-                <button class="sidebar-tool-btn" id="sidebarFilesToggleBtn" onclick="toggleSidebarShowFiles()" title="Show files">
+                <button class="sidebar-tool-btn" id="sidebarFilesToggleBtn" onclick="toggleSidebarShowFiles()" data-tip="Show files in tree" title="Show files in tree">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                         <polyline points="14 2 14 8 20 8"/>
                     </svg>
                 </button>
-                <button class="sidebar-tool-btn" onclick="sidebarExpandAll()" title="Expand all">
+                <button class="sidebar-tool-btn" onclick="sidebarExpandAll()" data-tip="Expand all folders" title="Expand all folders">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="7 13 12 18 17 13"/><polyline points="7 6 12 11 17 6"/>
                     </svg>
                 </button>
-                <button class="sidebar-tool-btn" onclick="sidebarCollapseAll()" title="Collapse all">
+                <button class="sidebar-tool-btn" onclick="sidebarCollapseAll()" data-tip="Collapse all folders" title="Collapse all folders">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="7 11 12 6 17 11"/><polyline points="7 18 12 13 17 18"/>
                     </svg>
@@ -1717,25 +1743,25 @@
                     <option value="modified">Modified</option>
                 </select>
             </div>
-            <button class="view-toggle" id="viewToggle" onclick="toggleView()" title="Toggle view">
+            <button class="view-toggle" id="viewToggle" onclick="toggleView()" data-tip="Toggle grid / list view" title="Toggle grid / list view">
                 <svg id="viewIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
                 </svg>
             </button>
-            <button class="view-toggle" onclick="openGlobalSearch()" title="Search all files (/)">
+            <button class="view-toggle" onclick="openGlobalSearch()" data-tip="Search all files  (/)" title="Search all files (/)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
             </button>
-            <button class="view-toggle" id="multiSelectBtn" onclick="toggleMultiSelectMode()" title="Multi-select mode (toggle)">
+            <button class="view-toggle" id="multiSelectBtn" onclick="toggleMultiSelectMode()" data-tip="Multi-select mode" title="Multi-select mode">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
                     <rect x="3" y="14" width="7" height="7" rx="1"/>
                     <path d="M17 14l2 2 4-4"/>
                 </svg>
             </button>
-            <div class="zoom-control">
+            <div class="zoom-control" data-tip="Zoom / size" title="Zoom item size">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
                     <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
                     <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
@@ -1747,19 +1773,19 @@
                 </svg>
             </div>
             <div class="toolbar-actions">
-                <button class="btn" onclick="document.getElementById('fileInput').click()">
+                <button class="btn" onclick="document.getElementById('fileInput').click()" data-tip="Upload files" title="Upload files">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
                     </svg>
                     Upload
                 </button>
-                <button class="btn" onclick="showNewFolderModal()">
+                <button class="btn" onclick="showNewFolderModal()" data-tip="Create new folder" title="Create new folder">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2zM12 11v6M9 14h6"/>
                     </svg>
                     New Folder
                 </button>
-                <button class="btn" onclick="showNewFileModal()">
+                <button class="btn" onclick="showNewFileModal()" data-tip="Create new text file" title="Create new text file">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                         <polyline points="14 2 14 8 20 8"/>
@@ -1770,12 +1796,6 @@
                 </button>
             </div>
         </div>
-        <div class="nav-bar">
-            <nav class="breadcrumb" id="breadcrumb"></nav>
-            <div class="nav-meta" id="navMeta"></div>
-        </div>
-        </div>
-
         <div class="drop-zone" id="dropZone">
             <svg class="drop-zone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
@@ -2051,6 +2071,7 @@
         let expandedFolderPaths = new Set();
         let expandedFolderContents = {};
         let colFilters = {};
+        let colTextFilters = {};
         let sidebarShowFiles = localStorage.getItem('sidebarShowFiles') === '1';
         let sidebarFileChildren = {};
         let lightboxImages = [];
@@ -2277,7 +2298,7 @@
 
             const colClass = (col) => `col col-${col}${listSortCol === col ? ' sorted' : ''}${listSortCol === col && listSortDir === 'desc' ? ' desc' : ''}`;
 
-            const filterBtn = (col) => `<button class="col-filter-btn${colFilters[col] ? ' active' : ''}" onclick="event.stopPropagation(); showColFilter(event,'${col}')" title="Filter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button>`;
+            const filterBtn = (col) => `<button class="col-filter-btn${(colFilters[col] || colTextFilters[col]) ? ' active' : ''}" onclick="event.stopPropagation(); showColFilter(event,'${col}')" title="Filter column" data-tip="Filter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button>`;
 
             const tableHeader = viewMode === 'list' ? `
                 <div class="file-table-header">
@@ -2340,26 +2361,26 @@
                     </div>
                     <div class="file-actions">
                         ${f.is_dir ? `
-                        <button class="file-action-btn" onclick="event.stopPropagation(); downloadZip('${escapedPath}')" title="Download as ZIP">
+                        <button class="file-action-btn" onclick="event.stopPropagation(); downloadZip('${escapedPath}')" data-tip="Download as ZIP" title="Download as ZIP">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
                             </svg>
                         </button>
                         ` : ''}
                         ${!f.is_dir ? `
-                        <button class="file-action-btn" onclick="event.stopPropagation(); copyFileUrl('${escapedPath}')" title="Copy URL">
+                        <button class="file-action-btn" onclick="event.stopPropagation(); copyFileUrl('${escapedPath}')" data-tip="Copy link" title="Copy link">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
                                 <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                             </svg>
                         </button>
-                        <button class="file-action-btn" onclick="event.stopPropagation(); downloadFile('${escapedPath}')" title="Download">
+                        <button class="file-action-btn" onclick="event.stopPropagation(); downloadFile('${escapedPath}')" data-tip="Download" title="Download">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
                             </svg>
                         </button>
                         ${isEditableFile(f.name) ? `
-                        <button class="file-action-btn" onclick="event.stopPropagation(); showEditModal('${escapedPath}')" title="Edit">
+                        <button class="file-action-btn" onclick="event.stopPropagation(); showEditModal('${escapedPath}')" data-tip="Edit file" title="Edit file">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M12 20h9"/>
                                 <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
@@ -2367,18 +2388,18 @@
                         </button>
                         ` : ''}
                         ` : ''}
-                        <button class="file-action-btn" onclick="event.stopPropagation(); showMoveModal('${escapedPath}')" title="Move">
+                        <button class="file-action-btn" onclick="event.stopPropagation(); showMoveModal('${escapedPath}')" data-tip="Move" title="Move">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M5 12h14M12 5l7 7-7 7"/>
                             </svg>
                         </button>
-                        <button class="file-action-btn" onclick="event.stopPropagation(); triggerRename('${escapedPath}', '${escapedName}')" title="Rename">
+                        <button class="file-action-btn" onclick="event.stopPropagation(); triggerRename('${escapedPath}', '${escapedName}')" data-tip="Rename" title="Rename">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                             </svg>
                         </button>
-                        <button class="file-action-btn delete" onclick="event.stopPropagation(); deleteItem('${escapedPath}')" title="Delete">
+                        <button class="file-action-btn delete" onclick="event.stopPropagation(); deleteItem('${escapedPath}')" data-tip="Delete" title="Delete">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                             </svg>
@@ -2493,7 +2514,7 @@
                 filtered = filtered.filter(f => f.is_dir || getFileCategory(f.name) === filterType);
             }
 
-            // Apply per-column filters
+            // Apply per-column checkbox filters
             Object.entries(colFilters).forEach(([col, vals]) => {
                 if (!vals || vals.size === 0) return;
                 filtered = filtered.filter(f => {
@@ -2502,6 +2523,18 @@
                     else if (col === 'type') v = getFileType(f.name, f.is_dir);
                     else if (col === 'modified') v = f.modified ? formatDatePart(f.modified) : '';
                     return vals.has(v);
+                });
+            });
+            // Apply per-column text (contains) filters
+            Object.entries(colTextFilters).forEach(([col, text]) => {
+                if (!text) return;
+                const lc = text.toLowerCase();
+                filtered = filtered.filter(f => {
+                    let v = '';
+                    if (col === 'name') v = f.name;
+                    else if (col === 'type') v = getFileType(f.name, f.is_dir);
+                    else if (col === 'modified') v = f.modified ? formatDatePart(f.modified) : '';
+                    return v.toLowerCase().includes(lc);
                 });
             });
 
@@ -4326,12 +4359,23 @@
             renderSidebar();
         }
 
-        function toggleSidebarShowFiles() {
+        async function toggleSidebarShowFiles() {
             sidebarShowFiles = !sidebarShowFiles;
             localStorage.setItem('sidebarShowFiles', sidebarShowFiles ? '1' : '0');
             const btn = document.getElementById('sidebarFilesToggleBtn');
             if (btn) btn.classList.toggle('active', sidebarShowFiles);
             sidebarFileChildren = {};
+            if (sidebarShowFiles && sidebarExpanded.size > 0) {
+                await Promise.all([...sidebarExpanded].map(async path => {
+                    try {
+                        const res = await fetch(`/api/files?path=${encodeURIComponent(path)}`);
+                        if (res.ok) {
+                            const all = await res.json();
+                            sidebarFileChildren[path] = all.filter(f => !f.is_dir);
+                        } else sidebarFileChildren[path] = [];
+                    } catch { sidebarFileChildren[path] = []; }
+                }));
+            }
             renderSidebar();
         }
 
@@ -4438,6 +4482,10 @@
         function inlineRenameFromCtx() { startInlineRename(ctxTarget); }
 
         function showColFilter(event, col) {
+            const colLabel = col === 'name' ? 'Name' : col === 'type' ? 'Type' : 'Date';
+            const currentText = colTextFilters[col] || '';
+            const current = colFilters[col] || new Set();
+
             const unique = [...new Set(allFiles.map(f => {
                 if (col === 'name') return f.name;
                 if (col === 'type') return getFileType(f.name, f.is_dir);
@@ -4445,27 +4493,49 @@
                 return '';
             }))].filter(Boolean).sort();
 
-            const current = colFilters[col] || new Set();
-            const colLabel = col === 'name' ? 'Name' : col === 'type' ? 'Type' : 'Date';
-            const html = `<div class="col-filter-header">${colLabel}<button class="col-filter-clear-btn" onclick="clearColFilter('${col}')">Clear</button></div>` +
-                unique.map(v =>
-                    `<label class="col-filter-item"><input type="checkbox" ${current.has(v) ? 'checked' : ''}
-                        onchange="toggleColFilter('${col}','${escapeAttr(v)}',this.checked)">
-                     ${escapeHtml(v)}<span class="col-filter-count">${allFiles.filter(f => {
-                        if (col === 'name') return f.name === v;
-                        if (col === 'type') return getFileType(f.name, f.is_dir) === v;
-                        if (col === 'modified') return f.modified && formatDatePart(f.modified) === v;
-                        return false;
-                     }).length}</span></label>`
-                ).join('');
+            const countFor = v => allFiles.filter(f => {
+                if (col === 'name') return f.name === v;
+                if (col === 'type') return getFileType(f.name, f.is_dir) === v;
+                if (col === 'modified') return f.modified && formatDatePart(f.modified) === v;
+                return false;
+            }).length;
+
+            const html = `
+                <div class="col-filter-header">${colLabel}
+                    <button class="col-filter-clear-btn" onclick="clearColFilter('${col}')">Clear all</button>
+                </div>
+                <div class="col-filter-search-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="colFilterSearch_${col}" class="col-filter-search" placeholder="Contains text…" value="${escapeAttr(currentText)}"
+                        oninput="setColTextFilter('${col}', this.value)"
+                        onkeydown="if(event.key==='Escape'){clearColFilter('${col}');}"
+                        onclick="event.stopPropagation()">
+                </div>
+                <div class="col-filter-divider"></div>
+                ${unique.map(v =>
+                    `<label class="col-filter-item">
+                        <input type="checkbox" ${current.has(v) ? 'checked' : ''}
+                            onchange="toggleColFilter('${col}','${escapeAttr(v)}',this.checked)">
+                        <span class="col-filter-label">${escapeHtml(v)}</span>
+                        <span class="col-filter-count">${countFor(v)}</span>
+                    </label>`
+                ).join('')}`;
 
             const dd = document.getElementById('colFilterDropdown');
             dd.innerHTML = html;
             const rect = event.target.getBoundingClientRect();
             dd.style.top = (rect.bottom + 4) + 'px';
-            dd.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
+            dd.style.left = Math.min(rect.left, window.innerWidth - 240) + 'px';
             dd.classList.add('show');
             event.stopPropagation();
+            // Auto-focus the search input
+            setTimeout(() => { const inp = document.getElementById(`colFilterSearch_${col}`); if (inp) inp.focus(); }, 30);
+        }
+
+        function setColTextFilter(col, text) {
+            if (text.trim()) colTextFilters[col] = text.trim();
+            else delete colTextFilters[col];
+            renderFiles(allFiles);
         }
 
         function toggleColFilter(col, val, checked) {
@@ -4477,6 +4547,7 @@
 
         function clearColFilter(col) {
             delete colFilters[col];
+            delete colTextFilters[col];
             document.getElementById('colFilterDropdown').classList.remove('show');
             renderFiles(allFiles);
         }

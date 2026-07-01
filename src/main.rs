@@ -1,4 +1,3 @@
-use actix_files::{Files, NamedFile};
 use actix_multipart::Multipart;
 use actix_web::{
     middleware::{Compress, Logger},
@@ -12,7 +11,6 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::broadcast;
 
 const DEFAULT_UPLOAD_DIR: &str = "./uploads";
-const DEFAULT_DATA_DIR: &str = "./data";
 const DEFAULT_PORT: u16 = 8086;
 const DEFAULT_BIND_ADDR: &str = "127.0.0.1"; // localhost-only; nginx terminates TLS in front
 const DEFAULT_MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 200; // 200 MB
@@ -55,7 +53,6 @@ struct AppState {
 
 struct Settings {
     upload_dir: PathBuf,
-    data_dir: PathBuf,
     port: u16,
     bind_addr: String,
     max_upload_bytes: usize,
@@ -67,9 +64,6 @@ impl Settings {
             upload_dir: env::var("BOX_UPLOAD_DIR")
                 .map(PathBuf::from)
                 .unwrap_or_else(|_| PathBuf::from(DEFAULT_UPLOAD_DIR)),
-            data_dir: env::var("BOX_DATA_DIR")
-                .map(PathBuf::from)
-                .unwrap_or_else(|_| PathBuf::from(DEFAULT_DATA_DIR)),
             port: env::var("BOX_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
@@ -602,7 +596,7 @@ async fn collect_search_results(
     if let Ok(mut dir) = tokio::fs::read_dir(&path).await {
         while let Ok(Some(entry)) = dir.next_entry().await {
             // Check limit before processing each entry
-            if results.len() >= limit {
+            if results.len() >= MAX_SEARCH_RESULTS {
                 return;
             }
 
@@ -1004,79 +998,16 @@ async fn serve_index() -> Result<HttpResponse> {
         .body(include_str!("../static/index.html")))
 }
 
-async fn serve_favicon() -> Result<NamedFile> {
-    Ok(NamedFile::open("./static/favicon.ico")?)
+async fn serve_favicon() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("image/x-icon")
+        .body(include_bytes!("../static/favicon.ico").as_ref())
 }
 
 async fn healthcheck() -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().json(serde_json::json!({"ok": true})))
 }
 
-// === Server-side Data Storage API ===
-// Stores JSON data in uploads/.boxy/ for cross-browser sync
-
-#[derive(Deserialize)]
-struct DataPath {
-    data_type: String,
-}
-
-async fn get_data(
-    state: web::Data<AppState>,
-    path: web::Path<DataPath>,
-) -> Result<HttpResponse> {
-    let data_type = &path.data_type;
-
-    // Whitelist allowed data types
-    let allowed = ["boards", "tiles", "credentials"];
-    if !allowed.contains(&data_type.as_str()) {
-        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
-            "error": "Invalid data type"
-        })));
-    }
-
-    let file_path = state.data_dir.join(format!("{}.json", data_type));
-
-    match std::fs::read_to_string(&file_path) {
-        Ok(content) => Ok(HttpResponse::Ok()
-            .content_type("application/json")
-            .insert_header(("Cache-Control", "no-cache"))
-            .body(content)),
-        Err(_) => Ok(HttpResponse::Ok()
-            .content_type("application/json")
-            .body("null")),
-    }
-}
-
-async fn save_data(
-    state: web::Data<AppState>,
-    path: web::Path<DataPath>,
-    body: web::Bytes,
-) -> Result<HttpResponse> {
-    let data_type = &path.data_type;
-
-    // Whitelist allowed data types
-    let allowed = ["boards", "tiles", "credentials"];
-    if !allowed.contains(&data_type.as_str()) {
-        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
-            "error": "Invalid data type"
-        })));
-    }
-
-    let file_path = state.data_dir.join(format!("{}.json", data_type));
-
-    match std::fs::write(&file_path, &body) {
-        Ok(_) => {
-            // Broadcast to all clients for real-time sync
-            broadcast_update(&state.broadcaster, "data_sync", data_type);
-            Ok(HttpResponse::Ok().json(serde_json::json!({
-                "success": true
-            })))
-        }
-        Err(e) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
-            "error": e.to_string()
-        }))),
-    }
-}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -1084,7 +1015,6 @@ async fn main() -> std::io::Result<()> {
 
     let settings = Settings::from_env();
     tokio::fs::create_dir_all(&settings.upload_dir).await?;
-    tokio::fs::create_dir_all(&settings.data_dir).await?;
 
     let (tx, _) = broadcast::channel::<String>(256);
     let state = AppState {
@@ -1128,9 +1058,6 @@ async fn main() -> std::io::Result<()> {
             .route("/api/newfile", web::post().to(create_new_file))
             .route("/api/duplicate", web::post().to(duplicate_item))
             .route("/api/health", web::get().to(healthcheck))
-            .route("/api/data/{data_type}", web::get().to(get_data))
-            .route("/api/data/{data_type}", web::post().to(save_data))
-            .service(Files::new("/static", "./static").prefer_utf8(true))
     })
     .bind(bind)?
     .run()
