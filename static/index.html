@@ -2051,6 +2051,12 @@
     </div>
 
     <script>
+        // Safe localStorage wrapper — Edge Tracking Prevention can block storage access
+        const ls = {
+            get: (k, def='') => { try { return localStorage.getItem(k) ?? def; } catch { return def; } },
+            set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }
+        };
+
         let currentPath = '';
         let ws = null;
         let pendingPasteFile = null;
@@ -2058,10 +2064,10 @@
         let allFiles = [];
         let filterQuery = '';
         let sortMode = 'name';
-        let filterType = localStorage.getItem('filterType') || 'all';
-        let viewMode = localStorage.getItem('viewMode') || 'grid';
-        let listSortCol = localStorage.getItem('listSortCol') || 'name';
-        let listSortDir = localStorage.getItem('listSortDir') || 'asc';
+        let filterType = ls.get('filterType', 'all');
+        let viewMode = ls.get('viewMode', 'grid');
+        let listSortCol = ls.get('listSortCol', 'name');
+        let listSortDir = ls.get('listSortDir', 'asc');
         let selectedFiles = new Set();
         let lastSelectedIndex = -1;
         let focusedIndex = -1;
@@ -2070,12 +2076,12 @@
         let inlineRenameOriginal = '';
         let foundInlineRename = false;
         let multiSelectMode = false;
-        let itemScale = parseInt(localStorage.getItem('itemScale') || '140');
+        let itemScale = parseInt(ls.get('itemScale', '140'));
         let expandedFolderPaths = new Set();
         let expandedFolderContents = {};
         let colFilters = {};
         let colTextFilters = {};
-        let sidebarShowFiles = localStorage.getItem('sidebarShowFiles') === '1';
+        let sidebarShowFiles = ls.get('sidebarShowFiles') === '1';
         let sidebarFileChildren = {};
         let lightboxImages = [];
         let lightboxIndex = 0;
@@ -2085,7 +2091,7 @@
             const html = document.documentElement;
             const isDark = html.getAttribute('data-theme') === 'dark';
             html.setAttribute('data-theme', isDark ? 'light' : 'dark');
-            localStorage.setItem('theme', isDark ? 'light' : 'dark');
+            ls.set('theme', isDark ? 'light' : 'dark');
             updateThemeIcon();
         }
 
@@ -2097,7 +2103,7 @@
         }
 
         // Initialize theme — dark-mode-first: default to dark unless the user chose light.
-        const savedTheme = localStorage.getItem('theme') || 'dark';
+        const savedTheme = ls.get('theme', 'dark');
         document.documentElement.setAttribute('data-theme', savedTheme);
         updateThemeIcon();
 
@@ -2585,8 +2591,8 @@
                 listSortCol = col;
                 listSortDir = 'asc';
             }
-            localStorage.setItem('listSortCol', listSortCol);
-            localStorage.setItem('listSortDir', listSortDir);
+            ls.set('listSortCol', listSortCol);
+            ls.set('listSortDir', listSortDir);
             renderFiles(allFiles);
         }
 
@@ -3837,7 +3843,7 @@
 
         function toggleView() {
             viewMode = viewMode === 'grid' ? 'list' : 'grid';
-            localStorage.setItem('viewMode', viewMode);
+            ls.set('viewMode', viewMode);
             updateViewIcon();
             renderFiles(allFiles);
         }
@@ -3850,7 +3856,7 @@
 
         function setItemScale(val) {
             itemScale = parseInt(val);
-            localStorage.setItem('itemScale', itemScale);
+            ls.set('itemScale', itemScale);
             const grid = document.querySelector('.file-grid');
             if (grid && viewMode === 'grid') {
                 grid.style.gridTemplateColumns = `repeat(auto-fill, minmax(${itemScale}px, 1fr))`;
@@ -3945,7 +3951,7 @@
 
         document.getElementById('filterSelect').addEventListener('change', (e) => {
             filterType = e.target.value;
-            localStorage.setItem('filterType', filterType);
+            ls.set('filterType', filterType);
             renderFiles(allFiles);
         });
 
@@ -4286,7 +4292,7 @@
         // SIDEBAR FOLDER TREE  (reuses buildFolderTree)
         // ============================================
         let sidebarTreeData = [];
-        let sidebarExpanded = new Set(JSON.parse(localStorage.getItem('boxy_sidebar_expanded') || '[]'));
+        let sidebarExpanded = new Set(JSON.parse(ls.get('boxy_sidebar_expanded', '[]')));
 
         async function loadSidebarTree() {
             try {
@@ -4360,13 +4366,13 @@
                     } catch { sidebarFileChildren[path] = []; }
                 }
             }
-            localStorage.setItem('boxy_sidebar_expanded', JSON.stringify([...sidebarExpanded]));
+            ls.set('boxy_sidebar_expanded', JSON.stringify([...sidebarExpanded]));
             renderSidebar();
         }
 
         async function toggleSidebarShowFiles() {
             sidebarShowFiles = !sidebarShowFiles;
-            localStorage.setItem('sidebarShowFiles', sidebarShowFiles ? '1' : '0');
+            ls.set('sidebarShowFiles', sidebarShowFiles ? '1' : '0');
             const btn = document.getElementById('sidebarFilesToggleBtn');
             if (btn) btn.classList.toggle('active', sidebarShowFiles);
             sidebarFileChildren = {};
@@ -4395,21 +4401,21 @@
 
         function sidebarExpandAll() {
             collectAllSidebarPaths(sidebarTreeData).forEach(p => sidebarExpanded.add(p));
-            localStorage.setItem('boxy_sidebar_expanded', JSON.stringify([...sidebarExpanded]));
+            ls.set('boxy_sidebar_expanded', JSON.stringify([...sidebarExpanded]));
             renderSidebar();
         }
 
         function sidebarCollapseAll() {
             sidebarExpanded.clear();
             sidebarFileChildren = {};
-            localStorage.setItem('boxy_sidebar_expanded', '[]');
+            ls.set('boxy_sidebar_expanded', '[]');
             renderSidebar();
         }
 
         function toggleSidebar() {
             const sb = document.getElementById('filesSidebar');
             sb.classList.toggle('collapsed');
-            localStorage.setItem('boxy_sidebar_collapsed', sb.classList.contains('collapsed') ? '1' : '0');
+            ls.set('boxy_sidebar_collapsed', sb.classList.contains('collapsed') ? '1' : '0');
         }
 
         function handleSidebarDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drop-target'); }
@@ -4634,11 +4640,11 @@
                 dashboardTiles = serverTiles;
             } else {
                 // Migration from localStorage
-                const localTiles = localStorage.getItem('boxy_tiles');
+                const localTiles = ls.get('boxy_tiles');
                 if (localTiles) {
                     dashboardTiles = JSON.parse(localTiles);
                     await saveServerData('tiles', dashboardTiles);
-                    localStorage.removeItem('boxy_tiles');
+                    ls.set('boxy_tiles', '');
                 } else {
                     dashboardTiles = [];
                 }
@@ -5060,11 +5066,11 @@
                 credentials = serverCreds;
             } else {
                 // Migration from localStorage
-                const localCreds = localStorage.getItem('boxy_credentials');
+                const localCreds = ls.get('boxy_credentials');
                 if (localCreds) {
                     credentials = JSON.parse(localCreds);
                     await saveServerData('credentials', credentials);
-                    localStorage.removeItem('boxy_credentials');
+                    ls.set('boxy_credentials', '');
                 } else {
                     credentials = [];
                 }
@@ -5310,7 +5316,7 @@
         // Init
         document.getElementById('filterSelect').value = filterType;
         updateViewIcon();
-        if (localStorage.getItem('boxy_sidebar_collapsed') === '1') {
+        if (ls.get('boxy_sidebar_collapsed') === '1') {
             document.getElementById('filesSidebar').classList.add('collapsed');
         }
         // URL hash routing
