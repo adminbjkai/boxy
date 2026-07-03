@@ -1,5 +1,7 @@
 # Boxy
 
+[![CI](https://github.com/adminbjkai/boxy/actions/workflows/ci.yml/badge.svg)](https://github.com/adminbjkai/boxy/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/adminbjkai/boxy)](https://github.com/adminbjkai/boxy/releases) [![Changelog](https://img.shields.io/badge/changelog-keep--a--changelog-blue)](CHANGELOG.md)
+
 Boxy is a fast, self-hosted **file sharing** web app. It provides a real-time file
 manager (drag-and-drop uploads, folders, inline editing, live updates) — all in a single Rust
 binary that serves one embedded HTML page. No database, no build step for the frontend. The only
