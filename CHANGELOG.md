@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- Motion UI overhaul: real-time WebSocket-driven item animations (new-item glow,
+  change flash, no full-list repaint), full-viewport drag-and-drop upload overlay,
+  per-file upload progress with checkmark draw, springy pressable states on all
+  controls, context menu scales from cursor, modal blur/scale transitions,
+  toast progress bar with hover-pause, capped stagger transitions, breadcrumb
+  slide animations, animated empty state, folder icon hover tilt
+- Mobile polish: ≤480px responsive layout, ≥40px tap targets on touch devices
+- All motion respects `prefers-reduced-motion`; animations are transform/opacity-only
+
 ## [1.1.0] - 2026-07-02
 
 Everything shipped since the original v1.0.0 tag (56 commits, Jan–Jul 2026).

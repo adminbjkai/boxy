@@ -34,6 +34,7 @@
             --radius-xl: 18px;
             /* Motion tokens */
             --ease: cubic-bezier(.22,.61,.36,1);
+            --spring: cubic-bezier(0.34,1.56,0.64,1);
             --motion-fast: 0.12s;
             --motion: 0.22s;
             /* Priority / status accents (themeable) */
@@ -1468,8 +1469,8 @@
             position: fixed; z-index: var(--z-menu); min-width: 190px;
             background: var(--bg-secondary); border: 1px solid var(--border);
             border-radius: var(--radius-md); box-shadow: 0 16px 48px var(--shadow-lg);
-            padding: 6px; opacity: 0; transform: scale(.96); transform-origin: top left;
-            pointer-events: none; transition: opacity var(--motion-fast) ease, transform var(--motion-fast) var(--ease);
+            padding: 6px; opacity: 0; transform: scale(.9); transform-origin: top left;
+            pointer-events: none; transition: opacity .1s ease, transform .16s var(--spring);
         }
         .context-menu.show { opacity: 1; transform: scale(1); pointer-events: auto; }
         .context-menu-item {
@@ -1514,8 +1515,11 @@
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {
                 animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+                animation-delay: 0ms !important;
                 transition-duration: .001ms !important; scroll-behavior: auto !important;
             }
+            /* Covers all kinetic additions too: itemNew, itemFlash, toastIn, toastBar,
+               modalPanelIn/Out, bcIn, sbEnter, emptyFloat, checkDraw, dropPulse, selectPop. */
         }
 
         /* Column filter dropdown (1J) */
@@ -1649,6 +1653,225 @@
         .markdown-preview table { border-collapse: collapse; width: 100%; margin: 0.8em 0; }
         .markdown-preview th, .markdown-preview td { border: 1px solid var(--border); padding: 6px 10px; font-size: 13px; }
         .markdown-preview th { background: var(--bg-tertiary); font-weight: 600; }
+
+        /* ============================================================
+           KINETIC MOTION LAYER — pressables, WS diff motion, overlays.
+           Transform/opacity-only animations; honors reduced-motion.
+           ============================================================ */
+
+        /* --- Pressable everything (spring transform + shadow lift) --- */
+        .btn, .view-toggle, .theme-toggle, .file-action-btn, .selection-btn,
+        .sidebar-tool-btn, .selection-clear, .edit-mode-btn {
+            transition: background var(--transition), color var(--transition),
+                        border-color var(--transition), box-shadow .16s var(--ease),
+                        transform .16s var(--spring);
+        }
+        .btn:hover, .view-toggle:hover, .theme-toggle:hover, .selection-btn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 14px var(--shadow);
+        }
+        .file-action-btn:hover { transform: scale(1.08); }
+        .btn:active, .view-toggle:active, .theme-toggle:active, .file-action-btn:active,
+        .selection-btn:active, .sidebar-tool-btn:active, .selection-clear:active,
+        .edit-mode-btn:active {
+            transform: scale(.97);
+            box-shadow: none;
+            transition-duration: .07s;
+        }
+        .breadcrumb-item, .sb-item, .context-menu-item {
+            transition: background var(--motion-fast) ease, color var(--motion-fast) ease,
+                        transform .14s var(--spring);
+        }
+        .breadcrumb-item:active { transform: scale(.96); }
+        .sb-item:active, .context-menu-item:active { transform: scale(.98); }
+
+        .file-item {
+            transition: background var(--transition), border-color var(--transition),
+                        box-shadow var(--transition), opacity var(--transition),
+                        transform .18s var(--spring);
+        }
+        .file-grid .file-item:hover { transform: translateY(-2px) scale(1.015); }
+        .file-grid .file-item:active { transform: scale(.97); }
+        .file-table .file-item:hover, .file-table .file-item:active { transform: none; }
+
+        /* Selection state pop */
+        @keyframes selectPop {
+            0% { transform: scale(1); }
+            45% { transform: scale(1.03); }
+            100% { transform: scale(1); }
+        }
+        .file-item.selected { animation: selectPop .22s var(--spring); }
+        .file-table .file-item.selected { animation: none; }
+
+        /* Folder icon open-tilt on hover */
+        .file-icon svg { transition: transform .18s var(--spring); }
+        .file-grid .file-item:hover .icon-folder { transform: rotate(-6deg) scale(1.06); }
+
+        /* --- Real-time WS motion: new / changed items --- */
+        @keyframes itemNew {
+            0% { opacity: 0; transform: scale(.9); box-shadow: 0 0 0 0 rgba(47,109,246,.45); }
+            55% { opacity: 1; box-shadow: 0 0 0 7px rgba(47,109,246,.14); }
+            100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(47,109,246,0); }
+        }
+        .file-item.item-new { animation: itemNew .5s var(--ease) both; }
+        @keyframes itemFlash {
+            0%, 100% { background: var(--bg-secondary); }
+            35% { background: color-mix(in srgb, var(--accent) 18%, var(--bg-secondary)); }
+        }
+        .file-item.item-flash { animation: itemFlash .9s ease both; }
+
+        /* --- Breadcrumb segment entrance --- */
+        @keyframes bcIn {
+            from { opacity: 0; transform: translateX(-6px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .breadcrumb-item.bc-in { animation: bcIn .22s var(--ease) both; }
+
+        /* --- Sidebar tree first-paint scroll-in --- */
+        @keyframes sbEnter {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .sb-item.sb-enter { animation: sbEnter .3s var(--ease) both; }
+
+        /* --- Full-viewport drag-and-drop overlay --- */
+        .drop-overlay {
+            position: fixed; inset: 0; z-index: 300;
+            background: color-mix(in srgb, var(--bg) 62%, transparent);
+            backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity .18s ease;
+        }
+        .drop-overlay.show { opacity: 1; }
+        .drop-overlay-box {
+            display: flex; flex-direction: column; align-items: center; gap: 14px;
+            padding: 48px 64px; border: 2.5px dashed var(--accent);
+            border-radius: var(--radius-xl);
+            background: color-mix(in srgb, var(--accent) 8%, var(--bg-secondary));
+            color: var(--text);
+            transform: scale(.94);
+            transition: transform .22s var(--spring);
+        }
+        .drop-overlay.show .drop-overlay-box { transform: scale(1); }
+        @keyframes dropPulse {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-6px) scale(1.08); }
+        }
+        .drop-overlay-icon { width: 56px; height: 56px; color: var(--accent); animation: dropPulse 1.4s ease-in-out infinite; }
+        .drop-overlay-text { font-size: 18px; font-weight: 600; font-family: 'Fraunces', serif; }
+        .drop-overlay-sub { font-size: 13px; color: var(--text-secondary); }
+
+        /* --- Upload progress list + checkmark draw --- */
+        .upload-progress { z-index: 210; }
+        .upload-progress-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .upload-progress-header h4 { margin-bottom: 0; font-size: 14px; }
+        .upload-progress-close {
+            display: none; width: 26px; height: 26px; border: none; background: none;
+            color: var(--text-secondary); cursor: pointer; border-radius: var(--radius-sm);
+            align-items: center; justify-content: center;
+        }
+        .upload-progress-close svg { width: 14px; height: 14px; }
+        .upload-progress-close:hover { background: var(--bg-tertiary); color: var(--text); }
+        .upload-progress.show-close .upload-progress-close { display: flex; }
+        .upload-progress-meta { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+        .upload-progress-list { max-height: 200px; overflow-y: auto; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .upload-progress-item { font-size: 12px; }
+        .upload-progress-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+        .upload-progress-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .upload-progress-status { color: var(--text-secondary); flex-shrink: 0; display: inline-flex; align-items: center; }
+        .upload-progress-bar { height: 3px; background: var(--bg-tertiary); border-radius: 2px; overflow: hidden; }
+        .upload-progress-bar-fill { height: 100%; width: 0%; background: var(--accent); border-radius: 2px; transition: width .25s var(--ease); }
+        .upload-progress-item.error .upload-progress-bar-fill { background: var(--danger); }
+        .upload-progress-error { color: var(--danger); font-size: 11px; margin-top: 3px; }
+        .upload-progress-error:empty { display: none; }
+        @keyframes checkDraw { to { stroke-dashoffset: 0; } }
+        .upload-check { width: 15px; height: 15px; color: var(--success); }
+        .upload-check polyline { stroke-dasharray: 24; stroke-dashoffset: 24; animation: checkDraw .4s ease .05s forwards; }
+
+        /* --- Toast: spring slide-in + auto-dismiss progress bar --- */
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(28px) scale(.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .toast { overflow: hidden; }
+        .toast.show { animation: toastIn .35s var(--spring); }
+        @keyframes toastBar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+        .toast-progress {
+            position: absolute; left: 0; right: 0; bottom: 0; height: 2.5px;
+            background: var(--accent); transform-origin: left;
+            animation: toastBar 3s linear forwards;
+        }
+        .toast.success .toast-progress { background: var(--success); }
+        .toast.error .toast-progress { background: var(--danger); }
+        .toast:hover .toast-progress { animation-play-state: paused; }
+
+        /* --- Modal entrance / exit --- */
+        @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalFadeOut { from { opacity: 1; } to { opacity: 0; } }
+        @keyframes modalPanelIn {
+            0% { opacity: 0; transform: scale(.96) translateY(8px); }
+            65% { transform: scale(1.004) translateY(-1px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes modalPanelOut {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(.97) translateY(4px); }
+        }
+        .modal { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+        .modal.active { animation: modalFadeIn .18s ease; }
+        .modal.active .modal-content { animation: modalPanelIn .24s var(--ease); }
+        .modal.closing { display: flex; animation: modalFadeOut .15s ease forwards; pointer-events: none; }
+        .modal.closing .modal-content { animation: modalPanelOut .15s ease forwards; }
+        .global-search.active { animation: modalFadeIn .18s ease; }
+        .global-search.active .global-search-panel { animation: modalPanelIn .24s var(--ease); }
+        .global-search.closing { display: flex; animation: modalFadeOut .15s ease forwards; pointer-events: none; }
+        .global-search.closing .global-search-panel { animation: modalPanelOut .15s ease forwards; }
+
+        /* --- Selection bar spring entrance --- */
+        .selection-bar { transition: transform .3s var(--spring), opacity .2s ease; }
+
+        /* --- Empty state: floating box illustration --- */
+        .empty-illustration { position: relative; width: 96px; margin: 0 auto 6px; }
+        @keyframes emptyFloat {
+            0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+            50% { transform: translateY(-9px) rotate(1.5deg); }
+        }
+        .empty-state .empty-box {
+            width: 80px; height: 80px; margin-bottom: 0; opacity: .55;
+            color: var(--accent); animation: emptyFloat 3.2s ease-in-out infinite;
+        }
+        @keyframes emptyShadow {
+            0%, 100% { transform: scaleX(1); opacity: .35; }
+            50% { transform: scaleX(.7); opacity: .18; }
+        }
+        .empty-shadow {
+            width: 64px; height: 8px; margin: 2px auto 0; border-radius: 50%;
+            background: var(--shadow-lg); animation: emptyShadow 3.2s ease-in-out infinite;
+        }
+        .empty-hint { font-size: 13px; color: var(--text-secondary); margin-top: 6px; opacity: .8; }
+
+        /* --- Small-screen (≤480px) + touch polish --- */
+        @media (max-width: 480px) {
+            .zoom-control { display: none; }
+            .toolbar-search { flex: 1 1 100%; }
+            .toolbar-search input { flex: 1; width: 0; min-width: 60px; }
+            .toolbar-actions { width: 100%; }
+            .toolbar-actions .btn { flex: 1; justify-content: center; min-height: 40px; }
+            .view-toggle { width: 40px; height: 40px; }
+            .nav-bar { flex-wrap: wrap; }
+            .path-bar { display: none; }
+            .breadcrumb-item { min-height: 28px; }
+            .selection-bar { left: 12px; right: 12px; transform: translateY(100px); flex-wrap: wrap; justify-content: center; }
+            .selection-bar.show { transform: translateY(0); }
+            .selection-count { border-right: none; padding-right: 0; }
+            .drop-overlay-box { padding: 32px 24px; margin: 0 16px; }
+        }
+        @media (pointer: coarse) {
+            .file-action-btn { width: 40px; height: 40px; }
+            .theme-toggle, .view-toggle { min-width: 40px; min-height: 40px; }
+            .sb-item, .tree-item, .context-menu-item { min-height: 40px; }
+        }
 
         @media (max-width: 768px) {
             .files-layout { flex-direction: column; }
@@ -1810,10 +2033,14 @@
         </div>
         <div class="file-grid" id="fileGrid"></div>
         <div class="empty-state" id="emptyState" style="display:none">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-            </svg>
+            <div class="empty-illustration">
+                <svg class="empty-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/>
+                </svg>
+                <div class="empty-shadow"></div>
+            </div>
             <p>This folder is empty</p>
+            <p class="empty-hint">Drop files anywhere on the page to fill it up</p>
         </div>
 
         <input type="file" id="fileInput" multiple>
@@ -1935,6 +2162,17 @@
         </div>
     </div>
 
+    <!-- Full-viewport drag-and-drop overlay (visual layer only; upload logic reuses processDataTransferItems) -->
+    <div class="drop-overlay" id="dropOverlay" aria-hidden="true">
+        <div class="drop-overlay-box">
+            <svg class="drop-overlay-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+            </svg>
+            <div class="drop-overlay-text">Drop to upload</div>
+            <div class="drop-overlay-sub" id="dropOverlaySub">Files land in the current folder</div>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
     <div class="context-menu" id="contextMenu" role="menu"></div>
     <div class="col-filter-dropdown" id="colFilterDropdown"></div>
@@ -2053,6 +2291,13 @@
         let sidebarFileChildren = {};
         let lightboxImages = [];
         let lightboxIndex = 0;
+        // Kinetic motion state: diff-based re-render animation + one-shot staggers
+        let lastRenderPath = null;
+        let prevRenderPaths = new Set();
+        let prevRenderMods = new Map();
+        let restaggerNext = false;
+        let sidebarAnimated = false;
+        let lastBreadcrumbPath = null;
 
         // Theme
         function toggleTheme() {
@@ -2235,7 +2480,7 @@
                     ? `<div class="folder-expand-indicator ${childIsExpanded ? 'open' : ''}" onclick="event.stopPropagation(); toggleFolderInlineExpand('${childEscaped}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>`
                     : `<div class="folder-expand-indicator" style="visibility:hidden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>`;
                 let html = `<div class="file-item file-item--inline-child${childIsExpanded ? ' folder-expanded' : ''}" style="--inline-depth:${depth}"
-                                 data-path="${childEscaped}" data-name="${escapeAttr(child.name)}" data-is-dir="${child.is_dir}"
+                                 data-path="${childEscaped}" data-name="${escapeAttr(child.name)}" data-is-dir="${child.is_dir}" data-mod="${child.modified || 0}"
                                  ondblclick="handleItemDblClick(event,'${childEscaped}',${child.is_dir})"
                                  onclick="handleItemClick(event,'${childEscaped}',${child.is_dir})"
                                  oncontextmenu="showContextMenu(event,'${childEscaped}','${escapeAttr(child.name)}',${child.is_dir})">
@@ -2267,6 +2512,9 @@
             if (visible.length === 0) {
                 grid.innerHTML = '';
                 empty.style.display = 'block';
+                prevRenderPaths = new Set();
+                prevRenderMods = new Map();
+                lastRenderPath = currentPath;
                 return;
             }
 
@@ -2316,7 +2564,8 @@
                      data-path="${escapedPath}"
                      data-name="${escapedName}"
                      data-is-dir="${f.is_dir}"
-                     style="animation-delay: ${index * 20}ms"
+                     data-mod="${f.modified || 0}"
+                     style="animation-delay: ${Math.min(index * 20, 300)}ms"
                      draggable="true"
                      oncontextmenu="showContextMenu(event, '${escapedPath}', '${escapedName}', ${f.is_dir})"
                      ondragstart="handleDragStart(event)"
@@ -2389,6 +2638,36 @@
             }).join('');
 
             grid.innerHTML = tableHeader + rows + tableFooter;
+
+            // Diff-based re-render motion: when the same folder re-renders (WS event,
+            // upload, rename...), animate only what changed instead of re-staggering all.
+            const samePath = lastRenderPath === currentPath && prevRenderPaths.size > 0 && !restaggerNext;
+            restaggerNext = false;
+            const renderedItems = grid.querySelectorAll('.file-item');
+            if (samePath) {
+                renderedItems.forEach(el => {
+                    const p = el.dataset.path;
+                    if (!prevRenderPaths.has(p)) {
+                        el.style.animationDelay = '0ms';
+                        el.classList.add('item-new');       // scale/fade in + accent glow
+                    } else {
+                        el.style.animation = 'none';        // no hard-repaint replay
+                        const prevMod = prevRenderMods.get(p);
+                        if (prevMod !== undefined && String(prevMod) !== String(el.dataset.mod)) {
+                            el.style.animation = '';
+                            el.style.animationDelay = '0ms';
+                            el.classList.add('item-flash'); // soft highlight for edited items
+                        }
+                    }
+                });
+            }
+            prevRenderPaths = new Set();
+            prevRenderMods = new Map();
+            renderedItems.forEach(el => {
+                prevRenderPaths.add(el.dataset.path);
+                prevRenderMods.set(el.dataset.path, el.dataset.mod || '');
+            });
+            lastRenderPath = currentPath;
 
             // Maintain visual selection state after re-render
             updateSelectionUI();
@@ -2528,6 +2807,7 @@
             }
             ls.set('listSortCol', listSortCol);
             ls.set('listSortDir', listSortDir);
+            restaggerNext = true;
             renderFiles(allFiles);
         }
 
@@ -2749,6 +3029,14 @@
             }
 
             bc.innerHTML = html;
+            // Animate segments in when the path actually changed (subtle slide-in stagger)
+            if (lastBreadcrumbPath !== currentPath) {
+                bc.querySelectorAll('.breadcrumb-item').forEach((el, i) => {
+                    el.classList.add('bc-in');
+                    el.style.animationDelay = `${Math.min(i * 30, 150)}ms`;
+                });
+                lastBreadcrumbPath = currentPath;
+            }
             updatePathBar();
         }
 
@@ -2896,7 +3184,8 @@
             row.classList.toggle('error', item.status === 'error');
 
             if (item.status === 'done') {
-                statusEl.textContent = 'Done';
+                // Constant markup only — no user content (XSS-safe)
+                statusEl.innerHTML = '<svg class="upload-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-label="Done"><polyline points="20 6 9 17 4 12"/></svg>';
                 fill.style.width = '100%';
             } else if (item.status === 'error') {
                 statusEl.textContent = 'Failed';
@@ -3674,15 +3963,38 @@
             error: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
             info: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'
         };
+        const TOAST_DURATION = 3000;
+        let toastHideAt = 0;
+        let toastRemaining = TOAST_DURATION;
+        function hideToast() {
+            document.getElementById('toast').classList.remove('show');
+        }
         function showToast(msg, type = 'info') {
             const toast = document.getElementById('toast');
             toast.className = `toast ${type}`;
-            toast.innerHTML = `<svg class="toast-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${TOAST_ICONS[type] || TOAST_ICONS.info}</svg><span></span>`;
+            toast.innerHTML = `<svg class="toast-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${TOAST_ICONS[type] || TOAST_ICONS.info}</svg><span></span><i class="toast-progress"></i>`;
             toast.querySelector('span').textContent = msg; // textContent keeps this XSS-safe
             requestAnimationFrame(() => toast.classList.add('show'));
             clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+            toastRemaining = TOAST_DURATION;
+            toastHideAt = Date.now() + TOAST_DURATION;
+            toastTimer = setTimeout(hideToast, TOAST_DURATION);
         }
+        // Hovering the toast pauses auto-dismiss (the CSS progress bar pauses via :hover)
+        (() => {
+            const toastEl = document.getElementById('toast');
+            toastEl.addEventListener('mouseenter', () => {
+                toastRemaining = Math.max(0, toastHideAt - Date.now());
+                clearTimeout(toastTimer);
+            });
+            toastEl.addEventListener('mouseleave', () => {
+                if (!toastEl.classList.contains('show')) return;
+                const wait = Math.max(toastRemaining, 400);
+                toastHideAt = Date.now() + wait;
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(hideToast, wait);
+            });
+        })();
 
         function formatSize(bytes) {
             if (bytes === 0) return '0 B';
@@ -3726,6 +4038,7 @@
             viewMode = viewMode === 'grid' ? 'list' : 'grid';
             ls.set('viewMode', viewMode);
             updateViewIcon();
+            restaggerNext = true;
             renderFiles(allFiles);
         }
 
@@ -3798,6 +4111,63 @@
             if (files.length > 0) uploadFiles(files);
         });
 
+        // Full-viewport drop overlay: visual layer for OS file drags anywhere on the page.
+        // Internal file-item drags (draggedItem set) never trigger it.
+        (() => {
+            const overlay = document.getElementById('dropOverlay');
+            let dragDepth = 0;
+            const isExternalFileDrag = (e) =>
+                !draggedItem && e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+            const showOverlay = () => {
+                document.getElementById('dropOverlaySub').textContent =
+                    currentPath ? `Files land in /${currentPath}` : 'Files land in the current folder';
+                overlay.classList.add('show');
+            };
+            const hideOverlay = () => { dragDepth = 0; overlay.classList.remove('show'); };
+
+            window.addEventListener('dragenter', (e) => {
+                if (!isExternalFileDrag(e)) return;
+                e.preventDefault();
+                dragDepth++;
+                showOverlay();
+            });
+            window.addEventListener('dragover', (e) => {
+                if (isExternalFileDrag(e)) e.preventDefault();
+            });
+            window.addEventListener('dragleave', (e) => {
+                if (!isExternalFileDrag(e)) return;
+                dragDepth = Math.max(0, dragDepth - 1);
+                if (dragDepth === 0) overlay.classList.remove('show');
+            });
+            window.addEventListener('drop', async (e) => {
+                if (!isExternalFileDrag(e)) return;
+                e.preventDefault();
+                hideOverlay();
+                // The legacy #dropZone element has its own drop handler — avoid double upload.
+                if (e.target.closest && e.target.closest('#dropZone')) return;
+                const files = await processDataTransferItems(e.dataTransfer.items);
+                if (files.length > 0) uploadFiles(files);
+            });
+            window.addEventListener('dragend', hideOverlay);
+        })();
+
+        // Modal / global-search exit animation: when .active is removed, keep the element
+        // visible for one short "closing" animation. No call sites change.
+        (() => {
+            const closeObserver = new MutationObserver((muts) => {
+                muts.forEach(m => {
+                    const el = m.target;
+                    const wasActive = (m.oldValue || '').split(/\s+/).includes('active');
+                    if (wasActive && !el.classList.contains('active') && !el.classList.contains('closing')) {
+                        el.classList.add('closing');
+                        setTimeout(() => el.classList.remove('closing'), 160);
+                    }
+                });
+            });
+            document.querySelectorAll('.modal, .global-search').forEach(el =>
+                closeObserver.observe(el, { attributes: true, attributeFilter: ['class'], attributeOldValue: true }));
+        })();
+
         // File input
         document.getElementById('fileInput').addEventListener('change', (e) => {
             const fileList = e.target.files;
@@ -3822,17 +4192,20 @@
 
         document.getElementById('searchInput').addEventListener('input', debounce((e) => {
             filterQuery = e.target.value.trim();
+            restaggerNext = true;
             renderFiles(allFiles);
         }, 120));
 
         document.getElementById('sortSelect').addEventListener('change', (e) => {
             sortMode = e.target.value;
+            restaggerNext = true;
             renderFiles(allFiles);
         });
 
         document.getElementById('filterSelect').addEventListener('change', (e) => {
             filterType = e.target.value;
             ls.set('filterType', filterType);
+            restaggerNext = true;
             renderFiles(allFiles);
         });
 
@@ -4197,6 +4570,14 @@
                 </div>`;
             html += renderSidebarNodes(sidebarTreeData, 0);
             tree.innerHTML = html;
+            // Kinetic scroll-in on first paint only
+            if (!sidebarAnimated && sidebarTreeData.length > 0) {
+                sidebarAnimated = true;
+                tree.querySelectorAll('.sb-item').forEach((el, i) => {
+                    el.classList.add('sb-enter');
+                    el.style.animationDelay = `${Math.min(i * 30, 300)}ms`;
+                });
+            }
         }
 
         function renderSidebarNodes(nodes, depth) {
@@ -4360,14 +4741,19 @@
             items.push(`<button class="context-menu-item" role="menuitem" onclick="closeContextMenu(); showMoveModal('${p}')">${CM_ICON(CM_ICONS.move)} Move…</button>`);
             items.push('<div class="context-menu-sep"></div>');
             items.push(`<button class="context-menu-item danger" role="menuitem" onclick="closeContextMenu(); deleteItem('${p}')">${CM_ICON(CM_ICONS.trash)} Delete</button>`);
+            menu.classList.remove('show');
             menu.innerHTML = items.join('');
+            void menu.offsetWidth; // restart the pop transition when re-opened on another item
             menu.classList.add('show');
             const r = menu.getBoundingClientRect();
             let x = e.clientX, y = e.clientY;
             if (x + r.width > window.innerWidth) x = window.innerWidth - r.width - 8;
             if (y + r.height > window.innerHeight) y = window.innerHeight - r.height - 8;
-            menu.style.left = Math.max(8, x) + 'px';
-            menu.style.top = Math.max(8, y) + 'px';
+            const finalX = Math.max(8, x), finalY = Math.max(8, y);
+            menu.style.left = finalX + 'px';
+            menu.style.top = finalY + 'px';
+            // Springy pop scales out from the cursor position
+            menu.style.transformOrigin = `${e.clientX - finalX}px ${e.clientY - finalY}px`;
         }
 
         function closeContextMenu() { document.getElementById('contextMenu').classList.remove('show'); }

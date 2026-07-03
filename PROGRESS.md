@@ -51,8 +51,13 @@ system: synced versioning, changelog, release flow, agent team structure, docs.
   1.1.0, tag pushed, GitHub release live
   (https://github.com/adminbjkai/boxy/releases/tag/v1.1.0). CI run triggered.
 
-## In flight
-- cargo build --release (background) → systemctl restart boxy → health check.
+- Deployed: release binary built, boxy.service restarted with new env; live
+  GET / 200 over HTTP/2, /api/health ok. Fresh-context verifier: 10/10 PASS
+  (one nit — uncommitted PROGRESS.md — committed and pushed after).
+- **Main task COMPLETE 2026-07-03.**
 
-## Remaining
-- Fresh-context verifier pass → final report to user.
+## Side project 2026-07-03: Android APK (/apps/boxy-apk)
+- Kotlin WebView shell for boxy.bjk.ai: native file-picker uploads, DownloadManager
+  downloads, share-to-upload (ACTION_SEND → POST /api/upload), dark theme, adaptive icon.
+- Toolchain installed: JDK17, Android SDK 34, Gradle 8.7. Release build signed with
+  boxy-release.keystore. Deliverable: /apps/boxy-apk/boxy.apk (pending build result).
