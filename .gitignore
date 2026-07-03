@@ -19,3 +19,4 @@ yarn-error.log*
 
 # TLDR local config
 .tldrignore
+/tech_stack_ppt

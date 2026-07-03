@@ -9,7 +9,7 @@ alwaysApply: false
 ## Tech Stack
 - Vanilla JavaScript (no frameworks)
 - CSS variables for theming
-- CSS extracted to `static/css/styles.css`
+- CSS embedded in `static/index.html` (single-file frontend)
 - JS remains in `static/index.html`
 
 ## CSS Architecture
@@ -120,16 +120,7 @@ function connectWS() {
 
     ws.onmessage = async (e) => {
         const { action, path } = JSON.parse(e.data);
-
-        // Handle data sync (boards, tiles, credentials)
-        if (action === 'data_sync') {
-            if (path === 'boards') await loadBoards();
-            if (path === 'tiles') await loadTiles();
-            if (path === 'credentials') await loadCredentials();
-            showToast(`Synced: ${path}`);
-            return;
-        }
-
+        // actions: upload | folder | rename | move | delete | edit
         loadFiles();  // Refresh files
         showToast(`${action}: ${path}`);
     };
@@ -212,8 +203,8 @@ const iconMap = {
 ```
 
 ## Rules
-1. No external JS dependencies
-2. Use CSS variables for all colors (defined in `static/css/styles.css`)
+1. No JS frameworks; only CDN libs already in use (Prism.js, marked.js) — don't add more
+2. Use CSS variables for all colors (defined in the `<style>` block of `static/index.html`)
 3. Always escape user content (XSS)
 4. Auto-reconnect WebSocket on disconnect
 5. Stagger animations for visual polish

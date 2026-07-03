@@ -2,8 +2,9 @@
 
 Boxy is a fast, self-hosted **file sharing** web app. It provides a real-time file
 manager (drag-and-drop uploads, folders, inline editing, live updates) — all in a single Rust
-binary that serves one embedded HTML page. No database, no build step for the frontend, no
-external JS/CSS dependencies (web fonts only).
+binary that serves one embedded HTML page. No database, no build step for the frontend. The only
+external dependencies load from CDNs: Google Fonts, plus Prism.js (+ autoloader plugin and theme
+CSS) and marked.js from cdnjs for syntax highlighting and Markdown preview.
 
 - **Backend:** Rust + Actix-web 4 (single file, `src/main.rs`)
 - **Frontend:** Vanilla JS + CSS embedded in `static/index.html` (served via `include_str!`)

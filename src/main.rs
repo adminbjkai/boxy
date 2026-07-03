@@ -282,7 +282,14 @@ async fn upload_file(
 
         // Handle filename conflicts
         let filepath = get_unique_filepath(&filepath).await;
-        let final_name = clean_path.to_string_lossy().to_string();
+        // Report the name actually written (dedupe may have renamed e.g. file.txt -> file_1.txt)
+        let final_name = {
+            let mut written = clean_path.clone();
+            if let Some(name) = filepath.file_name() {
+                written.set_file_name(name);
+            }
+            written.to_string_lossy().to_string()
+        };
 
         let mut file = tokio::fs::File::create(&filepath).await?;
 
