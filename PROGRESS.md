@@ -61,3 +61,11 @@ system: synced versioning, changelog, release flow, agent team structure, docs.
   downloads, share-to-upload (ACTION_SEND → POST /api/upload), dark theme, adaptive icon.
 - Toolchain installed: JDK17, Android SDK 34, Gradle 8.7. Release build signed with
   boxy-release.keystore. Deliverable: /apps/boxy-apk/boxy.apk (pending build result).
+
+## Sprint 2026-07-03: Motion UI overhaul → v1.2.0
+- All 10 motion/microinteraction items shipped in static/index.html (+386 lines):
+  WS-driven item animations, drop overlay, upload progress+checkmark, spring
+  pressables, cursor-origin context menu, modal transitions, toast progress,
+  capped staggers, breadcrumbs, empty state, mobile (<=480px, 40px targets),
+  reduced-motion safe. Verified: node --check, XSS audit (29=29 escapes), debug
+  server markers, live deploy + Playwright screenshot OK. Released v1.2.0.
