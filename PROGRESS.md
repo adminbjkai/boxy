@@ -81,3 +81,10 @@ system: synced versioning, changelog, release flow, agent team structure, docs.
   rewrite LAST (needs exclusive repo access; git-bundle backup first).
 - Created standing cheap specialists: .claude/agents/boxy-frontend (sonnet),
   boxy-backend (sonnet), boxy-chores (haiku). Added scripts/deploy.sh.
+
+## Sprint 2026-07-03 (b) COMPLETE → v1.3.0 + tracker at zero
+- v1.3.0 shipped & deployed (deploy.sh first live run OK): previews (#7),
+  offline UX + API errors (#12), vendored deps zero-CDN (#14), 16 unit tests (#15).
+- #13 resolved: backup bundle /apps/boxy-backup-20260703.bundle, filter-repo
+  strip-blobs->1M, force-pushed; pack 117MB→9.9MB, releases intact, tests green.
+- All GitHub issues closed (0 open). Milestone v1.3.0 closed.
