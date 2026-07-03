@@ -74,3 +74,10 @@ system: synced versioning, changelog, release flow, agent team structure, docs.
 - Closed 5 stale issues (#5,8,9,10,11) w/ evidence comments; updated #7,#12 scope.
 - Milestone v1.3.0 → #7,12,14,15; #13 labeled decision-needed; repo topics set.
 - Added issue/PR templates, README badges (CI/release/changelog). Pushed.
+
+## Sprint 2026-07-03 (b): Resolve all open issues → v1.3.0
+- Lanes running (Sonnet): #15 unit tests (main.rs), #7+#12 previews+offline UX
+  (index.html). Next: #14 vendoring (both files) after lanes merge. #13 history
+  rewrite LAST (needs exclusive repo access; git-bundle backup first).
+- Created standing cheap specialists: .claude/agents/boxy-frontend (sonnet),
+  boxy-backend (sonnet), boxy-chores (haiku). Added scripts/deploy.sh.

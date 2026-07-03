@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- File previews: PDF (embedded viewer), video and audio players in a media
+  preview modal; AVIF support; grid thumbnails properly gated to grid view (#7)
+- Connection-loss banner with auto-reconnect status; API errors now surface the
+  server's actual message in toasts (#12)
+- Rust unit tests: path-traversal safety, filename dedup, name validation —
+  16 tests in CI (#15)
+- Vendored Prism.js, marked.js and web fonts — zero third-party runtime
+  requests, works fully offline (#14)
+
+### Fixed
+- Escaped raw file extension in icon rendering (minor XSS hardening)
+
+### Maintenance
+- Standing specialist agents on low-cost models (.claude/agents: boxy-frontend,
+  boxy-backend on Sonnet; boxy-chores on Haiku)
+- scripts/deploy.sh: one-command build + restart + health verification
+
 ## [1.2.0] - 2026-07-03
 
 ### Added

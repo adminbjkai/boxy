@@ -1011,6 +1011,48 @@ async fn serve_favicon() -> HttpResponse {
         .body(include_bytes!("../static/favicon.ico").as_ref())
 }
 
+async fn serve_vendor_prism_js() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("application/javascript; charset=utf-8")
+        .insert_header(("Cache-Control", "public, max-age=31536000, immutable"))
+        .body(include_str!("../static/vendor/prism.min.js"))
+}
+
+async fn serve_vendor_prism_css() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("text/css; charset=utf-8")
+        .insert_header(("Cache-Control", "public, max-age=31536000, immutable"))
+        .body(include_str!("../static/vendor/prism-theme.min.css"))
+}
+
+async fn serve_vendor_marked_js() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("application/javascript; charset=utf-8")
+        .insert_header(("Cache-Control", "public, max-age=31536000, immutable"))
+        .body(include_str!("../static/vendor/marked.min.js"))
+}
+
+async fn serve_vendor_fonts_css() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("text/css; charset=utf-8")
+        .insert_header(("Cache-Control", "public, max-age=31536000, immutable"))
+        .body(include_str!("../static/vendor/fonts.css"))
+}
+
+async fn serve_vendor_fraunces_woff2() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("font/woff2")
+        .insert_header(("Cache-Control", "public, max-age=31536000, immutable"))
+        .body(include_bytes!("../static/vendor/fraunces-latin.woff2").as_ref())
+}
+
+async fn serve_vendor_space_grotesk_woff2() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("font/woff2")
+        .insert_header(("Cache-Control", "public, max-age=31536000, immutable"))
+        .body(include_bytes!("../static/vendor/space-grotesk-latin.woff2").as_ref())
+}
+
 async fn healthcheck() -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().json(serde_json::json!({"ok": true})))
 }
@@ -1048,6 +1090,12 @@ async fn main() -> std::io::Result<()> {
             .wrap(Compress::default())
             .route("/", web::get().to(serve_index))
             .route("/favicon.ico", web::get().to(serve_favicon))
+            .route("/vendor/prism.min.js", web::get().to(serve_vendor_prism_js))
+            .route("/vendor/prism-theme.min.css", web::get().to(serve_vendor_prism_css))
+            .route("/vendor/marked.min.js", web::get().to(serve_vendor_marked_js))
+            .route("/vendor/fonts.css", web::get().to(serve_vendor_fonts_css))
+            .route("/vendor/fraunces-latin.woff2", web::get().to(serve_vendor_fraunces_woff2))
+            .route("/vendor/space-grotesk-latin.woff2", web::get().to(serve_vendor_space_grotesk_woff2))
             .route("/ws", web::get().to(ws_handler))
             .route("/api/files", web::get().to(list_files))
             .route("/api/upload", web::post().to(upload_file))
@@ -1069,4 +1117,189 @@ async fn main() -> std::io::Result<()> {
     .bind(bind)?
     .run()
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Build a unique scratch directory under the OS temp dir so tests never
+    /// touch the real uploads/ dir or collide with each other.
+    fn unique_test_dir(tag: &str) -> PathBuf {
+        std::env::temp_dir().join(format!("boxy_test_{}_{}", tag, uuid::Uuid::new_v4()))
+    }
+
+    // ---- clean_relative_path ----
+
+    #[test]
+    fn clean_relative_path_strips_plain_traversal() {
+        assert_eq!(clean_relative_path(".."), PathBuf::new());
+        assert_eq!(
+            clean_relative_path("../../etc/passwd"),
+            PathBuf::from("etc/passwd")
+        );
+    }
+
+    #[test]
+    fn clean_relative_path_strips_nested_traversal() {
+        assert_eq!(clean_relative_path("a/../../etc"), PathBuf::from("a/etc"));
+    }
+
+    #[test]
+    fn clean_relative_path_strips_backslash_traversal() {
+        assert_eq!(
+            clean_relative_path("a\\..\\..\\etc"),
+            PathBuf::from("a/etc")
+        );
+    }
+
+    #[test]
+    fn clean_relative_path_preserves_nested_structure() {
+        assert_eq!(
+            clean_relative_path("folder/sub/file.txt"),
+            PathBuf::from("folder/sub/file.txt")
+        );
+    }
+
+    #[test]
+    fn clean_relative_path_empty_is_empty() {
+        assert_eq!(clean_relative_path(""), PathBuf::new());
+    }
+
+    // ---- resolve_path_safe ----
+
+    #[test]
+    fn resolve_path_safe_handles_none_path() {
+        let base = unique_test_dir("none");
+        std::fs::create_dir_all(&base).unwrap();
+
+        let resolved = resolve_path_safe(&base, None);
+        assert_eq!(resolved, Some(base.clone()));
+
+        std::fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn resolve_path_safe_accepts_valid_nested_path() {
+        let base = unique_test_dir("nested");
+        std::fs::create_dir_all(base.join("nested/dir")).unwrap();
+
+        let path = Some("nested/dir".to_string());
+        let resolved = resolve_path_safe(&base, path.as_ref());
+        assert_eq!(resolved, Some(base.join("nested/dir")));
+
+        std::fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn resolve_path_safe_neutralizes_plain_traversal() {
+        let base = unique_test_dir("trav1");
+        std::fs::create_dir_all(&base).unwrap();
+
+        let path = Some("../../etc/passwd".to_string());
+        let resolved =
+            resolve_path_safe(&base, path.as_ref()).expect("traversal should resolve within base");
+        assert!(resolved.starts_with(&base));
+        assert_eq!(resolved, base.join("etc/passwd"));
+
+        std::fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn resolve_path_safe_neutralizes_absolute_path() {
+        let base = unique_test_dir("trav2");
+        std::fs::create_dir_all(&base).unwrap();
+
+        let path = Some("/etc/passwd".to_string());
+        let resolved = resolve_path_safe(&base, path.as_ref())
+            .expect("absolute path should resolve within base");
+        assert!(resolved.starts_with(&base));
+
+        std::fs::remove_dir_all(&base).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn resolve_path_safe_rejects_symlink_escape() {
+        use std::os::unix::fs::symlink;
+
+        let base = unique_test_dir("symlink_base");
+        let outside = unique_test_dir("symlink_outside");
+        std::fs::create_dir_all(&base).unwrap();
+        std::fs::create_dir_all(&outside).unwrap();
+        symlink(&outside, base.join("escape")).unwrap();
+
+        let path = Some("escape".to_string());
+        let resolved = resolve_path_safe(&base, path.as_ref());
+        assert_eq!(resolved, None);
+
+        std::fs::remove_dir_all(&base).ok();
+        std::fs::remove_dir_all(&outside).ok();
+    }
+
+    // ---- get_unique_filepath ----
+
+    #[tokio::test]
+    async fn get_unique_filepath_returns_as_is_when_missing() {
+        let dir = unique_test_dir("uniq_missing");
+        tokio::fs::create_dir_all(&dir).await.unwrap();
+
+        let target = dir.join("newfile.txt");
+        let result = get_unique_filepath(&target).await;
+        assert_eq!(result, target);
+
+        tokio::fs::remove_dir_all(&dir).await.ok();
+    }
+
+    #[tokio::test]
+    async fn get_unique_filepath_increments_on_collision() {
+        let dir = unique_test_dir("uniq_collide");
+        tokio::fs::create_dir_all(&dir).await.unwrap();
+
+        let target = dir.join("file.txt");
+        tokio::fs::write(&target, b"a").await.unwrap();
+
+        let first = get_unique_filepath(&target).await;
+        assert_eq!(first, dir.join("file_1.txt"));
+
+        tokio::fs::write(&first, b"b").await.unwrap();
+        let second = get_unique_filepath(&target).await;
+        assert_eq!(second, dir.join("file_2.txt"));
+
+        tokio::fs::remove_dir_all(&dir).await.ok();
+    }
+
+    #[tokio::test]
+    async fn get_unique_filepath_preserves_extension() {
+        let dir = unique_test_dir("uniq_ext");
+        tokio::fs::create_dir_all(&dir).await.unwrap();
+
+        let target = dir.join("archive.tar.gz");
+        tokio::fs::write(&target, b"a").await.unwrap();
+
+        let result = get_unique_filepath(&target).await;
+        assert_eq!(result.extension().and_then(|e| e.to_str()), Some("gz"));
+        assert_eq!(result, dir.join("archive.tar_1.gz"));
+
+        tokio::fs::remove_dir_all(&dir).await.ok();
+    }
+
+    // ---- valid_name_len ----
+
+    #[test]
+    fn valid_name_len_rejects_empty() {
+        assert!(!valid_name_len(""));
+    }
+
+    #[test]
+    fn valid_name_len_accepts_max_length() {
+        let name = "a".repeat(MAX_NAME_LEN);
+        assert!(valid_name_len(&name));
+    }
+
+    #[test]
+    fn valid_name_len_rejects_over_max() {
+        let name = "a".repeat(MAX_NAME_LEN + 1);
+        assert!(!valid_name_len(&name));
+    }
 }

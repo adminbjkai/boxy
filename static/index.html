@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boxy - File Sharing</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <link href="/vendor/fonts.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/prism-theme.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -1032,6 +1030,63 @@
             white-space: nowrap;
         }
 
+        /* Media preview modal (PDF / video / audio) */
+        .media-preview-content {
+            max-width: 80vw;
+            width: 900px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .media-preview-content h3 {
+            margin-bottom: 16px;
+        }
+
+        .media-preview-content h3 code {
+            font-family: 'Space Grotesk', monospace;
+            font-size: 14px;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            padding: 4px 8px;
+            border-radius: 4px;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: inline-block;
+        }
+
+        .media-preview-body {
+            flex: 1;
+            min-height: 60vh;
+            max-height: 70vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .media-preview-body .pdf-preview-frame {
+            width: 100%;
+            height: 70vh;
+            border: 0;
+            background: #fff;
+        }
+
+        .media-preview-body .media-preview-video {
+            max-width: 100%;
+            max-height: 70vh;
+        }
+
+        .media-preview-body .media-preview-audio {
+            width: 100%;
+            margin: 0 24px;
+        }
+
         .edit-textarea {
             flex: 1;
             min-height: 400px;
@@ -1322,6 +1377,46 @@
         }
 
         /* Toast */
+        /* Reconnect banner (offline / WS down) */
+        .reconnect-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            background: var(--danger);
+            transform: translateY(-100%);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform var(--motion) var(--ease), opacity var(--motion) var(--ease);
+        }
+
+        .reconnect-banner.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .reconnect-banner-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #fff;
+            animation: reconnectPulse 1.2s ease-in-out infinite;
+        }
+
+        @keyframes reconnectPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.7); }
+        }
+
         .toast {
             position: fixed;
             bottom: 24px;
@@ -1519,7 +1614,8 @@
                 transition-duration: .001ms !important; scroll-behavior: auto !important;
             }
             /* Covers all kinetic additions too: itemNew, itemFlash, toastIn, toastBar,
-               modalPanelIn/Out, bcIn, sbEnter, emptyFloat, checkDraw, dropPulse, selectPop. */
+               modalPanelIn/Out, bcIn, sbEnter, emptyFloat, checkDraw, dropPulse, selectPop,
+               reconnectPulse, .reconnect-banner slide, .file-thumb fade-in. */
         }
 
         /* Column filter dropdown (1J) */
@@ -1894,6 +1990,10 @@
     </style>
 </head>
 <body>
+    <div class="reconnect-banner" id="reconnectBanner" role="status" aria-live="polite">
+        <span class="reconnect-banner-dot"></span>
+        Connection lost — reconnecting&hellip;
+    </div>
     <header class="header">
         <div class="logo">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2162,6 +2262,17 @@
         </div>
     </div>
 
+    <!-- Media Preview Modal (PDF / video / audio) -->
+    <div class="modal" id="mediaPreviewModal">
+        <div class="modal-content media-preview-content">
+            <h3><code id="mediaPreviewName"></code></h3>
+            <div class="media-preview-body" id="mediaPreviewBody"></div>
+            <div class="modal-actions">
+                <button class="btn" onclick="closeMediaPreview()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Full-viewport drag-and-drop overlay (visual layer only; upload logic reuses processDataTransferItems) -->
     <div class="drop-overlay" id="dropOverlay" aria-hidden="true">
         <div class="drop-overlay-box">
@@ -2413,7 +2524,16 @@
 
             return `<svg class="${iconData.class}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 ${svgPaths[iconData.icon]}
-            </svg>${showExt ? `<span class="file-icon-ext">${ext}</span>` : ''}`;
+            </svg>${showExt ? `<span class="file-icon-ext">${escapeHtml(ext)}</span>` : ''}`;
+        }
+
+        // Reconnect banner: reflects WS state + browser online/offline, without
+        // touching the WS reconnect/backoff logic itself.
+        function showReconnectBanner() {
+            document.getElementById('reconnectBanner')?.classList.add('show');
+        }
+        function hideReconnectBanner() {
+            document.getElementById('reconnectBanner')?.classList.remove('show');
         }
 
         // WebSocket
@@ -2427,12 +2547,14 @@
                 wsRetry = 0;
                 document.getElementById('statusDot').classList.add('connected');
                 document.getElementById('statusText').textContent = 'Live';
+                hideReconnectBanner();
             };
 
             ws.onclose = () => {
                 console.log('WebSocket closed, reconnecting in 2s...');
                 document.getElementById('statusDot').classList.remove('connected');
                 document.getElementById('statusText').textContent = 'Reconnecting...';
+                showReconnectBanner();
                 // Exponential backoff with jitter (1s → ~30s cap) avoids thundering-herd on restart.
                 const delay = Math.min(30000, 1000 * Math.pow(2, wsRetry++)) + Math.random() * 1000;
                 setTimeout(connectWS, delay);
@@ -2452,14 +2574,18 @@
 
         async function loadFiles() {
             const url = currentPath ? `/api/files?path=${encodeURIComponent(currentPath)}` : '/api/files';
+            let res;
             try {
-                const res = await fetch(url);
-                if (!res.ok) throw new Error('Failed to list files');
-                allFiles = await res.json();
+                res = await fetch(url);
             } catch (err) {
                 showToast('Could not load files', 'error');
                 return;
             }
+            if (!res.ok) {
+                await apiErrorToast(res, 'Could not load files');
+                return;
+            }
+            allFiles = await res.json();
             focusedIndex = -1;
             renderFiles(allFiles);
             updateBreadcrumb();
@@ -2549,7 +2675,7 @@
                 const fullPath = currentPath ? currentPath + '/' + f.name : f.name;
                 const escapedPath = escapeAttr(fullPath);
                 const escapedName = escapeAttr(f.name);
-                const hasThumb = !f.is_dir && isImageFile(f.name);
+                const hasThumb = viewMode === 'grid' && !f.is_dir && isImageFile(f.name);
                 const fileType = getFileType(f.name, f.is_dir);
                 const typeColumn = viewMode === 'list' ? `<div class="file-type">${fileType}</div>` : '';
                 const datePart = f.modified ? formatDatePart(f.modified) : '';
@@ -2673,12 +2799,30 @@
             updateSelectionUI();
         }
 
-        const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'];
+        const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'avif'];
+        const PDF_EXTENSIONS = ['pdf'];
+        const VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov'];
+        const AUDIO_EXTENSIONS = ['mp3', 'wav', 'ogg', 'm4a', 'flac'];
         const EDITABLE_EXTENSIONS = ['txt', 'csv', 'py', 'json', 'md', 'rs', 'js', 'ts', 'html', 'css', 'toml', 'yaml', 'yml', 'sql', 'm3u', 'sh', 'go', 'rb', 'php', 'xml'];
 
         function isImageFile(name) {
             const ext = name.split('.').pop().toLowerCase();
             return IMAGE_EXTENSIONS.includes(ext);
+        }
+
+        function isPdfFile(name) {
+            const ext = name.split('.').pop().toLowerCase();
+            return PDF_EXTENSIONS.includes(ext);
+        }
+
+        function isVideoFile(name) {
+            const ext = name.split('.').pop().toLowerCase();
+            return VIDEO_EXTENSIONS.includes(ext);
+        }
+
+        function isAudioFile(name) {
+            const ext = name.split('.').pop().toLowerCase();
+            return AUDIO_EXTENSIONS.includes(ext);
         }
 
         function isEditableFile(name) {
@@ -2687,7 +2831,7 @@
         }
 
         function getFileIconHtml(name, isDir, fullPath) {
-            if (!isDir && isImageFile(name)) {
+            if (!isDir && viewMode === 'grid' && isImageFile(name)) {
                 const thumbUrl = `/api/download?path=${encodeURIComponent(fullPath)}`;
                 const fallbackIcon = getFileIcon(name, false).replace(/"/g, '&quot;');
                 return `<img class="file-thumb" src="${thumbUrl}" loading="lazy" onload="this.classList.add('loaded')" onerror="handleThumbError(this, '${fallbackIcon}')">`;
@@ -2898,6 +3042,8 @@
                 navigate(path);
             } else if (isImageFile(path.split('/').pop())) {
                 openLightbox(path);
+            } else if (isPdfFile(path.split('/').pop()) || isVideoFile(path.split('/').pop()) || isAudioFile(path.split('/').pop())) {
+                openMediaPreview(path);
             } else {
                 const url = `/api/download?path=${encodeURIComponent(path)}`;
                 const link = document.createElement('a');
@@ -2978,7 +3124,7 @@
                     loadFiles();
                     showToast(`Moved to ${target.dataset.name}`);
                 } else {
-                    showToast('Move failed');
+                    await apiErrorToast(res, 'Move failed');
                 }
             }
         }
@@ -3344,7 +3490,7 @@
 
         function openLightbox(path) {
             const images = allFiles
-                .filter(f => !f.is_dir && ['png','jpg','jpeg','gif','svg','webp'].includes(f.name.split('.').pop().toLowerCase()))
+                .filter(f => !f.is_dir && isImageFile(f.name))
                 .map(f => ({ path: currentPath ? currentPath + '/' + f.name : f.name, name: f.name }));
             lightboxImages = images;
             lightboxIndex = images.findIndex(img => img.path === path);
@@ -3372,6 +3518,29 @@
             showLightboxImage();
         }
 
+        // PDF / video / audio preview modal (browser-native players, no extra libs)
+        function openMediaPreview(path) {
+            const name = path.split('/').pop();
+            const url = `/api/download?path=${encodeURIComponent(path)}`;
+            const body = document.getElementById('mediaPreviewBody');
+            if (isPdfFile(name)) {
+                body.innerHTML = `<iframe class="pdf-preview-frame" src="${escapeAttr(url)}" title="${escapeAttr(name)}"></iframe>`;
+            } else if (isVideoFile(name)) {
+                body.innerHTML = `<video class="media-preview-video" controls preload="metadata" src="${escapeAttr(url)}"></video>`;
+            } else if (isAudioFile(name)) {
+                body.innerHTML = `<audio class="media-preview-audio" controls preload="metadata" src="${escapeAttr(url)}"></audio>`;
+            } else {
+                return;
+            }
+            document.getElementById('mediaPreviewName').textContent = name;
+            document.getElementById('mediaPreviewModal').classList.add('active');
+        }
+
+        function closeMediaPreview() {
+            document.getElementById('mediaPreviewModal').classList.remove('active');
+            document.getElementById('mediaPreviewBody').innerHTML = '';
+        }
+
         async function downloadSelectedZip() {
             const paths = Array.from(selectedFiles);
             if (paths.length === 0) return;
@@ -3380,7 +3549,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ paths })
             });
-            if (!res.ok) { showToast('ZIP download failed', 'error'); return; }
+            if (!res.ok) { await apiErrorToast(res, 'ZIP download failed'); return; }
             const blob = await res.blob();
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -3426,7 +3595,7 @@
                 loadFiles();
                 showToast('Duplicated', 'success');
             } else {
-                showToast('Duplicate failed', 'error');
+                await apiErrorToast(res, 'Duplicate failed');
             }
         }
 
@@ -3643,7 +3812,7 @@
                 return true;
             }
 
-            showToast('Rename failed');
+            await apiErrorToast(res, 'Rename failed');
             return false;
         }
 
@@ -3804,7 +3973,7 @@
                 closeMoveModal();
                 loadFiles();
             } else {
-                showToast('Move failed');
+                await apiErrorToast(res, 'Move failed');
             }
         }
 
@@ -3979,6 +4148,15 @@
             toastRemaining = TOAST_DURATION;
             toastHideAt = Date.now() + TOAST_DURATION;
             toastTimer = setTimeout(hideToast, TOAST_DURATION);
+        }
+        // Shared helper for non-2xx API responses: the server sends a plain-text
+        // error body, so surface it (truncated) instead of a generic message.
+        // toast() renders via textContent, so no separate escaping is needed here.
+        async function apiErrorToast(res, fallback) {
+            let detail = '';
+            try { detail = (await res.text()).trim(); } catch {}
+            if (detail.length > 120) detail = detail.slice(0, 120) + '…';
+            showToast(detail ? `${fallback}: ${detail}` : fallback, 'error');
         }
         // Hovering the toast pauses auto-dismiss (the CSS progress bar pauses via :hover)
         (() => {
@@ -4856,7 +5034,7 @@
                 try {
                     const res = await fetch('/api/rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: oldPath, new_name: newName }) });
                     if (res.ok) { showToast(`Renamed to ${newName}`, 'success'); loadFiles(); }
-                    else { showToast('Rename failed', 'error'); input.replaceWith(nameEl); }
+                    else { await apiErrorToast(res, 'Rename failed'); input.replaceWith(nameEl); }
                 } catch { showToast('Rename failed', 'error'); input.replaceWith(nameEl); }
             };
             input.addEventListener('keydown', (e) => {
@@ -4894,6 +5072,10 @@
         // Global error boundary so a thrown exception never leaves a frozen UI silently.
         window.addEventListener('error', () => showToast('Something went wrong', 'error'));
         window.addEventListener('unhandledrejection', () => showToast('A request failed', 'error'));
+
+        // Browser-level connectivity — surfaces alongside WS state, doesn't replace it.
+        window.addEventListener('offline', showReconnectBanner);
+        window.addEventListener('online', hideReconnectBanner);
 
         // Init
         document.getElementById('filterSelect').value = filterType;
@@ -4952,13 +5134,18 @@
             if (e.key === 'Escape') { document.getElementById('lightbox').classList.remove('show'); document.body.style.overflow = ''; }
         });
 
+        // Media preview modal keyboard close
+        document.addEventListener('keydown', e => {
+            const mp = document.getElementById('mediaPreviewModal');
+            if (mp && mp.classList.contains('active') && e.key === 'Escape') closeMediaPreview();
+        });
+
         showSkeleton();
         connectWS();
         loadFiles();
         loadSidebarTree();
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="/vendor/marked.min.js"></script>
+    <script src="/vendor/prism.min.js"></script>
 </body>
 </html>
