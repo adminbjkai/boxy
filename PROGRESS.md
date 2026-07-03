@@ -42,10 +42,17 @@ system: synced versioning, changelog, release flow, agent team structure, docs.
   (Cargo.toml, package.json, Cargo.lock); GH description set; issues #13-15 filed
   (history bloat, vendor CDN deps, Rust unit tests).
 
+- App fixes applied & verified by implementer: upload dedup-name fix (live-tested
+  on port 18099: file.txt → file_1.txt reported correctly), −747 lines dead JS/HTML,
+  styles.css deleted, README dep claim fixed, project-guide + ui-patterns skills
+  rewritten to current reality. cargo check clean; node --check on extracted JS OK.
+- Committed 6f98743 (67 files, −3,917 lines net).
+- **Released v1.1.0** via ./scripts/bump-version.sh minor --release: manifests
+  1.1.0, tag pushed, GitHub release live
+  (https://github.com/adminbjkai/boxy/releases/tag/v1.1.0). CI run triggered.
+
 ## In flight
-- Implementer agent: main.rs upload-name fix, dead JS deletion, styles.css
-  deletion, README dep claim, project-guide skill rewrite.
+- cargo build --release (background) → systemctl restart boxy → health check.
 
 ## Remaining
-- Merge implementer changes → update CHANGELOG Unreleased → commit system →
-  ./scripts/bump-version.sh minor --release → build+restart → verifier → report.
+- Fresh-context verifier pass → final report to user.
