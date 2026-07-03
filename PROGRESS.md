@@ -69,3 +69,8 @@ system: synced versioning, changelog, release flow, agent team structure, docs.
   capped staggers, breadcrumbs, empty state, mobile (<=480px, 40px targets),
   reduced-motion safe. Verified: node --check, XSS audit (29=29 escapes), debug
   server markers, live deploy + Playwright screenshot OK. Released v1.2.0.
+
+## GitHub housekeeping 2026-07-03
+- Closed 5 stale issues (#5,8,9,10,11) w/ evidence comments; updated #7,#12 scope.
+- Milestone v1.3.0 → #7,12,14,15; #13 labeled decision-needed; repo topics set.
+- Added issue/PR templates, README badges (CI/release/changelog). Pushed.
