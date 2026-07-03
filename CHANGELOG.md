@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-02
+
 Everything shipped since the original v1.0.0 tag (56 commits, Jan–Jul 2026).
 
 ### Added
@@ -48,5 +50,6 @@ Everything shipped since the original v1.0.0 tag (56 commits, Jan–Jul 2026).
 Initial stable release: Rust (actix-web) file-sharing server with vanilla JS
 frontend — uploads, file management, websocket live updates, zip downloads.
 
-[Unreleased]: https://github.com/adminbjkai/boxy/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/adminbjkai/boxy/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/adminbjkai/boxy/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/adminbjkai/boxy/releases/tag/v1.0.0
