@@ -131,3 +131,9 @@ copy/cut/paste, storage stats, shortcuts help, loading polish.
   section + new manual checks), DEPLOYMENT (+BOX_THUMB_DIR), code-audit
   (addendum for new endpoints), project-guide skill, .gitignore (+/thumbs).
 - Sweep verified: no stale CDN/line-count claims remain; cargo test 23/23.
+
+### RELEASED & DEPLOYED v1.4.0 — 2026-07-14
+- bump-version.sh minor --release: tag v1.4.0 pushed, GitHub release live, CI green.
+- deploy.sh: release binary built, boxy.service restarted, health {"ok":true}.
+- Prod smoke: live page serves new UI (10 markers), /api/stats returns real
+  totals (234 files / 45 folders / 1.3 GB). Sprint COMPLETE.
