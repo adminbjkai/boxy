@@ -31,10 +31,12 @@ boxy/
 
 ### Architecture
 - **Single-file design** - all handlers in main.rs
-- **AppState** holds: `broadcaster` (tokio broadcast sender), `upload_dir` (PathBuf)
+- **AppState** holds: `broadcaster` (tokio broadcast sender), `upload_dir` (PathBuf),
+  `thumb_dir` (PathBuf, thumbnail cache)
 - **Settings from env** (main.rs `Settings::from_env`): `BOX_PORT` (default 8086),
   `BOX_UPLOAD_DIR` (default `./uploads`), `BOX_BIND_ADDR` (default `127.0.0.1`),
-  `BOX_MAX_UPLOAD_BYTES` (default 200 MB)
+  `BOX_MAX_UPLOAD_BYTES` (default 200 MB), `BOX_THUMB_DIR` (default `./thumbs`,
+  kept outside the upload root so cache files never appear in listings)
 - Frontend is served via `include_str!("../static/index.html")` — it is compiled into
   the binary, so **rebuild + restart after any frontend change**
 
@@ -66,12 +68,12 @@ async fn handler(
 ```rust
 // Broadcast all file mutations; clients receive JSON {action, path} on /ws
 broadcast_update(&state.broadcaster, "upload", &path);
-// Actions: upload, folder, rename, move, delete, edit
+// Actions: upload, folder, rename, move, delete, edit, copy
 ```
 
 ## API Endpoints
 
-All routes registered in `main()` (main.rs ~1049-1067). Plus `GET /` (embedded UI),
+All routes registered in `main()` (main.rs, bottom). Plus `GET /` (embedded UI),
 `GET /favicon.ico`, and `GET /ws` (WebSocket live updates).
 
 | Method | Endpoint | Purpose |
@@ -80,6 +82,8 @@ All routes registered in `main()` (main.rs ~1049-1067). Plus `GET /` (embedded U
 | GET | `/api/search?q=` | Recursive file search |
 | GET | `/api/folders` | All folder paths (move dialog + sidebar tree) |
 | GET | `/api/download?path=` | Download/preview file |
+| GET | `/api/thumb?path=` | Cached image thumbnail (320px JPEG; raster only; cache in BOX_THUMB_DIR keyed on path+mtime) |
+| GET | `/api/stats?path=` | Recursive dir stats `{ files, folders, bytes }` |
 | GET | `/api/download-zip?path=` | Download directory as ZIP |
 | POST | `/api/download-zip-multi` | Download selected paths as ZIP `{ paths: [...] }` |
 | GET | `/api/health` | Healthcheck |
@@ -89,6 +93,7 @@ All routes registered in `main()` (main.rs ~1049-1067). Plus `GET /` (embedded U
 | POST | `/api/move` | Move item |
 | POST | `/api/delete` | Delete item |
 | POST | `/api/duplicate` | Duplicate file or folder `{ path }` |
+| POST | `/api/copy` | Copy into a folder `{ path, destination }` → `{ ok, path }` (dedupes; rejects copy into self/descendant) |
 | GET | `/api/content?path=` | Read editable text file |
 | POST | `/api/content` | Save editable text file |
 | POST | `/api/newfile` | Create empty editable file |
@@ -107,6 +112,14 @@ All routes registered in `main()` (main.rs ~1049-1067). Plus `GET /` (embedded U
 - **Context menu:** `showContextMenu(e, path, name, isDir)` → `#contextMenu`; closes on outside
   click / Esc / scroll.
 - **Inline rename:** `startInlineRename(itemEl)` (context menu or `F2`); commits via `/api/rename`.
+- **Clipboard:** module state `clipboard = {paths, mode}`; `copyToClipboard` / `pasteClipboard` /
+  `clearClipboard`; Ctrl/Cmd+C/X/V in `handleKeyboardNav` + context-menu Copy/Cut/Paste; cut items
+  get `.cut-item` dimming.
+- **Shortcuts modal:** `#shortcutsModal` via `showShortcutsModal()` (`?` key or toolbar button).
+- **Storage footer:** `loadSidebarStats()` → `/api/stats`, debounced refresh on WS messages,
+  hides itself on endpoint failure.
+- **Skeleton loading:** `showSkeleton()` shimmer placeholders in `loadFiles()` when the path changes.
+- **Thumbnails:** raster images (`RASTER_THUMB_EXTENSIONS`) load `/api/thumb`; SVG uses `/api/download`.
 
 ### Cross-Browser Sync
 - No server-side app data — the filesystem under `uploads/` is the only state

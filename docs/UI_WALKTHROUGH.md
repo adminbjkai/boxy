@@ -46,6 +46,8 @@ The app is a single-page file manager with three persistent regions:
   - **Expand all** — expands every tree node.
   - **Collapse all** — collapses all tree nodes.
 - **Drop target:** drag a file card and drop it onto a sidebar folder node to move it.
+- **Storage footer:** compact totals at the bottom of the sidebar ("N files · N folders · size"),
+  fetched from `/api/stats` and refreshed automatically after file changes.
 
 ---
 
@@ -60,6 +62,7 @@ The app is a single-page file manager with three persistent regions:
 | Upload | Open file picker (drag-drop also works anywhere) |
 | New Folder | Open "Create folder" modal |
 | New File | Create an empty text file in the current folder |
+| `?` icon | Open the keyboard-shortcuts help modal |
 
 All buttons have tooltip labels on hover.
 
@@ -68,13 +71,16 @@ All buttons have tooltip labels on hover.
 ## 4. Grid view
 
 Files and folders appear as cards with icons (thumbnails for images, type-colour icons for others).
+Image thumbnails are downscaled server-side (`/api/thumb`, cached 320px JPEGs) so photo folders load
+fast; while a folder listing fetches, shimmer skeleton placeholders hold the layout.
 
 - **Single click** — select/deselect (multi-select mode) or navigate into folder (normal mode).
 - **Double click** — navigate into folder or open file in the editor.
 - **Drag** — move a file to a folder card or the sidebar tree.
 - **Hover** — reveals action buttons: Copy URL, Download, Edit, Move, Rename, Delete (plus
   ZIP Download for folders).
-- **Right-click** — context menu: Preview, Download, Copy URL, Edit, Rename, Move, Duplicate, Delete.
+- **Right-click** — context menu: Preview, Download, Copy URL, Edit, Rename, Move, Copy, Cut,
+  Paste (when the clipboard has items), Duplicate, Delete.
 
 ---
 
@@ -165,26 +171,38 @@ Right-click any file or folder:
 | Edit | Editable text files |
 | Rename | Files and folders |
 | Move | Files and folders |
+| Copy | Files and folders |
+| Cut | Files and folders |
+| Paste | Shown when the in-app clipboard has items; pastes into the current folder |
 | Duplicate | Files and folders |
 | Download ZIP | Folders |
 | Delete | Files and folders |
 
 **Duplicate** clones the item in the same folder, appending `_1`, `_2`, … to avoid conflicts.
+**Copy/Cut/Paste** work across folders: copy or cut anywhere, navigate, paste into the current
+folder (collisions dedupe the same way; cut items appear dimmed until pasted).
 
 ---
 
 ## 11. Keyboard shortcuts
 
+Press `?` in the app for this list in a modal.
+
 | Key | Action |
 |-----|--------|
-| `/` | Open global search |
+| `/` or `Ctrl/Cmd+F` | Open global search |
 | `F2` | Rename focused item (inline) |
 | `Backspace` | Navigate up one folder |
-| `↑ ↓` | Move focus between items |
+| `↑ ↓ ← →` | Move focus between items |
+| `Space` | Toggle selection on the focused item |
 | `Enter` | Open focused item |
-| `Esc` | Close modal / context menu / editor / lightbox |
+| `Ctrl/Cmd+A` | Select all items |
+| `Ctrl/Cmd+C` / `X` / `V` | Copy / cut the selection; paste into the current folder |
+| `0` | Delete selected items |
+| `Esc` | Close modal / context menu / editor / lightbox; clear a cut |
 | `Ctrl/Cmd+S` | Save in editor |
 | `← →` | Navigate lightbox images |
+| `?` | Open the shortcuts help modal |
 
 ---
 

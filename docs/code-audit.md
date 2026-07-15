@@ -1,7 +1,13 @@
 # Boxy Code Audit (current status)
 
-**Last reviewed:** July 1, 2026
-**Files:** `src/main.rs` (~1065 lines), `static/index.html` (~5325 lines)
+**Last reviewed:** July 14, 2026
+**Files:** `src/main.rs` (~1680 lines), `static/index.html` (~5370 lines)
+
+Addendum 2026-07-14: the new `/api/thumb`, `/api/stats`, and `/api/copy` endpoints follow the same
+controls — all paths through `resolve_path_safe`, depth-capped walks, bounded name dedupe. Thumb
+generation additionally caps source size (50 MB), restricts to raster extensions, runs decode in
+`spawn_blocking`, and maps all decode failures to 404 (verified adversarially, incl. traversal and
+copy-into-descendant attempts).
 
 Boxy is a localhost-bound, single-user file tool fronted by nginx. The threat model assumes the app
 is reached only through the reverse proxy on the local host, not exposed publicly. This document

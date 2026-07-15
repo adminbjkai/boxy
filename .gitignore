@@ -1,6 +1,7 @@
 /target
 /node_modules
 /uploads
+/thumbs
 /data
 /uploads_docs
 /_ai_images

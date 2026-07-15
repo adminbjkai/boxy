@@ -4,9 +4,9 @@
 
 Boxy is a fast, self-hosted **file sharing** web app. It provides a real-time file
 manager (drag-and-drop uploads, folders, inline editing, live updates) — all in a single Rust
-binary that serves one embedded HTML page. No database, no build step for the frontend. The only
-external dependencies load from CDNs: Google Fonts, plus Prism.js (+ autoloader plugin and theme
-CSS) and marked.js from cdnjs for syntax highlighting and Markdown preview.
+binary that serves one embedded HTML page. No database, no build step for the frontend, and no
+runtime CDN dependencies — fonts, Prism.js, and marked.js are vendored under `static/vendor/`,
+so the app works fully offline.
 
 - **Backend:** Rust + Actix-web 4 (single file, `src/main.rs`)
 - **Frontend:** Vanilla JS + CSS embedded in `static/index.html` (served via `include_str!`)
@@ -20,7 +20,8 @@ CSS) and marked.js from cdnjs for syntax highlighting and Markdown preview.
 - Drag-and-drop, clipboard paste, and whole-folder uploads (original modification dates preserved)
 - **Collapsible sidebar folder tree** for fast navigation; drop files onto a folder to move them
 - Folder navigation with breadcrumbs and **URL hash navigation** (current folder reflected in the URL); create / move / **inline-rename** / delete
-- **Right-click context menu** (Preview, Download, Copy URL, Edit, Rename, Move, Delete)
+- **Right-click context menu** (Preview, Download, Copy URL, Edit, Rename, Move, Copy, Cut, Paste, Delete)
+- **Clipboard copy / cut / paste** — Ctrl/Cmd+C / X / V on files and folders (single or multi-select); cut items dim until pasted; name collisions auto-dedupe (`name_1`, …)
 - Multi-select (Ctrl/Cmd+click, Shift+click, or **multi-select mode toggle**) with bulk move / delete / **ZIP download**
 - Drag-and-drop move (onto a folder card **or** onto the sidebar tree)
 - Global recursive search (`/`) and per-folder filter by name + type (Images, Documents, Code, Media)
@@ -30,7 +31,7 @@ CSS) and marked.js from cdnjs for syntax highlighting and Markdown preview.
 - **Zoom slider** in toolbar — resizes grid cards (80–200px) or adjusts list row density
 - **Live path bar** — editable address input, press Enter to navigate to any path
 - **Sidebar toolbar**: toggle showing files in tree, expand-all, collapse-all buttons
-- Image thumbnails with lazy loading; skeleton loaders on first paint
+- **Server-side image thumbnails** — grid tiles load cached 320px JPEGs from `/api/thumb` (not full-size originals), lazily; skeleton shimmer placeholders while a folder loads
 - **Image lightbox** — full-screen viewer with keyboard arrow navigation
 - In-browser text editor for editable types (`txt, csv, py, json, md, rs, js, ts, html, css, toml, yaml, yml, sql, m3u, sh, go, rb, php, xml`)
 - **Syntax highlighting** (Prism.js) and **rendered Markdown preview** in editor view mode
@@ -41,7 +42,8 @@ CSS) and marked.js from cdnjs for syntax highlighting and Markdown preview.
 ### Platform
 - Live updates across clients via WebSocket, with exponential-backoff reconnect
 - Dark/light theme toggle (dark by default); accessible focus styles and ARIA roles
-- Keyboard navigation (arrows, Enter, Backspace, Escape, `/` search, `F2` rename, Ctrl/Cmd+S save)
+- Keyboard navigation (arrows, Enter, Backspace, Escape, `/` search, `F2` rename, Ctrl/Cmd+S save, Ctrl/Cmd+C/X/V clipboard) — press `?` for the in-app shortcuts reference
+- **Sidebar storage footer** — live totals (files · folders · size) for the upload root
 
 ## Run locally
 ```bash
@@ -55,6 +57,7 @@ Configuration (all optional, via environment variables):
 | `BOX_BIND_ADDR` | `127.0.0.1` | Bind address (localhost-only by default; nginx fronts it) |
 | `BOX_UPLOAD_DIR` | `./uploads` | Upload root directory |
 | `BOX_MAX_UPLOAD_BYTES` | `209715200` | Max request payload (200 MB) |
+| `BOX_THUMB_DIR` | `./thumbs` | Thumbnail cache directory (outside the upload root) |
 
 ## API
 
@@ -66,6 +69,8 @@ Configuration (all optional, via environment variables):
 | GET | `/api/search?q=` | Recursive name search |
 | GET | `/api/folders` | All folder paths (move dialog + sidebar tree) |
 | GET | `/api/download?path=` | Download (`&download=true`) or inline preview |
+| GET | `/api/thumb?path=` | Cached image thumbnail (max edge 320px, JPEG); 404 for non-raster files |
+| GET | `/api/stats?path=` | Recursive directory stats `{ files, folders, bytes }` |
 | GET | `/api/content?path=` | Read an editable text file |
 | POST | `/api/content` | Save an editable text file `{ path, content }` |
 | POST | `/api/newfile` | Create an empty editable file `{ path?, filename }` |
@@ -75,12 +80,13 @@ Configuration (all optional, via environment variables):
 | POST | `/api/move` | Move `{ path, dest_dir? }` |
 | POST | `/api/delete` | Delete `{ path }` |
 | POST | `/api/duplicate` | Duplicate file or folder `{ path }` → `{ path }` |
+| POST | `/api/copy` | Copy file or folder into a folder `{ path, destination }` → `{ ok, path }` |
 | GET | `/api/download-zip?path=` | Download directory as ZIP |
 | POST | `/api/download-zip-multi` | Download selected paths as `selection.zip` `{ paths: [...] }` |
 | GET | `/api/health` | Healthcheck |
 
 WebSocket messages are `{ action, path }` where `action` is one of
-`upload, folder, rename, move, delete, edit`.
+`upload, folder, rename, move, delete, edit, copy`.
 
 ## Security model
 - All user paths pass through `clean_relative_path` + `resolve_path_safe` (canonicalised and

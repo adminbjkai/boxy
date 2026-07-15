@@ -122,3 +122,12 @@ copy/cut/paste, storage stats, shortcuts help, loading polish.
   observed, cargo test 23/23, node --check OK, prod 8086 untouched).
 - NOT committed, NOT deployed — awaiting user go-ahead (needs rebuild + systemctl
   restart per deploy.sh since frontend is embedded).
+
+### Docs sync 2026-07-14 (post-feature)
+- Updated to current state: README (vendored deps — CDN claim was stale since
+  v1.3.0! — env table, API table, features, WS actions), CHANGELOG Unreleased,
+  ARCHITECTURE, IMPLEMENTATION_GUIDE (CDN refs fixed, line counts, checklist),
+  UI_WALKTHROUGH (toolbar/context-menu/shortcuts tables), TESTING (unit-test
+  section + new manual checks), DEPLOYMENT (+BOX_THUMB_DIR), code-audit
+  (addendum for new endpoints), project-guide skill, .gitignore (+/thumbs).
+- Sweep verified: no stale CDN/line-count claims remain; cargo test 23/23.

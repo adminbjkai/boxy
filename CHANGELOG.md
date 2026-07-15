@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- Server-side image thumbnails: `GET /api/thumb` serves cached, downscaled
+  (max edge 320px) JPEGs so grid tiles no longer download full-size originals;
+  cache dir configurable via `BOX_THUMB_DIR` (default `./thumbs`)
+- Clipboard copy / cut / paste: Ctrl/Cmd+C/X/V and context-menu Copy / Cut /
+  Paste on files and folders, with cut-dimming and collision dedupe, backed by
+  new `POST /api/copy`
+- Keyboard-shortcuts help modal (`?` key or toolbar button)
+- Sidebar storage footer with live totals from new `GET /api/stats`
+- Skeleton shimmer placeholders while a folder listing loads
+- 7 new Rust unit tests (23 total): thumb cache keys, stats walk, copy dedupe
+  and self/descendant rejection
+
 ## [1.3.0] - 2026-07-03
 
 ### Added

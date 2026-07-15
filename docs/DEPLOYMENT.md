@@ -23,7 +23,9 @@ Tip: keep a rollback copy before restarting — `cp target/release/boxy target/r
 ## systemd unit
 `/etc/systemd/system/boxy.service` runs `/apps/boxy/target/release/boxy` as user `bjkai` with
 working directory `/apps/boxy`. Configuration is via environment (see `docs/ARCHITECTURE.md`):
-`BOX_PORT`, `BOX_BIND_ADDR` (default `127.0.0.1`), `BOX_UPLOAD_DIR`, `BOX_MAX_UPLOAD_BYTES`.
+`BOX_PORT`, `BOX_BIND_ADDR` (default `127.0.0.1`), `BOX_UPLOAD_DIR`, `BOX_MAX_UPLOAD_BYTES`,
+`BOX_THUMB_DIR` (thumbnail cache, default `./thumbs` relative to the working directory — safe to
+delete at any time; it repopulates on demand).
 
 ```bash
 systemctl status boxy

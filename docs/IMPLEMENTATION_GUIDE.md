@@ -1,15 +1,15 @@
 # Boxy Implementation Guide (AI Dev)
 
 **Audience:** Developers implementing UX and feature improvements
-**Last updated:** July 1, 2026
+**Last updated:** July 14, 2026
 
 ---
 
 ## Architecture in one paragraph
 
-Boxy is a single Rust binary (`src/main.rs`, ~1065 lines) that embeds the entire frontend as a
+Boxy is a single Rust binary (`src/main.rs`, ~1680 lines) that embeds the entire frontend as a
 compile-time string (`include_str!("../static/index.html")`). All UI logic — HTML, CSS, and JS — lives
-in `static/index.html` (~5325 lines). There is no build step for the frontend; no bundler, no
+in `static/index.html` (~5370 lines). There is no build step for the frontend; no bundler, no
 framework. Any change to either file requires `cargo build --release` and a service restart to take
 effect. See `docs/ARCHITECTURE.md` for the full component map.
 
@@ -32,7 +32,11 @@ Preferences persisted in `localStorage`: `viewMode`, `filterType`, `listSortCol`
 ## Feature inventory (current as of July 2026)
 
 ### Files view
-- **Grid / list toggle** — persisted; grid shows image thumbnails, list shows sortable columns
+- **Grid / list toggle** — persisted; grid shows image thumbnails (cached 320px JPEGs from
+  `/api/thumb` for raster formats, `RASTER_THUMB_EXTENSIONS`; SVG stays on `/api/download`),
+  list shows sortable columns
+- **Skeleton loading** — `showSkeleton()` renders shimmer placeholder tiles/rows while a
+  folder listing fetches (only when navigating to a different path)
 - **Zoom slider** — CSS `--item-scale` custom property, 80–200 px range, persisted as `itemScale`
 - **List view** — Name / Type / Size / Date (MM/DD/YYYY) / Time columns, sortable; folders first
 - **Per-column Excel-style filters** — dropdown with text search + checkbox values + Clear;
@@ -48,6 +52,9 @@ Preferences persisted in `localStorage`: `viewMode`, `filterType`, `listSortCol`
 - **Live path bar** — editable `<input id="pathBar">` in nav bar
 - **Sidebar** — folder tree from `/api/folders`; expand/collapse; show-files toggle (async fetches
   children for open nodes); drag-drop move; expand-all / collapse-all toolbar
+- **Storage footer** — `loadSidebarStats()` renders root totals from `/api/stats` under the
+  sidebar tree; debounced 2s refresh on WS messages; hides itself if the endpoint fails
+- **Shortcuts modal** — `#shortcutsModal`, opened by `?` key or toolbar button
 
 ### File actions
 - **Upload** — drag-drop, picker, clipboard paste; preserves folder structure and mtimes
@@ -56,6 +63,10 @@ Preferences persisted in `localStorage`: `viewMode`, `filterType`, `listSortCol`
   works in grid and list view; triggered by rename button, F2, or context menu
 - **Move** — modal with folder tree; drag-drop onto card or sidebar node
 - **Duplicate** — `POST /api/duplicate`; server appends `_1`, `_2`, etc.
+- **Clipboard copy/cut/paste** — module state `clipboard = { paths, mode }`; Ctrl/Cmd+C/X/V
+  (guarded against inputs/modals) and context-menu Copy / Cut / Paste (Paste only when
+  clipboard non-empty, targets the current folder); copy → `POST /api/copy` per path,
+  cut → `POST /api/move`; cut items get `.cut-item` dimming until pasted or Esc
 - **Delete** — single item and bulk
 - **Download** — single file; folder ZIP (`GET /api/download-zip?path=`);
   multi-select ZIP (`POST /api/download-zip-multi`)
@@ -63,8 +74,8 @@ Preferences persisted in `localStorage`: `viewMode`, `filterType`, `listSortCol`
 
 ### Editor
 - **Open** — double-click any file in `EDITABLE_EXTENSIONS` list
-- **Syntax highlight** — Prism.js CDN v1.29.0
-- **Markdown preview** — marked.js CDN v9.1.6
+- **Syntax highlight** — Prism.js, vendored under `static/vendor/` (no CDN)
+- **Markdown preview** — marked.js, vendored under `static/vendor/` (no CDN)
 - **Autosave** — 2-second debounce; Ctrl/Cmd+S for immediate save
 
 ### Image lightbox
@@ -72,7 +83,8 @@ Preferences persisted in `localStorage`: `viewMode`, `filterType`, `listSortCol`
 - `lightboxImages` array populated from visible image items at open time
 
 ### Context menu
-- Right-click any item: Preview, Download, Copy URL, Edit, Rename, Move, Duplicate, Download ZIP, Delete
+- Right-click any item: Preview, Download, Copy URL, Edit, Rename, Move, Copy, Cut, Paste
+  (when clipboard non-empty), Duplicate, Download ZIP, Delete
 
 ---
 
@@ -124,6 +136,11 @@ Preferences persisted in `localStorage`: `viewMode`, `filterType`, `listSortCol`
 - Inline folder expand: triangle visible on all dirs; recursive nesting; collapses on click
 - Rename: rename button → in-place input; Enter commits, Esc cancels; F2 on focused item
 - Context menu: all actions present and correct; Duplicate creates `_1` copy; right-click closes on Esc
+- Clipboard: Ctrl/Cmd+C then V pastes a copy; Ctrl/Cmd+X dims the item and V moves it;
+  paste collision creates `_1`; Esc clears a cut
+- Thumbnails: grid image tiles request `/api/thumb` (check network tab); broken image falls back to icon
+- Shortcuts modal: `?` opens it; Esc / backdrop closes; toolbar button works
+- Storage footer: shows totals; updates after upload/delete
 - Move: drag onto folder card; drag onto sidebar node; move modal
 - Download: single file; folder ZIP; multi-select ZIP
 - Editor: syntax highlight for code files; rendered preview for `.md`; autosave indicator

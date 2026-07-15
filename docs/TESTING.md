@@ -9,6 +9,12 @@ npm run test:e2e
 If the server is already running on the configured port, Playwright reuses it; otherwise it starts one.
 Specs live in `tests/ui.spec.ts`.
 
+## Unit tests (Rust)
+```bash
+cargo test                # 23 tests: path safety, dedupe, name validation,
+                          # thumb cache keys, stats walk, copy rejection cases
+```
+
 ## Build verification
 ```bash
 cargo build --release     # must be warning-clean
@@ -35,7 +41,11 @@ cargo clippy              # optional lint pass
 - **Inline rename:** right-click → Rename (or `F2` on the focused item) opens an in-place input;
   Enter commits, Esc cancels; works in both grid and list view.
 - **Context menu:** right-click a file/folder shows all correct actions (Preview, Download, Copy URL,
-  Edit, Rename, Move, Duplicate, Delete); closes on outside click or Esc.
+  Edit, Rename, Move, Copy, Cut, Paste when clipboard non-empty, Duplicate, Delete); closes on
+  outside click or Esc.
+- **Clipboard:** Ctrl/Cmd+C on a selection then Ctrl/Cmd+V in another folder pastes copies
+  (collisions dedupe to `_1`); Ctrl/Cmd+X dims the items and V moves them; Esc clears a cut;
+  shortcuts are inert while typing in an input or with a modal open.
 - **Move:** drag onto a folder card or the sidebar; bulk move with multi-select; move modal tree.
 - **Duplicate:** right-click → Duplicate appends `_1` (or `_2`, etc.) and appears in the file list.
 - **Delete:** single file/folder delete and bulk delete via multi-select.
@@ -44,6 +54,13 @@ cargo clippy              # optional lint pass
 
 ### Views and filtering
 - **Grid/list toggle:** switching views persists; grid shows thumbnail cards, list shows sortable columns.
+- **Thumbnails:** grid image tiles request `/api/thumb` (network tab shows small JPEGs, not
+  full-size originals); a corrupt image falls back to the type icon; repeat visits hit the cache.
+- **Skeleton loading:** navigating to a folder briefly shows shimmer placeholders, no blank flash;
+  same-folder WebSocket refreshes do not blank the grid.
+- **Shortcuts modal:** `?` (and the toolbar `?` button) opens the help modal; Esc/backdrop closes.
+- **Storage footer:** sidebar bottom shows "N files · N folders · size"; updates within ~2s of an
+  upload or delete.
 - **Zoom slider:** slider in toolbar resizes grid cards (80–200 px) or adjusts list row density;
   value persists.
 - **List view columns:** Name, Type, Size, Date (MM/DD/YYYY), Time — sortable by clicking headers;
