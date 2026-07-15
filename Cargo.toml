@@ -17,6 +17,7 @@ async-recursion = "1"
 env_logger = "0.11"
 filetime = "0.2"
 zip = { version = "2", default-features = false, features = ["deflate"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp", "bmp"] }
 
 [profile.release]
 opt-level = 3

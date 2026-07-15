@@ -11,9 +11,16 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::broadcast;
 
 const DEFAULT_UPLOAD_DIR: &str = "./uploads";
+const DEFAULT_THUMB_DIR: &str = "./thumbs";
 const DEFAULT_PORT: u16 = 8086;
 const DEFAULT_BIND_ADDR: &str = "127.0.0.1"; // localhost-only; nginx terminates TLS in front
 const DEFAULT_MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 200; // 200 MB
+/// Source images larger than this are skipped for thumbnailing (404) rather than decoded.
+const MAX_THUMB_SOURCE_BYTES: u64 = 1024 * 1024 * 50; // 50 MB
+/// Longest edge, in pixels, of a generated thumbnail.
+const THUMB_MAX_EDGE: u32 = 320;
+const THUMB_JPEG_QUALITY: u8 = 80;
+const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "gif", "webp", "bmp"];
 /// Cap recursion in folder/search walks to avoid stack/CPU blowup on deep trees or symlink loops.
 const MAX_RECURSION_DEPTH: usize = 64;
 /// Max length for user-supplied names (folder, file, rename) — matches common filesystem limits.
@@ -49,10 +56,12 @@ type Broadcaster = broadcast::Sender<String>;
 struct AppState {
     broadcaster: Broadcaster,
     upload_dir: PathBuf,
+    thumb_dir: PathBuf,
 }
 
 struct Settings {
     upload_dir: PathBuf,
+    thumb_dir: PathBuf,
     port: u16,
     bind_addr: String,
     max_upload_bytes: usize,
@@ -64,6 +73,9 @@ impl Settings {
             upload_dir: env::var("BOX_UPLOAD_DIR")
                 .map(PathBuf::from)
                 .unwrap_or_else(|_| PathBuf::from(DEFAULT_UPLOAD_DIR)),
+            thumb_dir: env::var("BOX_THUMB_DIR")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| PathBuf::from(DEFAULT_THUMB_DIR)),
             port: env::var("BOX_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
@@ -399,6 +411,271 @@ async fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
         }
     }
     Ok(())
+}
+
+// ---- thumbnails ----
+
+fn is_image_extension(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| IMAGE_EXTENSIONS.contains(&e.to_lowercase().as_str()))
+        .unwrap_or(false)
+}
+
+/// Stable cache key for a thumbnail: derived from the relative source path plus its
+/// mtime, so edited files naturally invalidate their cached thumbnail.
+fn thumb_cache_key(rel_path: &str, mtime_secs: u64) -> String {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    rel_path.hash(&mut hasher);
+    mtime_secs.hash(&mut hasher);
+    format!("{:016x}", hasher.finish())
+}
+
+/// Decode, downscale (never upscale) and JPEG-encode an image. Runs on a blocking
+/// thread; returns None on any decode/encode failure so callers can 404.
+fn generate_thumb(src: &Path) -> Option<Vec<u8>> {
+    let img = image::open(src).ok()?;
+    let (w, h) = (img.width(), img.height());
+    let longest = w.max(h);
+    let resized = if longest > THUMB_MAX_EDGE {
+        let scale = THUMB_MAX_EDGE as f32 / longest as f32;
+        let nw = ((w as f32) * scale).round().max(1.0) as u32;
+        let nh = ((h as f32) * scale).round().max(1.0) as u32;
+        img.resize(nw, nh, image::imageops::FilterType::Triangle)
+    } else {
+        img
+    };
+    let rgb = resized.to_rgb8();
+    let mut buf = Vec::new();
+    let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buf, THUMB_JPEG_QUALITY);
+    encoder.encode_image(&rgb).ok()?;
+    Some(buf)
+}
+
+async fn get_thumb(
+    state: web::Data<AppState>,
+    query: web::Query<PathQuery>,
+) -> Result<HttpResponse> {
+    let path = query
+        .path
+        .as_ref()
+        .ok_or_else(|| actix_web::error::ErrorBadRequest("path required"))?;
+
+    let filepath = resolve_path_safe(&state.upload_dir, Some(path))
+        .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
+
+    if !filepath.exists() || filepath.is_dir() || !is_image_extension(&filepath) {
+        return Err(actix_web::error::ErrorNotFound("Not an image"));
+    }
+
+    let meta = tokio::fs::metadata(&filepath)
+        .await
+        .map_err(|_| actix_web::error::ErrorNotFound("File not found"))?;
+
+    if meta.len() > MAX_THUMB_SOURCE_BYTES {
+        return Err(actix_web::error::ErrorNotFound("Image too large to thumbnail"));
+    }
+
+    let mtime_secs = meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    let rel = clean_relative_path(path).to_string_lossy().replace('\\', "/");
+    let cache_key = thumb_cache_key(&rel, mtime_secs);
+    let cache_path = state.thumb_dir.join(format!("{}.jpg", cache_key));
+
+    if let Ok(bytes) = tokio::fs::read(&cache_path).await {
+        return Ok(HttpResponse::Ok()
+            .content_type("image/jpeg")
+            .insert_header(("Cache-Control", "private, max-age=86400"))
+            .body(bytes));
+    }
+
+    let src = filepath.clone();
+    let cache_path_write = cache_path.clone();
+    let bytes = tokio::task::spawn_blocking(move || {
+        let buf = generate_thumb(&src)?;
+        let _ = std::fs::write(&cache_path_write, &buf);
+        Some(buf)
+    })
+    .await
+    .ok()
+    .flatten();
+
+    match bytes {
+        Some(buf) => Ok(HttpResponse::Ok()
+            .content_type("image/jpeg")
+            .insert_header(("Cache-Control", "private, max-age=86400"))
+            .body(buf)),
+        None => Err(actix_web::error::ErrorNotFound("Cannot generate thumbnail")),
+    }
+}
+
+// ---- stats ----
+
+#[derive(Serialize)]
+struct StatsResult {
+    files: u64,
+    folders: u64,
+    bytes: u64,
+}
+
+async fn get_stats(
+    state: web::Data<AppState>,
+    query: web::Query<PathQuery>,
+) -> Result<HttpResponse> {
+    let base_path = resolve_path_safe(&state.upload_dir, query.path.as_ref())
+        .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
+
+    if !base_path.exists() || !base_path.is_dir() {
+        return Err(actix_web::error::ErrorNotFound("Directory not found"));
+    }
+
+    let mut files = 0u64;
+    let mut folders = 0u64;
+    let mut bytes = 0u64;
+    collect_stats(base_path, &mut files, &mut folders, &mut bytes, 0).await;
+
+    Ok(HttpResponse::Ok().json(StatsResult { files, folders, bytes }))
+}
+
+#[async_recursion::async_recursion]
+async fn collect_stats(
+    path: PathBuf,
+    files: &mut u64,
+    folders: &mut u64,
+    bytes: &mut u64,
+    depth: usize,
+) {
+    if depth >= MAX_RECURSION_DEPTH {
+        return;
+    }
+    if let Ok(mut dir) = tokio::fs::read_dir(&path).await {
+        while let Ok(Some(entry)) = dir.next_entry().await {
+            if let Ok(meta) = entry.metadata().await {
+                if meta.is_dir() {
+                    *folders += 1;
+                    collect_stats(entry.path(), files, folders, bytes, depth + 1).await;
+                } else {
+                    *files += 1;
+                    *bytes += meta.len();
+                }
+            }
+        }
+    }
+}
+
+// ---- copy ----
+
+#[derive(Deserialize)]
+struct CopyReq {
+    path: String,
+    destination: String,
+}
+
+#[derive(Debug)]
+enum CopyError {
+    Forbidden(&'static str),
+    NotFound(&'static str),
+    BadRequest(&'static str),
+    Io(std::io::Error),
+}
+
+impl From<std::io::Error> for CopyError {
+    fn from(e: std::io::Error) -> Self {
+        CopyError::Io(e)
+    }
+}
+
+impl From<CopyError> for actix_web::Error {
+    fn from(e: CopyError) -> Self {
+        match e {
+            CopyError::Forbidden(msg) => actix_web::error::ErrorForbidden(msg),
+            CopyError::NotFound(msg) => actix_web::error::ErrorNotFound(msg),
+            CopyError::BadRequest(msg) => actix_web::error::ErrorBadRequest(msg),
+            CopyError::Io(err) => actix_web::error::ErrorInternalServerError(err),
+        }
+    }
+}
+
+/// Copy `src_rel` (file or folder) into the folder `dest_rel` ("" = upload root),
+/// deduping the destination name and rejecting folder-into-itself copies.
+/// Returns the new item's path relative to `upload_dir`.
+async fn perform_copy(
+    upload_dir: &Path,
+    src_rel: &str,
+    dest_rel: &str,
+) -> Result<String, CopyError> {
+    let src = resolve_path_safe(upload_dir, Some(&src_rel.to_string()))
+        .ok_or(CopyError::Forbidden("Invalid path"))?;
+
+    if !src.exists() {
+        return Err(CopyError::NotFound("Source not found"));
+    }
+
+    let dest_opt = if dest_rel.is_empty() {
+        None
+    } else {
+        Some(dest_rel.to_string())
+    };
+    let dest_base = resolve_path_safe(upload_dir, dest_opt.as_ref())
+        .ok_or(CopyError::Forbidden("Invalid destination path"))?;
+
+    if !dest_base.exists() || !dest_base.is_dir() {
+        return Err(CopyError::NotFound("Destination not found"));
+    }
+
+    if src.is_dir() {
+        let src_canon = src.canonicalize()?;
+        let dest_canon = dest_base.canonicalize()?;
+        if dest_canon.starts_with(&src_canon) {
+            return Err(CopyError::BadRequest(
+                "Cannot copy a folder into itself or a descendant",
+            ));
+        }
+    }
+
+    let file_name = src
+        .file_name()
+        .ok_or(CopyError::BadRequest("Invalid path"))?;
+    let target = get_unique_filepath(&dest_base.join(file_name)).await;
+
+    let target_name = target
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or_default();
+    if !valid_name_len(target_name) {
+        return Err(CopyError::BadRequest("Resulting name too long"));
+    }
+
+    if src.is_dir() {
+        copy_dir_all(&src, &target).await?;
+    } else {
+        tokio::fs::copy(&src, &target).await?;
+    }
+
+    Ok(target
+        .strip_prefix(upload_dir)
+        .unwrap_or(&target)
+        .to_string_lossy()
+        .replace('\\', "/"))
+}
+
+async fn copy_item(
+    body: web::Json<CopyReq>,
+    state: web::Data<AppState>,
+) -> Result<HttpResponse> {
+    let new_path = perform_copy(&state.upload_dir, &body.path, &body.destination)
+        .await
+        .map_err(actix_web::Error::from)?;
+
+    broadcast_update(&state.broadcaster, "copy", &new_path);
+    Ok(HttpResponse::Ok().json(serde_json::json!({"ok": true, "path": new_path})))
 }
 
 #[derive(Deserialize)]
@@ -1064,11 +1341,13 @@ async fn main() -> std::io::Result<()> {
 
     let settings = Settings::from_env();
     tokio::fs::create_dir_all(&settings.upload_dir).await?;
+    tokio::fs::create_dir_all(&settings.thumb_dir).await?;
 
     let (tx, _) = broadcast::channel::<String>(256);
     let state = AppState {
         broadcaster: tx,
         upload_dir: settings.upload_dir.clone(),
+        thumb_dir: settings.thumb_dir.clone(),
     };
 
     let max_upload_bytes = settings.max_upload_bytes;
@@ -1112,6 +1391,9 @@ async fn main() -> std::io::Result<()> {
             .route("/api/content", web::post().to(save_content))
             .route("/api/newfile", web::post().to(create_new_file))
             .route("/api/duplicate", web::post().to(duplicate_item))
+            .route("/api/thumb", web::get().to(get_thumb))
+            .route("/api/stats", web::get().to(get_stats))
+            .route("/api/copy", web::post().to(copy_item))
             .route("/api/health", web::get().to(healthcheck))
     })
     .bind(bind)?
@@ -1301,5 +1583,100 @@ mod tests {
     fn valid_name_len_rejects_over_max() {
         let name = "a".repeat(MAX_NAME_LEN + 1);
         assert!(!valid_name_len(&name));
+    }
+
+    // ---- thumb_cache_key ----
+
+    #[test]
+    fn thumb_cache_key_is_stable_for_same_input() {
+        let a = thumb_cache_key("photos/cat.png", 1_700_000_000);
+        let b = thumb_cache_key("photos/cat.png", 1_700_000_000);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn thumb_cache_key_changes_with_mtime() {
+        let a = thumb_cache_key("photos/cat.png", 1_700_000_000);
+        let b = thumb_cache_key("photos/cat.png", 1_700_000_001);
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn thumb_cache_key_changes_with_path() {
+        let a = thumb_cache_key("photos/cat.png", 1_700_000_000);
+        let b = thumb_cache_key("photos/dog.png", 1_700_000_000);
+        assert_ne!(a, b);
+    }
+
+    // ---- collect_stats ----
+
+    #[tokio::test]
+    async fn collect_stats_counts_files_folders_and_bytes() {
+        let dir = unique_test_dir("stats");
+        tokio::fs::create_dir_all(dir.join("sub")).await.unwrap();
+        tokio::fs::write(dir.join("a.txt"), b"12345").await.unwrap();
+        tokio::fs::write(dir.join("sub/b.txt"), b"1234567890")
+            .await
+            .unwrap();
+
+        let mut files = 0u64;
+        let mut folders = 0u64;
+        let mut bytes = 0u64;
+        collect_stats(dir.clone(), &mut files, &mut folders, &mut bytes, 0).await;
+
+        assert_eq!(files, 2);
+        assert_eq!(folders, 1);
+        assert_eq!(bytes, 15);
+
+        tokio::fs::remove_dir_all(&dir).await.ok();
+    }
+
+    // ---- perform_copy ----
+
+    #[tokio::test]
+    async fn perform_copy_dedupes_name_collision() {
+        let dir = unique_test_dir("copy_dedupe");
+        tokio::fs::create_dir_all(dir.join("dest")).await.unwrap();
+        tokio::fs::write(dir.join("greeting.txt"), b"hi").await.unwrap();
+        tokio::fs::write(dir.join("dest/greeting.txt"), b"existing")
+            .await
+            .unwrap();
+
+        let new_path = perform_copy(&dir, "greeting.txt", "dest")
+            .await
+            .expect("copy should succeed with deduped name");
+
+        assert_eq!(new_path, "dest/greeting_1.txt");
+        assert!(dir.join("dest/greeting_1.txt").exists());
+        // Original and pre-existing destination file both untouched.
+        assert!(dir.join("greeting.txt").exists());
+        assert_eq!(
+            tokio::fs::read(dir.join("dest/greeting.txt")).await.unwrap(),
+            b"existing"
+        );
+
+        tokio::fs::remove_dir_all(&dir).await.ok();
+    }
+
+    #[tokio::test]
+    async fn perform_copy_rejects_folder_into_itself() {
+        let dir = unique_test_dir("copy_self");
+        tokio::fs::create_dir_all(dir.join("parent")).await.unwrap();
+
+        let result = perform_copy(&dir, "parent", "parent").await;
+        assert!(matches!(result, Err(CopyError::BadRequest(_))));
+
+        tokio::fs::remove_dir_all(&dir).await.ok();
+    }
+
+    #[tokio::test]
+    async fn perform_copy_rejects_folder_into_descendant() {
+        let dir = unique_test_dir("copy_descendant");
+        tokio::fs::create_dir_all(dir.join("parent/child")).await.unwrap();
+
+        let result = perform_copy(&dir, "parent", "parent/child").await;
+        assert!(matches!(result, Err(CopyError::BadRequest(_))));
+
+        tokio::fs::remove_dir_all(&dir).await.ok();
     }
 }

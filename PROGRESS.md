@@ -88,3 +88,37 @@ system: synced versioning, changelog, release flow, agent team structure, docs.
 - #13 resolved: backup bundle /apps/boxy-backup-20260703.bundle, filter-repo
   strip-blobs->1M, force-pushed; pack 117MB→9.9MB, releases intact, tests green.
 - All GitHub issues closed (0 open). Milestone v1.3.0 closed.
+
+## Sprint 2026-07-14: v1.4 enhancement package
+**Goal:** smoother/faster/more useful — server-side thumbnails, clipboard
+copy/cut/paste, storage stats, shortcuts help, loading polish.
+
+### Plan
+1. ⏳ Backend lane (boxy-backend agent), API contract FROZEN:
+   - `GET /api/thumb?path=` — downscaled cached image thumbnail (image crate,
+     max edge 320px, JPEG out, disk cache BOX_THUMB_DIR default ./thumbs,
+     cache key = hash(rel_path+mtime), spawn_blocking, skip inputs >50MB,
+     404 for non-raster, long Cache-Control)
+   - `GET /api/stats?path=` — recursive `{files, folders, bytes}` (depth-capped)
+   - `POST /api/copy` `{path, destination}` — copy file/dir into dest folder,
+     dedupe collisions, broadcast action "copy"
+2. ⏳ Frontend lane (boxy-frontend agent): thumbs via /api/thumb (icon fallback,
+   SVG keeps /api/download), Ctrl/Cmd+C/X/V + context-menu Copy/Cut/Paste,
+   `?` shortcuts-help modal, sidebar storage footer (/api/stats, debounced on WS),
+   skeleton shimmer while folder loads.
+3. ⏳ Integrate: cargo build + test, node --check, live smoke on debug port.
+4. ⏳ Fresh-context verify, report. No commit/deploy without user ask.
+
+### Decisions
+- Thumb cache OUTSIDE upload_dir (BOX_THUMB_DIR) so it never shows in listings.
+
+### DONE 2026-07-14 — verified, uncommitted
+- Backend: /api/thumb (cached 320px JPEGs, BOX_THUMB_DIR), /api/stats, /api/copy
+  (+7 unit tests → 23 total pass). Frontend: thumbs via /api/thumb, Ctrl/Cmd+C/X/V
+  clipboard + context-menu Copy/Cut/Paste w/ cut dimming, `?` shortcuts modal,
+  sidebar storage footer, skeleton shimmer.
+- Fresh-context verifier: PASS all 6 criteria (live curl incl. traversal/collision
+  attacks, headless-Chromium XSS filenames — nothing fired, WS "copy" broadcast
+  observed, cargo test 23/23, node --check OK, prod 8086 untouched).
+- NOT committed, NOT deployed — awaiting user go-ahead (needs rebuild + systemctl
+  restart per deploy.sh since frontend is embedded).
