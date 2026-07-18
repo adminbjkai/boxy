@@ -48,6 +48,6 @@ npm run test:e2e           # If UI changed
 ```
 
 ## Security Reminders
-- Backend: `clean_relative_path()` + `resolve_path()` for all user paths
+- Backend: `clean_relative_path()` + `resolve_path_safe()` for all user paths
 - Frontend: `escapeHtml()`/`escapeAttr()` for all user content
 - Broadcast: All mutations use `broadcast_update()`

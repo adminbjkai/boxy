@@ -120,7 +120,7 @@ function connectWS() {
 
     ws.onmessage = async (e) => {
         const { action, path } = JSON.parse(e.data);
-        // actions: upload | folder | rename | move | delete | edit
+        // actions: upload | folder | rename | move | delete | edit | copy
         loadFiles();  // Refresh files
         showToast(`${action}: ${path}`);
     };
@@ -203,7 +203,7 @@ const iconMap = {
 ```
 
 ## Rules
-1. No JS frameworks; only CDN libs already in use (Prism.js, marked.js) — don't add more
+1. No JS frameworks; only the vendored libs under `static/vendor/` (Prism.js, marked.js) — don't add more
 2. Use CSS variables for all colors (defined in the `<style>` block of `static/index.html`)
 3. Always escape user content (XSS)
 4. Auto-reconnect WebSocket on disconnect

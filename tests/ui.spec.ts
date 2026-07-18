@@ -15,7 +15,7 @@ test('creates a folder and shows it in the grid', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'New Folder' }).click();
   await page.locator('#folderName').fill('e2e-folder');
-  await page.getByRole('button', { name: 'Create' }).click();
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
   await expect(page.locator('.file-name', { hasText: 'e2e-folder' })).toBeVisible();
 });
 
@@ -44,7 +44,7 @@ test('context menu opens on right-click and closes on Escape', async ({ page }) 
   await page.goto('/');
   await page.getByRole('button', { name: 'New Folder' }).click();
   await page.locator('#folderName').fill('ctx-folder');
-  await page.getByRole('button', { name: 'Create' }).click();
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
   const card = page.locator('.file-item', { hasText: 'ctx-folder' }).first();
   await card.click({ button: 'right' });
   await expect(page.locator('#contextMenu.show')).toBeVisible();

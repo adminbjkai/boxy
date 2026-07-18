@@ -16,8 +16,12 @@ Internet → nginx (boxy.bjk.ai, TLS via Let's Encrypt live/bjk.ai)
 - The Dockerfile / docker-compose.yml are **not used in production** — they're
   portable-deployment artifacts only.
 - Uploads live in `/apps/boxy/uploads/` (gitignored).
-- Upload cap: app default 200 MB (`BOX_MAX_UPLOAD_BYTES` env override in the
-  systemd unit); nginx `client_max_body_size` must match it.
+- Upload cap: enforced by nginx `client_max_body_size` (500 MB). The app's
+  `BOX_MAX_UPLOAD_BYTES` is currently **not** enforced app-side (see CHANGELOG
+  Known Issues).
+- Companion services: `boxy-docs.service` (docs.boxy.bjk.ai, Fern preview server
+  on :3901/:3911) and the `api.boxy.bjk.ai` vhost — topology, certs, and quirks
+  in `docs/DEPLOYMENT.md` ("Companion services").
 
 ## Deploy a change
 
@@ -54,6 +58,6 @@ vhosts; a bad reload affects all of them.
 
 - Single-file architecture by design (`src/main.rs`, `static/index.html` +
   companions) — see `.claude/skills/project-guide`.
-- Large media files (`docs/archive/`, presentations) bloat the repo (~117 MB
-  pack). Don't add more binaries to git; new visuals go to `_ai_images/`
-  (gitignored) or external storage. History rewrite is a pending decision.
+- The repo is lean post-history-rewrite (~10 MB pack). Don't commit binaries;
+  new visuals go to `_ai_images/` (gitignored) or external storage. Docs-site
+  screenshots in `fern/assets/` are the tracked exception — keep them compressed.

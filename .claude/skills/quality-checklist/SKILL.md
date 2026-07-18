@@ -20,6 +20,7 @@ tldr calls .                   # Project-level call graph
 ## Build Verification
 - [ ] `cargo build` passes without warnings
 - [ ] `cargo clippy` shows no issues
+- [ ] `cargo test` passes (23 unit tests)
 - [ ] `npm run test:e2e` passes (if UI changed)
 
 ## Backend (src/main.rs)
@@ -63,7 +64,7 @@ tldr calls .                   # Project-level call graph
 - [ ] README.md endpoints current
 
 ### If UI Changed
-- [ ] Screenshots in docs/ updated (optional)
+- [ ] Docs-site screenshots regenerated via `docs/capture-fern-screenshots.mjs` if the UI changed materially (optional)
 
 ## Git Hygiene
 - [ ] Commit message describes the "why"

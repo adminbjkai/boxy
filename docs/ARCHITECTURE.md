@@ -87,7 +87,7 @@ Actix-web (src/main.rs) ─ broadcast::Sender fan-out ─┘
   field is byte-capped before JSON parsing.
 - **Recursion:** folder/search walks are depth-capped (`MAX_RECURSION_DEPTH = 64`).
 - **De-dupe:** the unique-filename loop is bounded, falling back to a uuid suffix.
-- **Middleware:** `Compress` + `PayloadConfig` (size limit) + request `Logger`.
+- **Middleware:** `Compress` + `PayloadConfig` + request `Logger`. Note: `PayloadConfig` does **not** apply to the Multipart/Json extractors in use, so `BOX_MAX_UPLOAD_BYTES` is not enforced app-side — the reverse proxy's `client_max_body_size` is the effective cap (CHANGELOG Known Issues).
 
 ## Deployment
 Production runs as a systemd service bound to `127.0.0.1`, behind nginx (TLS via wildcard cert,

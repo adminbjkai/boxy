@@ -12,12 +12,12 @@ releases. Specialists below are invoked via the Agent tool (project agents live 
 | `boxy-frontend` | Sonnet | static/index.html UI work, verified with node + debug server | Any UI feature/styling/motion change |
 | `boxy-backend` | Sonnet | src/main.rs, actix-web, verified with cargo check/test | API, file handling, perf, unit tests |
 | `boxy-chores` | Haiku | Issue triage, changelog drafts, doc audits (read-only) | Mechanical chores, no code judgment |
-| `code-reviewer` | default | Boxy patterns, security, correctness | After any feature/fix, before release |
-| `refactor-helper` | default | Cleanup within single-file architecture | Code getting messy, extracting patterns |
-| `ui-improver` | default | Visual design, interactions, UX | Planning UI work |
+| `code-reviewer` | Sonnet | Boxy patterns, security, correctness | After any feature/fix, before release |
+| `refactor-helper` | Sonnet | Cleanup within single-file architecture | Code getting messy, extracting patterns |
+| `ui-improver` | Sonnet | Visual design, interactions, UX | Planning UI work |
 
-Default routing: implementation → the Sonnet specialists; mechanical chores →
-Haiku; only reviews/verification and hard judgment calls use the session model.
+Default routing: implementation and review agents run on Sonnet; mechanical
+chores on Haiku; hard judgment calls stay with the session model.
 
 ## Generic lanes (built-in agent types)
 

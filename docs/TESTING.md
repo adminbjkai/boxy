@@ -94,13 +94,8 @@ cargo clippy              # optional lint pass
   backoff and re-loads files.
 
 ### Limits & errors
-- **Upload size:** uploads larger than `BOX_MAX_UPLOAD_BYTES` are rejected with an error toast.
+- **Upload size:** the app does **not** enforce `BOX_MAX_UPLOAD_BYTES` (known issue, see CHANGELOG); in production, uploads over nginx's `client_max_body_size` (500 MB) are rejected with a 413 — test through the proxy.
 - **Long names:** names longer than 255 characters produce a 400 error toast.
 
 ## Environment variables
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `BOX_PORT` | `8086` | HTTP listen port |
-| `BOX_BIND_ADDR` | `127.0.0.1` | Bind address |
-| `BOX_UPLOAD_DIR` | `./uploads` | Upload root |
-| `BOX_MAX_UPLOAD_BYTES` | `209715200` | Max payload (200 MB) |
+See the canonical table in `docs/ARCHITECTURE.md` (env config section).

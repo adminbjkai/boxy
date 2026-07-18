@@ -214,3 +214,17 @@ copy/cut/paste, storage stats, shortcuts help, loading polish.
 - Docs site synced: fern/changelog/2026-07-18.md (v1.5.0) + spec version 1.5.0,
   pushed (e413d2c), boxy-docs restarted, /changelog shows v1.5.0. CI green on
   both release and docs-sync commits. Sprint COMPLETE.
+
+### Full-repo cleanup sprint — 2026-07-18 (post-v1.5.0)
+- Goal: 100% clean codes+docs, no redundancies, all synced to v1.5.0 state.
+- Lanes: my structural scan (done: git hygiene OK, pack 14M, all cruft ignored;
+  README docs/archive refs stale — archive gone from disk); agent A auditing all
+  internal docs vs v1.5.0; agent B hunting dead code in index.html/main.rs.
+- Cleanup applied & verified: frontend -88 lines dead code (formatDate,
+  downloadSelected+getFileEntryByPath, 3 vars, is-hidden/cm-focus, 4 CSS blocks);
+  main.rs verified clean (0 clippy warnings); 19 doc fixes + 3 consolidations
+  (TESTING env table, project-guide API table, IMPL_GUIDE checklist -> pointers);
+  old capture script deleted, new docs/capture-fern-screenshots.mjs committed and
+  RUN-verified (11/11 shots); e2e spec exact:true fix -> 5/5 pass on live server
+  with cleaned frontend deployed; artifacts cleaned from prod uploads;
+  cargo test 23/23; fern check 0 errors.

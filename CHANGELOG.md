@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Fixed
+- e2e spec: ambiguous `Create` button selector (strict-mode violation against the
+  toolbar tooltips) — now `exact: true`; full suite passes again (5/5)
+
+### Removed
+- Dead frontend code (~90 lines): unused `formatDate()`, `downloadSelected()` +
+  `getFileEntryByPath()`, three orphaned inline-rename state variables, vestigial
+  `is-hidden`/`cm-focus` class references, and dead CSS (`.file-list` thumb rule,
+  `.tree-indent` family, `--warm`, `--priority-*` custom properties)
+- `docs/capture-ui-screenshots.mjs` — superseded by `docs/capture-fern-screenshots.mjs`,
+  which regenerates the docs-site screenshots in `fern/assets/`
+
+### Maintenance
+- Docs accuracy sweep: fixed 19 stale claims across README, docs/ (MAINTENANCE,
+  TESTING, code-audit, ARCHITECTURE, TEAM, UI_WALKTHROUGH, IMPLEMENTATION_GUIDE) and
+  `.claude/skills/`; consolidated duplicated env-var table, API table, and manual
+  test checklist to single canonical sources
+
 ## [1.5.0] - 2026-07-18
 
 ### Added

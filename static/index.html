@@ -24,7 +24,6 @@
             --shadow-lg: rgba(0,0,0,0.12);
             --folder: #64b5f6;
             --transition: 0.2s ease;
-            --warm: #f6c28b;
             /* Standardized radii */
             --radius-sm: 6px;
             --radius-md: 10px;
@@ -35,10 +34,6 @@
             --spring: cubic-bezier(0.34,1.56,0.64,1);
             --motion-fast: 0.12s;
             --motion: 0.22s;
-            /* Priority / status accents (themeable) */
-            --priority-high: #ff453a;
-            --priority-medium: #f5a623;
-            --priority-low: #34c759;
             /* Layout tokens */
             --sidebar-width: 232px;
             --z-menu: 250;
@@ -514,10 +509,6 @@
             background: var(--bg-tertiary);
             border-radius: 6px;
             overflow: hidden;
-        }
-
-        .file-list .file-icon.has-thumb {
-            border-radius: 4px;
         }
 
         /* Icon Colors */
@@ -1231,27 +1222,6 @@
 
         .tree-item.selected .tree-folder-icon { color: var(--accent); }
 
-        .tree-item-indent {
-            display: flex;
-            align-items: center;
-        }
-
-        .tree-indent {
-            width: 20px;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--border);
-        }
-
-        .tree-indent::before {
-            content: '';
-            width: 1px;
-            height: 100%;
-            background: var(--border);
-        }
-
         .tree-toggle {
             width: 20px;
             height: 20px;
@@ -1625,7 +1595,7 @@
             color: var(--text); font: inherit; font-size: 13px; text-align: left;
             border-radius: var(--radius-sm); transition: background var(--motion-fast) ease;
         }
-        .context-menu-item:hover, .context-menu-item.cm-focus { background: var(--bg-tertiary); }
+        .context-menu-item:hover { background: var(--bg-tertiary); }
         .context-menu-item.danger { color: var(--danger); }
         .context-menu-item svg { width: 15px; height: 15px; flex: 0 0 auto; opacity: .85; }
         .context-menu-sep { height: 1px; background: var(--border); margin: 5px 4px; }
@@ -2384,7 +2354,7 @@
     <div class="col-filter-dropdown" id="colFilterDropdown"></div>
 
     <!-- Selection Action Bar -->
-    <div class="selection-bar is-hidden" id="selectionBar">
+    <div class="selection-bar" id="selectionBar">
         <div class="selection-summary">
             <span class="selection-count" id="selectionCount">0 selected</span>
             <span class="selection-label">Bulk actions</span>
@@ -2484,9 +2454,6 @@
         let focusedIndex = -1;
         let currentEditPath = '';
         let uploadQueue = Promise.resolve();
-        let inlineRenamePath = null;
-        let inlineRenameOriginal = '';
-        let foundInlineRename = false;
         let multiSelectMode = false;
         let itemScale = parseInt(ls.get('itemScale', '140'));
         let expandedFolderPaths = new Set();
@@ -3073,10 +3040,8 @@
 
             if (count > 0) {
                 bar.classList.add('show');
-                bar.classList.remove('is-hidden');
             } else {
                 bar.classList.remove('show');
-                bar.classList.add('is-hidden');
             }
 
             // Update visual selection state on items
@@ -3741,43 +3706,6 @@
             showToast(`Deleted ${count} item${count === 1 ? '' : 's'}`);
         }
 
-        function getFileEntryByPath(path) {
-            const prefix = currentPath ? currentPath + '/' : '';
-            return allFiles.find(f => (prefix + f.name) === path);
-        }
-
-        function downloadSelected() {
-            const selected = Array.from(selectedFiles);
-            if (selected.length === 0) return;
-
-            let downloaded = 0;
-            let skipped = 0;
-
-            selected.forEach(path => {
-                const entry = getFileEntryByPath(path);
-                if (entry && entry.is_dir) {
-                    skipped += 1;
-                    return;
-                }
-
-                const link = document.createElement('a');
-                link.href = `/api/download?path=${encodeURIComponent(path)}&download=1`;
-                link.rel = 'noopener';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                downloaded += 1;
-            });
-
-            if (downloaded === 0) {
-                showToast('No downloadable files selected');
-            } else if (skipped > 0) {
-                showToast(`Started ${downloaded} download${downloaded === 1 ? '' : 's'}, skipped ${skipped} folder${skipped === 1 ? '' : 's'}`);
-            } else {
-                showToast(`Started ${downloaded} download${downloaded === 1 ? '' : 's'}`);
-            }
-        }
-
         function showBulkMoveModal() {
             if (selectedFiles.size === 0) return;
 
@@ -4368,22 +4296,6 @@
             const sizes = ['B', 'KB', 'MB', 'GB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-        }
-
-        function formatDate(timestamp) {
-            const date = new Date(timestamp * 1000);
-            const now = new Date();
-            const diff = now - date;
-            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-            if (days === 0) {
-                return 'Today ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            } else if (days === 1) {
-                return 'Yesterday';
-            } else if (days < 7) {
-                return date.toLocaleDateString([], { weekday: 'short' });
-            }
-            return date.toLocaleDateString([], { month: 'short', day: 'numeric', year: now.getFullYear() !== date.getFullYear() ? 'numeric' : undefined });
         }
 
         function formatDatePart(timestamp) {

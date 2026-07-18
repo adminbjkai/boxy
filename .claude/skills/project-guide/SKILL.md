@@ -11,7 +11,7 @@ alwaysApply: false
 - **Frontend**: Vanilla JS + HTML + CSS (all embedded in one file)
 - **Real-time**: WebSocket broadcast
 - **Tests**: Playwright e2e
-- **Deploy**: Docker multi-stage
+- **Deploy**: native systemd + nginx (Docker available as portable alternative)
 
 ## Project Structure
 ```
@@ -19,10 +19,13 @@ boxy/
 ├── src/main.rs              # Backend (all handlers)
 ├── static/
 │   ├── index.html           # Main app (HTML + CSS + JS, single file)
-│   └── favicon.ico
+│   ├── favicon.ico
+│   └── vendor/              # Vendored Prism.js, marked.js, fonts (offline)
+├── fern/                    # Docs site (docs.boxy.bjk.ai): docs.yml, OpenAPI, pages
 ├── uploads/                 # File storage (gitignored)
 ├── tests/ui.spec.ts         # Playwright e2e tests
 ├── docs/                    # Architecture docs
+├── scripts/                 # bump-version.sh, deploy.sh
 ├── Cargo.toml               # Rust config
 └── package.json             # Playwright config
 ```
@@ -73,59 +76,10 @@ broadcast_update(&state.broadcaster, "upload", &path);
 
 ## API Endpoints
 
-All routes registered in `main()` (main.rs, bottom). Plus `GET /` (embedded UI),
-`GET /favicon.ico`, and `GET /ws` (WebSocket live updates).
-
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/api/files?path=` | List directory |
-| GET | `/api/search?q=` | Recursive file search |
-| GET | `/api/folders` | All folder paths (move dialog + sidebar tree) |
-| GET | `/api/download?path=` | Download/preview file |
-| GET | `/api/thumb?path=` | Cached image thumbnail (320px JPEG; raster only; cache in BOX_THUMB_DIR keyed on path+mtime) |
-| GET | `/api/stats?path=` | Recursive dir stats `{ files, folders, bytes }` |
-| GET | `/api/download-zip?path=` | Download directory as ZIP |
-| POST | `/api/download-zip-multi` | Download selected paths as ZIP `{ paths: [...] }` |
-| GET | `/api/health` | Healthcheck |
-| POST | `/api/upload?path=` | Upload (multipart, supports folders, dedupes name collisions) |
-| POST | `/api/folder` | Create folder |
-| POST | `/api/rename` | Rename item |
-| POST | `/api/move` | Move item |
-| POST | `/api/delete` | Delete item |
-| POST | `/api/duplicate` | Duplicate file or folder `{ path }` |
-| POST | `/api/copy` | Copy into a folder `{ path, destination }` → `{ ok, path }` (dedupes; rejects copy into self/descendant) |
-| GET | `/api/content?path=` | Read editable text file |
-| POST | `/api/content` | Save editable text file |
-| POST | `/api/newfile` | Create empty editable file |
-
-### Backend safeguards (keep these in mind)
-- Use `resolve_path_safe()` (canonicalises + verifies containment), never raw `resolve_path()`.
-- Names are length-capped (`MAX_NAME_LEN = 255`); search query capped (`MAX_SEARCH_LEN = 256`).
-- Recursive walks (`collect_folders`, `collect_search_results`) take a `depth` arg capped at
-  `MAX_RECURSION_DEPTH = 64`.
-- Bind defaults to `127.0.0.1` via `BOX_BIND_ADDR`. The frontend is embedded, so **rebuild +
-  `sudo systemctl restart boxy` after any change** (see `docs/DEPLOYMENT.md`).
-
-### Files-view UI components (static/index.html)
-- **Sidebar folder tree:** `loadSidebarTree` / `renderSidebar` (reuses `buildFolderTree`); drop a
-  file onto a node to move it. Collapsed state + expanded set persist in `localStorage`.
-- **Context menu:** `showContextMenu(e, path, name, isDir)` → `#contextMenu`; closes on outside
-  click / Esc / scroll.
-- **Inline rename:** `startInlineRename(itemEl)` (context menu or `F2`); commits via `/api/rename`.
-- **Clipboard:** module state `clipboard = {paths, mode}`; `copyToClipboard` / `pasteClipboard` /
-  `clearClipboard`; Ctrl/Cmd+C/X/V in `handleKeyboardNav` + context-menu Copy/Cut/Paste; cut items
-  get `.cut-item` dimming.
-- **Shortcuts modal:** `#shortcutsModal` via `showShortcutsModal()` (`?` key or toolbar button).
-- **Storage footer:** `loadSidebarStats()` → `/api/stats`, debounced refresh on WS messages,
-  hides itself on endpoint failure.
-- **Skeleton loading:** `showSkeleton()` shimmer placeholders in `loadFiles()` when the path changes.
-- **Thumbnails:** raster images (`RASTER_THUMB_EXTENSIONS`) load `/api/thumb`; SVG uses `/api/download`.
-
-### Cross-Browser Sync
-- No server-side app data — the filesystem under `uploads/` is the only state
-- WebSocket `/ws` broadcasts `{action, path}` on every file mutation
-- All connected browsers reload the affected view when a message arrives
-
+All routes are registered in `main()` (main.rs, bottom). The canonical references are
+the table in `docs/ARCHITECTURE.md` (internal) and `fern/openapi/openapi.yml` (the
+docs-site OpenAPI spec) — update **both** when adding an endpoint, plus README's table.
+Every mutation must broadcast `{ action, path }` on the WebSocket.
 ## Quick Commands
 ```bash
 cargo run                    # Dev server (port 8086)

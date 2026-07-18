@@ -1,7 +1,7 @@
 # Boxy UI Walkthrough
 
-> Screenshots from earlier builds are archived in `docs/archive/`. The flows below describe
-> the current (July 2026) UI. Regenerate screenshots with the capture script when the UI is stable.
+> Current UI screenshots live in `fern/assets/` (embedded in the docs site). The flows below
+> describe the current (July 2026) UI. Regenerate with `docs/capture-fern-screenshots.mjs`.
 
 ---
 
@@ -210,14 +210,14 @@ Press `?` in the app for this list in a modal.
 
 ## Regenerating screenshots
 
-Screenshots are archived in `docs/archive/`. To generate fresh ones against the current UI:
+Docs-site screenshots live in `fern/assets/`. To regenerate against the current UI:
 
-1. Start the server with a clean uploads root:
+1. Start a throwaway server with the seeded demo root:
    ```bash
-   BOX_UPLOAD_DIR=./uploads_docs BOX_PORT=8086 cargo run --release
+   BOX_PORT=18086 BOX_UPLOAD_DIR=./uploads_docs cargo run --release
    ```
 
-2. Install Playwright:
+2. Install Playwright (once):
    ```bash
    npm install
    npx playwright install --with-deps chromium
@@ -225,5 +225,5 @@ Screenshots are archived in `docs/archive/`. To generate fresh ones against the 
 
 3. Run the capture script:
    ```bash
-   node docs/capture-ui-screenshots.mjs
+   node docs/capture-fern-screenshots.mjs
    ```

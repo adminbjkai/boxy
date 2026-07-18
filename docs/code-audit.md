@@ -1,7 +1,7 @@
 # Boxy Code Audit (current status)
 
-**Last reviewed:** July 14, 2026
-**Files:** `src/main.rs` (~1680 lines), `static/index.html` (~5370 lines)
+**Last reviewed:** July 18, 2026 (v1.5.0)
+**Files:** `src/main.rs` (~1680 lines), `static/index.html` (~5310 lines)
 
 Addendum 2026-07-14: the new `/api/thumb`, `/api/stats`, and `/api/copy` endpoints follow the same
 controls — all paths through `resolve_path_safe`, depth-capped walks, bounded name dedupe. Thumb
@@ -42,16 +42,15 @@ revisit them if Boxy is ever exposed to untrusted multi-user traffic.
   limits if needed.
 - **No server-side trash / soft-delete.** Deletes are immediate and permanent on disk.
 
-## Known latent dead code
+## Known issues (v1.5.0, documented in CHANGELOG)
 
-`static/index.html` contains orphaned JavaScript for dashboard tiles and a credentials store
-(`loadTiles`, `loadCredentials`, `saveTiles`, `saveServerData`, etc.). These functions reference
-DOM element IDs that do not exist in the current HTML (`dashboardGrid`, `credentialsList`) and
-call a backend route (`/api/data/:type`) that is not registered. They are unreachable from the UI
-and pose no security risk, but they represent code-debt to clean up in a future pass.
+- **Upload cap not app-enforced.** `PayloadConfig` does not apply to the
+  `Multipart`/`Json` extractors in use, so `BOX_MAX_UPLOAD_BYTES` is currently
+  ineffective; the reverse proxy's `client_max_body_size` (500 MB) is the real cap.
+- **ZIP walks are not depth-capped.** `download_zip` / `download_zip_multi` recurse
+  without the `MAX_RECURSION_DEPTH` guard used by folder/search/stats walks.
 
 ## Notes for future work
 - If multi-user exposure becomes a goal: add auth (e.g. reverse-proxy basic-auth or app sessions),
   CSRF protection, and nginx-level rate limiting before anything else.
 - Consider a soft-delete/trash for accidental deletions.
-- Remove orphaned tile/credential JS functions from `static/index.html`.

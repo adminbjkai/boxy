@@ -24,7 +24,7 @@ so the app works fully offline.
 - **Clipboard copy / cut / paste** — Ctrl/Cmd+C / X / V on files and folders (single or multi-select); cut items dim until pasted; name collisions auto-dedupe (`name_1`, …)
 - Multi-select (Ctrl/Cmd+click, Shift+click, or **multi-select mode toggle**) with bulk move / delete / **ZIP download**
 - Drag-and-drop move (onto a folder card **or** onto the sidebar tree)
-- Global recursive search (`/`) and per-folder filter by name + type (Images, Documents, Code, Media)
+- Global recursive search (`/`) and per-folder filter by name + type (Images, Documents, Code, Audio/Video)
 - **Per-column Excel-style filters** in list view (Name, Type, Date) with a Clear option
 - Grid / list view toggle (persisted); sortable list columns (Name, Type, Size, Date, Time); **folders always sorted first**
 - **List view**: separate Date + Time columns; single-click folder row to **inline expand** contents
@@ -56,7 +56,7 @@ Configuration (all optional, via environment variables):
 | `BOX_PORT` | `8086` | HTTP listen port |
 | `BOX_BIND_ADDR` | `127.0.0.1` | Bind address (localhost-only by default; nginx fronts it) |
 | `BOX_UPLOAD_DIR` | `./uploads` | Upload root directory |
-| `BOX_MAX_UPLOAD_BYTES` | `209715200` | Max request payload (200 MB) |
+| `BOX_MAX_UPLOAD_BYTES` | `209715200` | Intended max payload (200 MB) — **not app-enforced**; the effective cap is the reverse proxy's `client_max_body_size` (see CHANGELOG Known Issues) |
 | `BOX_THUMB_DIR` | `./thumbs` | Thumbnail cache directory (outside the upload root) |
 
 ## API
@@ -123,13 +123,13 @@ docker compose up --build      # or: docker build -t boxy . && docker run -p 808
 
 ## Diagrams and screenshots
 
-Previously generated architecture diagrams and UI screenshots are archived in `docs/archive/`
-(images in `docs/archive/assets/images/`, prompts in `docs/archive/prompts/`, presentation decks in
-`docs/archive/presentation*/`). These predate the current UI and are kept for reference only.
+Current UI screenshots live in `fern/assets/` and are embedded throughout the
+[docs site](https://docs.boxy.bjk.ai). (Pre-2026 diagrams and decks are archived locally
+outside the repo.)
 
-To regenerate UI screenshots against the current build, run:
+To regenerate the docs-site screenshots against the current build, run:
 ```bash
-BOX_UPLOAD_DIR=./uploads_docs BOX_PORT=8086 cargo run --release &
-node docs/capture-ui-screenshots.mjs
+BOX_PORT=18086 BOX_UPLOAD_DIR=./uploads_docs cargo run --release &
+node docs/capture-fern-screenshots.mjs
 ```
-Output is written to `docs/assets/images/`.
+Output is written to `fern/assets/` (the docs site hot-reloads it).

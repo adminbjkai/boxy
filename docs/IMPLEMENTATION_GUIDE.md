@@ -1,7 +1,7 @@
 # Boxy Implementation Guide (AI Dev)
 
 **Audience:** Developers implementing UX and feature improvements
-**Last updated:** July 14, 2026
+**Last updated:** July 18, 2026 (v1.5.0)
 
 ---
 
@@ -30,6 +30,9 @@ Preferences persisted in `localStorage`: `viewMode`, `filterType`, `listSortCol`
 ---
 
 ## Feature inventory (current as of July 2026)
+
+### Header
+- **Docs button** — links to docs.boxy.bjk.ai (new tab); **theme toggle**; live WS status dot
 
 ### Files view
 - **Grid / list toggle** — persisted; grid shows image thumbnails (cached 320px JPEGs from
@@ -130,24 +133,6 @@ Preferences persisted in `localStorage`: `viewMode`, `filterType`, `listSortCol`
 
 ## Testing checklist (manual)
 
-- Files: grid/list toggle; upload (drag-drop, picker, clipboard); create folder + file
-- Zoom slider: resizes grid cards; persists on reload
-- List view: columns sortable; Date shows MM/DD/YYYY; per-column filters (text + checkbox + Clear)
-- Inline folder expand: triangle visible on all dirs; recursive nesting; collapses on click
-- Rename: rename button → in-place input; Enter commits, Esc cancels; F2 on focused item
-- Context menu: all actions present and correct; Duplicate creates `_1` copy; right-click closes on Esc
-- Clipboard: Ctrl/Cmd+C then V pastes a copy; Ctrl/Cmd+X dims the item and V moves it;
-  paste collision creates `_1`; Esc clears a cut
-- Thumbnails: grid image tiles request `/api/thumb` (check network tab); broken image falls back to icon
-- Shortcuts modal: `?` opens it; Esc / backdrop closes; toolbar button works
-- Storage footer: shows totals; updates after upload/delete
-- Move: drag onto folder card; drag onto sidebar node; move modal
-- Download: single file; folder ZIP; multi-select ZIP
-- Editor: syntax highlight for code files; rendered preview for `.md`; autosave indicator
-- Lightbox: opens on image click; arrow navigation; Esc closes
-- Multi-select: Ctrl+click, Shift+click, mode toggle; bulk bar actions
-- Sidebar: show-files toggle; expand/collapse; expand-all/collapse-all
-- Live path bar: type a path, Enter navigates
-- URL hash: navigate into folder, reload, same folder opens
-- WebSocket: change in tab A appears in tab B without refresh
-- Theme toggle: persists; dark is default
+The full manual checklist lives in `docs/TESTING.md` (single source of truth) — run it
+after any UI-facing change. Quick smoke: upload, rename, move, delete, edit+autosave,
+search, multi-select ZIP, and a second tab receiving WebSocket updates.
