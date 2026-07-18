@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Boxy API
-  version: 1.5.0
+  version: 1.5.1
   description: |
     REST + WebSocket API for Boxy, the self-hosted file sharing app.
 
