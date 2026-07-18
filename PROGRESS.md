@@ -202,3 +202,8 @@ copy/cut/paste, storage stats, shortcuts help, loading polish.
   opens docs.boxy.bjk.ai in new tab); CHANGELOG Unreleased updated; release
   rebuilt (binary .bak kept), boxy restarted, health ok, button verified live
   via screenshot.
+- Synced to GitHub 2026-07-18: UI_WALKTHROUGH +Docs button; lightbox-dark.png
+  compressed 2.5MB->462KB; 3 commits pushed (102beb3 Dockerfile fix, fe1a75f
+  Docs button, 9b48aec fern docs site) -> main; CI completed success. Docs site
+  + app + api verified 200/healthy post-push. Working tree clean except this
+  PROGRESS line.
