@@ -1,0 +1,84 @@
+---
+title: API Overview
+subtitle: Base URLs, conventions, and error semantics for the Boxy REST API
+---
+
+The Boxy API is a plain REST API over JSON (plus multipart uploads and binary downloads).
+Every endpoint the app's own UI uses is public API — there is no hidden surface.
+
+## Base URLs
+
+| Host | Purpose |
+|------|---------|
+| `https://api.boxy.bjk.ai` | Canonical API host for integrations |
+| `https://boxy.bjk.ai` | The app origin — serves the identical API |
+| `wss://api.boxy.bjk.ai/ws` | Live-update WebSocket ([event reference](/documentation/reference/web-socket-events)) |
+
+```bash
+curl -s https://api.boxy.bjk.ai/api/health
+# {"ok":true}
+```
+
+## Authentication
+
+<Warning>
+The API itself is **unauthenticated by design** — access control lives at the reverse
+proxy (nginx basic auth, OAuth proxy, VPN, or network rules). Anyone who can reach the
+host has full read/write access. See the [Security Model](/documentation/self-hosting/security-model).
+</Warning>
+
+## Conventions
+
+- **Paths** are always relative to the upload root and travel either as a `?path=` query
+  parameter (GET) or a JSON `path` field (POST).
+- **Timestamps** (`modified`) are Unix seconds.
+- **Name collisions never overwrite** — uploads, copies, and duplicates de-dupe to
+  `name_1`, `name_2`, … and responses report the final name actually used.
+- **Every mutation broadcasts** a `{ action, path }` WebSocket event after it succeeds.
+
+## Errors
+
+| Status | Meaning |
+|--------|---------|
+| `200` | Success (an empty search query also returns `200` with `[]`) |
+| `400` | Malformed request — bad JSON, missing `Content-Type`, over-long search query (> 256 chars), non-editable extension or non-UTF-8 content on `/api/content`, missing `path` on `/api/download-zip` |
+| `403` | Path escapes the upload root (symlink traversal) or is otherwise invalid |
+| `404` | File or folder not found — including `POST /api/content` on a nonexistent file, and non-raster files on `/api/thumb` |
+| `409` | Name collision on `/api/rename`, `/api/move`, or `/api/newfile` |
+| `413` | Payload too large — enforced by the **reverse proxy** (`client_max_body_size`), not by the app itself |
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Treat returned names as canonical">
+    After `POST /api/upload`, `/api/copy`, or `/api/duplicate`, use the name/path from the
+    response — collision de-duplication means it may differ from what you sent.
+  </Accordion>
+  <Accordion title="Pair the WebSocket with a state fetch">
+    The event stream has no history or replay. Connect to `/ws` first, then fetch
+    `GET /api/files` — and after any reconnect, refetch rather than assuming continuity.
+  </Accordion>
+  <Accordion title="Prefer /api/thumb for image grids">
+    Thumbnails are cached 320 px JPEGs — orders of magnitude smaller than originals.
+    Fall back to `/api/download` only for full-resolution needs.
+  </Accordion>
+  <Accordion title="Mind the proxy's payload cap for bulk work">
+    The effective upload limit is the reverse proxy's `client_max_body_size` (500 MB on
+    the reference deployment). For many files, batch into multiple requests rather than
+    one giant multipart body.
+  </Accordion>
+</AccordionGroup>
+
+## Explore
+
+<CardGroup cols={3}>
+  <Card title="Endpoints" icon="fa-solid fa-code" href="/api-reference">
+    All 19 endpoints with schemas and examples.
+  </Card>
+  <Card title="WebSocket Events" icon="fa-solid fa-bolt-lightning" href="/documentation/reference/web-socket-events">
+    The `/ws` live-update contract.
+  </Card>
+  <Card title="Cookbook" icon="fa-solid fa-book-open" href="/documentation/using-boxy/cookbook">
+    Ready-to-run scripts: backups, watchers, bulk uploads.
+  </Card>
+</CardGroup>

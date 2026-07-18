@@ -1,0 +1,81 @@
+---
+title: Installation
+subtitle: Build from source or run in Docker
+---
+
+## From source
+
+Boxy is a standard Cargo project — the only prerequisite is a Rust toolchain
+(edition 2021).
+
+<Steps>
+### Clone
+
+```bash
+git clone https://github.com/adminbjkai/boxy.git
+cd boxy
+```
+
+### Build & run
+
+<CodeGroup>
+```bash title="Development"
+cargo run                    # dev server on port 8086
+```
+```bash title="Production"
+cargo build --release        # → target/release/boxy
+```
+</CodeGroup>
+
+The release profile uses `opt-level = 3`, LTO, a single codegen unit, and symbol
+stripping — the resulting binary is a few megabytes and self-contained.
+
+### Verify
+
+```bash
+curl -s http://127.0.0.1:8086/api/health
+# {"ok":true}
+```
+</Steps>
+
+<Note>
+The frontend (`static/index.html`) and all vendored assets are embedded into the binary
+at **compile time** via `include_str!`. Any change to the frontend or backend requires a
+rebuild — there is no separate asset directory to deploy.
+</Note>
+
+## Docker
+
+A `Dockerfile` and `docker-compose.yml` ship with the repo:
+
+<CodeGroup>
+```bash title="docker compose"
+docker compose up --build
+```
+```bash title="docker run"
+docker build -t boxy .
+docker run -p 8086:8086 -v $(pwd)/uploads:/app/uploads boxy
+```
+</CodeGroup>
+
+<Tip>
+Mount `./uploads` as a volume so files survive container rebuilds.
+</Tip>
+
+## Running the test suite
+
+End-to-end tests use Playwright:
+
+```bash
+npm install
+npx playwright install --with-deps chromium
+npm run test:e2e
+```
+
+If a Boxy server is already running on the configured port, Playwright reuses it instead
+of starting its own.
+
+## Next step
+
+Configure ports, directories, and upload limits on the [Configuration](/documentation/getting-started/configuration) page,
+or go straight to [Production Deployment](/documentation/self-hosting/production-deployment).

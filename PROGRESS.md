@@ -137,3 +137,68 @@ copy/cut/paste, storage stats, shortcuts help, loading polish.
 - deploy.sh: release binary built, boxy.service restarted, health {"ok":true}.
 - Prod smoke: live page serves new UI (10 markers), /api/stats returns real
   totals (234 files / 45 folders / 1.3 GB). Sprint COMPLETE.
+
+### Fern docs site 2026-07-18
+- Built a Fern (buildwithfern.com) docs project at `fern/`: fern.config.json,
+  generators.yml, docs.yml (2 tabs: Documentation + API Reference, Boxy accent
+  colors, dark-first), openapi/openapi.yml covering all 18 REST endpoints + /ws,
+  and 14 MDX pages (getting-started x4, guides x5, self-hosting x3, reference x2).
+- Response shapes taken from src/main.rs handlers (verified json() call sites);
+  shortcuts page mirrors the in-app `?` modal incl. the `0`-to-delete binding.
+- `npx fern-api check`: 0 errors (warnings: AAA contrast auto-adjust, login-gated
+  redirects check). Fresh-context verifier cross-check of spec vs code: pending.
+- Verifier (fresh context) result: endpoint coverage 1:1, all 14 structs +
+  shortcuts + env vars confirmed; found 6 doc errors (WS actions table x4,
+  security ZIP depth-cap + NUL claims) — all fixed, plus minors (20 file types,
+  folder action in overview, "/" in folders example, 409s on rename/move).
+  Final `fern check`: 0 errors. README Documentation section now points to fern/.
+
+### Docs live at docs.boxy.bjk.ai — 2026-07-18
+- DNS already pointed here. New LE cert (wildcard can't cover 2-level subdomain);
+  certbot issued OK, nginx installer failed (unrelated 1024-bit key elsewhere) →
+  TLS block written manually. boxy-docs.service (npx fern-api docs dev :3901),
+  enabled; nginx vhost docs.boxy.bjk.ai proxies it.
+- Verified: https root 200 "Overview | Boxy Docs", 80→443 redirect, /api-reference
+  200, cert CN docs.boxy.bjk.ai valid to 2026-10-16, service active + port owned
+  by systemd instance (stale ad-hoc preview killed).
+
+### Docs upgrade round 2 — 2026-07-18 (screenshots, api subdomain, polish)
+- api.boxy.bjk.ai live: nginx vhost -> :8086, own LE cert (nginx installer broken
+  on this box; TLS block manual). Verified /api/health,/api/files,/api/stats 200.
+- Real app screenshots: seeded demo instance on :18086 (uploads_docs/), captured
+  11 shots (home d/l, thumbnails, lightbox, list, editor code+md, context menu,
+  global search, shortcuts, multi-select) into fern/assets/ via fern-shots script.
+- Content rewrite per researched Fern patterns (6 ref sites + 19 more URLs via
+  4 haiku agents): Frames+captions, Steps, CodeGroup, synced Tabs (curl/py/js),
+  ParamField config, mermaid diagrams, AccordionGroup FAQs, EndpointRequestSnippet,
+  cookbook page, API overview as api-tab summary, native dated changelog tab,
+  logo (dark/light SVG), favicon, announcement banner, navbar links (app+GitHub).
+- API examples now use https://api.boxy.bjk.ai (no localhost) per user request.
+- Fixed: internal links rewritten to canonical Fern URLs (user-reported bug);
+  /_local image redirect to localhost:3911 fixed via pinned backend port +
+  nginx proxy_redirect + /_local/ location. Full 2-level crawl: 48 pages/links
+  all 200 (after fixing /api-reference/api-overview -> /api-reference).
+- README + docs/DEPLOYMENT.md updated for docs/api subdomains + certbot quirk.
+- Final accuracy audit (fable-verifier over all pages/spec/changelog vs code):
+  pending.
+- Final accuracy audit (fable-verifier, ran the server + curl probes): 8 real
+  findings, all fixed — biggest: BOX_MAX_UPLOAD_BYTES is NOT enforced app-side
+  (PayloadConfig doesn't cover Multipart/Json extractors; proven empirically) →
+  docs corrected in 5 places + CHANGELOG "Known issues"; Dockerfile bug fixed
+  (now sets BOX_BIND_ADDR=0.0.0.0 — container port was dead before); error
+  table corrected (400/404/409 sources, 413 is proxy-only); cookbook jq recipe
+  rewritten (printf|jq -Rs, tested); clippy is advisory in CI (docs now say so);
+  spec: +400s on search/content/newfile, +409 newfile, download accepts 1,
+  "rejected"→normalised wording; "Media"→"Audio/Video".
+- Post-fix verification: fern check 0 errors; docs restarted; corrected text
+  confirmed live; 7 key URLs 200. Demo server killed, temp files removed.
+- User-spotted render error on /reference/architecture: FileTree.Folder/File
+  sub-component syntax unsupported by Fern MDX → replaced with plain code-block
+  tree. Post-restart sweep of all 17 live pages: 0 render errors.
+- Preview-server chrome leak (stuck "Reloading..." pill + "Everyone" role widget
+  visible to visitors): hidden via nginx sub_filter CSS injection on the docs
+  vhost (Accept-Encoding stripped upstream); verified display:none via live DOM.
+- "Docs" header button added to the app (static/index.html, .docs-link style,
+  opens docs.boxy.bjk.ai in new tab); CHANGELOG Unreleased updated; release
+  rebuilt (binary .bak kept), boxy restarted, health ok, button verified live
+  via screenshot.

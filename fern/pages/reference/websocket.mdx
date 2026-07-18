@@ -1,0 +1,79 @@
+---
+title: WebSocket Events
+subtitle: The /ws live-update contract
+---
+
+Connect to `wss://api.boxy.bjk.ai/ws` (or `wss://boxy.bjk.ai/ws` — same channel) to
+receive a JSON text frame for **every file mutation** on the server, regardless of which
+client performed it.
+
+## Message shape
+
+Every message is a single flat object:
+
+```json
+{ "action": "rename", "path": "docs/draft.md" }
+```
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `action` | string | What happened — one of the actions below |
+| `path` | string | The affected path, relative to the upload root |
+
+## Actions
+
+| Action | Fired by | `path` refers to |
+|--------|----------|------------------|
+| `upload` | `POST /api/upload` (one event **per file**), `POST /api/newfile`, `POST /api/duplicate` | The stored / created file (after de-duplication) |
+| `folder` | `POST /api/folder` | The new folder |
+| `rename` | `POST /api/rename` | The item's **old** path (the new name is in the HTTP response, not the event) |
+| `move` | `POST /api/move` | The item's **source** path (not its new location) |
+| `delete` | `POST /api/delete` | The deleted item |
+| `edit` | `POST /api/content` | The saved file |
+| `copy` | `POST /api/copy` | The newly created copy |
+
+## Client behaviour
+
+Boxy's own frontend treats every event the same way: refresh the current folder listing,
+the sidebar tree, and (debounced) the storage footer. You can consume the same stream
+from your own tooling:
+
+<Tabs>
+  <Tab title="CLI" language="curl">
+    ```bash
+    npx wscat -c wss://api.boxy.bjk.ai/ws
+    ```
+  </Tab>
+  <Tab title="JavaScript" language="javascript">
+    ```javascript
+    const ws = new WebSocket("wss://api.boxy.bjk.ai/ws");
+    ws.onmessage = (e) => {
+      const { action, path } = JSON.parse(e.data);
+      console.log(`${action}: ${path}`);
+    };
+    ```
+  </Tab>
+  <Tab title="Python" language="python">
+    ```python
+    import asyncio, json, websockets
+
+    async def watch():
+        async with websockets.connect("wss://api.boxy.bjk.ai/ws") as ws:
+            async for msg in ws:
+                event = json.loads(msg)
+                print(event["action"], event["path"])
+
+    asyncio.run(watch())
+    ```
+  </Tab>
+</Tabs>
+
+## Delivery notes
+
+- The channel is **broadcast** — all clients get all events, including echoes of their
+  own actions.
+- There is no history or replay: connect first, then fetch state via `GET /api/files`.
+- Slow consumers may drop messages under load (the server logs lagged clients); after a
+  reconnect, refresh state rather than assuming continuity.
+- When proxying, remember nginx needs `Upgrade`/`Connection` headers and a long
+  `proxy_read_timeout` — see [Production Deployment](/documentation/self-hosting/production-deployment).

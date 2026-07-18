@@ -1,0 +1,83 @@
+---
+title: Versioning & Releases
+subtitle: SemVer with Cargo.toml as the single source of truth
+---
+
+Boxy follows [SemVer](https://semver.org/). **`Cargo.toml` is the single source of
+truth** — `package.json` and git tags are kept in sync by the bump script, never by hand.
+Every shipped version is documented in the [Changelog](/changelog).
+
+| Bump | When |
+|------|------|
+| **patch** (1.4.x) | Bug fixes only |
+| **minor** (1.x.0) | New features, UI additions, backwards-compatible changes |
+| **major** (x.0.0) | Breaking changes — API endpoints removed/renamed, storage format changes, config env vars renamed |
+
+## The release CLI
+
+Two scripts in `scripts/` drive the whole lifecycle:
+
+### `bump-version.sh` — cut a release
+
+```bash
+./scripts/bump-version.sh <patch|minor|major|X.Y.Z> [--release]
+```
+
+What it does, in order:
+
+1. Syncs the new version into `Cargo.toml` **and** `package.json`
+2. Moves the `## [Unreleased]` section of `CHANGELOG.md` under the new version with today's date
+3. Commits and tags `vX.Y.Z`
+4. With `--release`: pushes, and publishes a **GitHub release** using the changelog
+   section as its notes
+
+<Note>
+Without `--release`, the script stops after the local commit + tag so you can inspect
+before pushing. Never edit version numbers by hand — always the script.
+</Note>
+
+### `deploy.sh` — ship it
+
+```bash
+./scripts/deploy.sh
+```
+
+One command: builds the release binary, restarts the `boxy` systemd service, and verifies
+`/api/health` returns `{"ok":true}` before declaring success.
+
+## The workflow, end to end
+
+<Steps>
+### Keep the changelog current
+
+Every user-visible change lands in `CHANGELOG.md` under `## [Unreleased]` in the same
+commit that makes the change. That discipline is what makes releases one command.
+
+### Cut the release
+
+```bash
+./scripts/bump-version.sh minor --release
+```
+
+### Deploy
+
+```bash
+./scripts/deploy.sh
+```
+</Steps>
+
+## CI gates
+
+Every push runs GitHub Actions (`.github/workflows/ci.yml`):
+
+- `cargo check` and `cargo test` (23 unit tests) as hard gates; `cargo clippy` runs
+  advisory-only (`continue-on-error`)
+- A **version-sync gate** that fails the build if `Cargo.toml` and `package.json`
+  versions drift
+
+## Rules
+
+- Never edit version numbers by hand — always use the script.
+- Tag every release; the [GitHub releases page](https://github.com/adminbjkai/boxy/releases)
+  is the public version record.
+- Every user-visible change gets a changelog entry in the same PR/commit.

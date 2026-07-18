@@ -1,0 +1,57 @@
+---
+title: Security Model
+subtitle: What Boxy defends against, and what it deliberately delegates
+---
+
+<Warning title="No built-in authentication">
+Anyone who can reach the port has full read/write access to the upload root. Access
+control (basic auth, OAuth proxy, VPN, firewall) belongs at the nginx layer or in front
+of it. Never bind `BOX_BIND_ADDR` to a public interface.
+</Warning>
+
+Boxy's security posture is built around one assumption: the app runs **localhost-only
+behind a TLS-terminating reverse proxy**. Authentication and network exposure are the
+proxy layer's job; Boxy focuses on filesystem safety.
+
+## Path safety
+
+All user-supplied paths pass through two layers:
+
+1. **`clean_relative_path`** — splits on both slash styles and drops empty, `.`, and
+   `..` segments, normalising the path.
+2. **`resolve_path_safe`** — canonicalises against the upload root and verifies the
+   result stays **within** it, blocking symlink traversal.
+
+Any path that escapes the upload root yields **403 Forbidden**.
+
+## Input limits
+
+| Input | Limit |
+|-------|-------|
+| File / folder names | ≤ 255 chars; `/`, `\`, and NUL replaced |
+| Search queries | Length-capped |
+| Recursive walks (folder listing, search, stats) | Depth-capped at **64** to resist deep-tree and symlink-loop abuse (ZIP streaming walks are not depth-capped) |
+| Request payloads | Enforced at the reverse proxy via `client_max_body_size` (the app's `BOX_MAX_UPLOAD_BYTES` is currently not enforced by the app itself) |
+
+## Frontend
+
+- All user content is escaped before rendering (`escapeHtml` / `escapeAttr`) — file names
+  and file content can't inject markup.
+- Downloads are served with `X-Content-Type-Options: nosniff`.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="How do I put a password on my instance?">
+    At the proxy: nginx `auth_basic`, an OAuth proxy (oauth2-proxy, Authelia), or network
+    controls (VPN, firewall allowlist). Boxy itself stays auth-free by design.
+  </Accordion>
+  <Accordion title="Is it safe to expose the API subdomain publicly?">
+    Only with the same access controls as the app — it is the **same** unauthenticated
+    API. A public `api.` vhost without auth means public read/write of your files.
+  </Accordion>
+  <Accordion title="What's the current audit status?">
+    See `docs/code-audit.md` in the repository for the reviewed posture and accepted
+    trade-offs.
+  </Accordion>
+</AccordionGroup>

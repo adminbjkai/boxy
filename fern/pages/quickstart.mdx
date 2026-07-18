@@ -1,0 +1,81 @@
+---
+title: Quickstart
+subtitle: Share your first file — through the app or the API — in under a minute
+---
+
+<Steps>
+### Open the app
+
+Go to [boxy.bjk.ai](https://boxy.bjk.ai). Drag any file onto the window — the full-screen
+drop overlay confirms where it will land — or paste one straight from your clipboard.
+
+<Frame caption="Drop files anywhere; uploads land in the current folder">
+  <img src="../assets/home-dark.png" alt="Boxy home screen with drop zone" />
+</Frame>
+
+### Make your first API call
+
+The same instance exposes its full REST API at `api.boxy.bjk.ai`:
+
+```bash
+curl -s https://api.boxy.bjk.ai/api/health
+# {"ok":true}
+```
+
+List the root directory:
+
+<EndpointRequestSnippet endpoint="GET /api/files" />
+
+### Upload from the command line
+
+```bash
+curl -s -F "file=@report.pdf" "https://api.boxy.bjk.ai/api/upload"
+# ["report.pdf"]
+```
+
+The response is the list of stored names — if `report.pdf` already existed, the server
+de-duplicates to `report_1.pdf` instead of overwriting.
+
+### Watch it happen live
+
+Keep the app open in a browser tab while you run the upload — the file appears **instantly**,
+no refresh. Every mutation is broadcast to all connected clients over the WebSocket channel:
+
+```bash
+# npx wscat is an easy way to watch the event stream
+npx wscat -c wss://api.boxy.bjk.ai/ws
+# < {"action":"upload","path":"report.pdf"}
+```
+</Steps>
+
+## Run your own instance
+
+<CodeGroup>
+```bash title="Cargo"
+git clone https://github.com/adminbjkai/boxy.git
+cd boxy
+cargo run   # dev server on port 8086
+```
+```bash title="Docker"
+git clone https://github.com/adminbjkai/boxy.git
+cd boxy
+docker compose up --build
+```
+</CodeGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="fa-solid fa-download" href="/documentation/getting-started/installation">
+    Production builds, Docker volumes, and the e2e test suite.
+  </Card>
+  <Card title="File Management" icon="fa-solid fa-folder-open" href="/documentation/using-boxy/file-management">
+    Everything the UI can do — clipboard, multi-select, ZIP downloads.
+  </Card>
+  <Card title="API Reference" icon="fa-solid fa-code" href="/api-reference">
+    All 19 endpoints with schemas and examples.
+  </Card>
+  <Card title="Production Deployment" icon="fa-solid fa-server" href="/documentation/self-hosting/production-deployment">
+    systemd + nginx with TLS, exactly as boxy.bjk.ai runs.
+  </Card>
+</CardGroup>

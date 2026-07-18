@@ -1,0 +1,96 @@
+---
+title: Cookbook
+subtitle: Ready-to-run recipes for automating Boxy from scripts and cron
+---
+
+Real-world snippets against `api.boxy.bjk.ai`. Every recipe works with nothing but
+`curl` (or a few lines of Python) — no SDK required.
+
+## Nightly folder backup
+
+Pull any folder as a ZIP on a schedule:
+
+```bash title="backup-docs.sh"
+#!/usr/bin/env bash
+set -euo pipefail
+STAMP=$(date +%F)
+curl -sf "https://api.boxy.bjk.ai/api/download-zip?path=docs" \
+  -o "/backups/boxy-docs-$STAMP.zip"
+find /backups -name 'boxy-docs-*.zip' -mtime +30 -delete   # keep 30 days
+```
+
+```bash
+# crontab: every night at 02:15
+15 2 * * * /usr/local/bin/backup-docs.sh
+```
+
+## Bulk-upload a local directory
+
+Mirror a local folder up, preserving structure — one request per file to stay under the
+payload cap:
+
+```bash title="push-dir.sh"
+#!/usr/bin/env bash
+set -euo pipefail
+SRC="$1"; DEST="${2:-}"
+cd "$SRC"
+find . -type f | while read -r f; do
+  rel="${f#./}"; dir=$(dirname "$rel")
+  [ "$dir" = "." ] && target="$DEST" || target="$DEST/$dir"
+  curl -sf -F "file=@$rel" "https://api.boxy.bjk.ai/api/upload?path=$target" > /dev/null
+  echo "up: $rel"
+done
+```
+
+## React to changes in real time
+
+Trigger anything (notifications, sync jobs, indexing) off the event stream:
+
+```python title="watch.py"
+import asyncio, json, websockets
+
+async def watch():
+    async with websockets.connect("wss://api.boxy.bjk.ai/ws") as ws:
+        async for msg in ws:
+            e = json.loads(msg)
+            if e["action"] == "upload":
+                print(f"new file: {e['path']}")   # notify, index, sync…
+
+asyncio.run(watch())
+```
+
+<Tip>
+Reconnect with backoff and refetch `GET /api/files` after every reconnect — the stream
+has no replay. See [API Overview → Best practices](/api-reference).
+</Tip>
+
+## Publish a note from the shell
+
+Create (or overwrite) a Markdown note without opening the app:
+
+```bash
+printf '# Deploy log %s\n\nAll green.\n' "$(date +%F)" \
+  | jq -Rs '{path: "Notes/deploy-log.md", content: .}' \
+  | curl -s -X POST https://api.boxy.bjk.ai/api/content \
+      -H "Content-Type: application/json" -d @-
+```
+
+If the file doesn't exist yet, create it first with `POST /api/newfile`.
+
+## Storage report
+
+One-liner disk usage of the whole instance (or any subtree via `?path=`):
+
+```bash
+curl -s "https://api.boxy.bjk.ai/api/stats" \
+  | jq -r '"\(.files) files, \(.folders) folders, \(.bytes / 1048576 | floor) MB"'
+```
+
+## Find and fetch
+
+Locate a file by name anywhere in the tree, then download it:
+
+```bash
+path=$(curl -s "https://api.boxy.bjk.ai/api/search?q=report" | jq -r '.[0].path')
+curl -sOJ "https://api.boxy.bjk.ai/api/download?path=$path&download=true"
+```

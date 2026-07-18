@@ -1,0 +1,654 @@
+openapi: 3.0.3
+info:
+  title: Boxy API
+  version: 1.4.0
+  description: |
+    REST + WebSocket API for Boxy, the self-hosted file sharing app.
+
+    All file paths are **relative to the upload root** and are sanitised server-side —
+    `..` segments and backslashes are normalised away, and symlink traversal outside the
+    upload root is rejected with 403. Every mutation is broadcast to all connected
+    WebSocket clients as `{ "action": "...", "path": "..." }`.
+servers:
+  - url: https://api.boxy.bjk.ai
+    description: Production API
+  - url: https://boxy.bjk.ai
+    description: App origin (serves the same API)
+tags:
+  - name: Browse
+    description: List, search, and inspect files and folders
+  - name: Transfer
+    description: Upload and download files, thumbnails, and ZIP archives
+  - name: Manage
+    description: Create, rename, move, copy, duplicate, and delete
+  - name: Content
+    description: Read and write editable text files
+  - name: System
+    description: Health and live updates
+
+paths:
+  /api/health:
+    get:
+      operationId: healthcheck
+      tags: [System]
+      summary: Healthcheck
+      description: Liveness probe. Returns an ok flag when the server is up.
+      responses:
+        "200":
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+              example: { "ok": true }
+
+  /ws:
+    get:
+      operationId: websocket
+      tags: [System]
+      summary: WebSocket live-update channel
+      description: |
+        Upgrades to a WebSocket. Every file mutation on the server is fanned out to all
+        connected clients as a JSON text frame:
+
+        ```json
+        { "action": "upload", "path": "docs/report.pdf" }
+        ```
+
+        `action` is one of `upload`, `folder`, `rename`, `move`, `delete`, `edit`, `copy`.
+        See the **WebSocket Events** page for the full contract.
+      responses:
+        "101":
+          description: Switching protocols (WebSocket upgrade)
+
+  /api/files:
+    get:
+      operationId: listFiles
+      tags: [Browse]
+      summary: List a directory
+      description: Returns the entries of a single directory (non-recursive). An empty or missing `path` lists the upload root.
+      parameters:
+        - $ref: "#/components/parameters/PathParam"
+      responses:
+        "200":
+          description: Directory entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FileEntry"
+              example:
+                - { "name": "photos", "is_dir": true, "size": 0, "modified": 1752800000 }
+                - { "name": "notes.md", "is_dir": false, "size": 2048, "modified": 1752810000 }
+        "403":
+          $ref: "#/components/responses/InvalidPath"
+
+  /api/search:
+    get:
+      operationId: searchFiles
+      tags: [Browse]
+      summary: Recursive name search
+      description: |
+        Case-insensitive substring search over file and folder names, recursing from the
+        upload root (depth-capped at 64). Returns at most **100** results.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query (matched against names, case-insensitive; an empty query returns `[]`)
+          schema:
+            type: string
+            maxLength: 256
+      responses:
+        "200":
+          description: Matching entries with their full relative paths
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SearchResult"
+              example:
+                - { "name": "report.pdf", "path": "docs/report.pdf", "is_dir": false, "size": 51200, "modified": 1752810000 }
+        "400":
+          description: Query longer than 256 characters
+
+  /api/folders:
+    get:
+      operationId: listAllFolders
+      tags: [Browse]
+      summary: List all folder paths
+      description: Returns every folder path under the upload root (used by the move dialog and the sidebar tree).
+      responses:
+        "200":
+          description: All folder paths, relative to the upload root. The first element is always `/` (the root itself).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+              example: ["/", "docs", "docs/archive", "photos"]
+
+  /api/stats:
+    get:
+      operationId: getStats
+      tags: [Browse]
+      summary: Recursive directory stats
+      description: Recursive totals for a directory (the upload root if `path` is omitted). Powers the sidebar storage footer.
+      parameters:
+        - $ref: "#/components/parameters/PathParam"
+      responses:
+        "200":
+          description: Recursive counts and total size in bytes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsResult"
+              example: { "files": 128, "folders": 12, "bytes": 73400320 }
+        "403":
+          $ref: "#/components/responses/InvalidPath"
+
+  /api/upload:
+    post:
+      operationId: uploadFiles
+      tags: [Transfer]
+      summary: Upload files (multipart)
+      description: |
+        Multipart upload into the directory given by `path` (created if missing).
+        Nested relative paths inside field filenames are honoured, enabling whole-folder
+        uploads. Name collisions are de-duplicated server-side (`name`, `name_1`, …).
+        Original modification times are preserved when the client sends them.
+        Payload size is limited by the reverse proxy's `client_max_body_size`
+        (500 MB on the reference deployment); the app itself does not reject
+        oversized bodies.
+      parameters:
+        - $ref: "#/components/parameters/PathParam"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: array
+                  description: One or more file parts
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        "200":
+          description: Final (de-duplicated) names of the stored files
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+              example: ["report.pdf", "report_1.pdf"]
+        "403":
+          $ref: "#/components/responses/InvalidPath"
+
+  /api/download:
+    get:
+      operationId: downloadFile
+      tags: [Transfer]
+      summary: Download or preview a file
+      description: |
+        Streams a file. With `download=true` the response carries a
+        `Content-Disposition: attachment` header; otherwise the file is served inline
+        (for previews) with a content type inferred from its extension.
+        `X-Content-Type-Options: nosniff` is always set.
+      parameters:
+        - $ref: "#/components/parameters/RequiredPathParam"
+        - name: download
+          in: query
+          required: false
+          description: Set to `true` (or `1`) to force an attachment download instead of inline preview
+          schema:
+            type: string
+            enum: ["true", "1"]
+      responses:
+        "200":
+          description: File contents
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "403":
+          $ref: "#/components/responses/InvalidPath"
+        "404":
+          description: File not found
+
+  /api/thumb:
+    get:
+      operationId: getThumbnail
+      tags: [Transfer]
+      summary: Cached image thumbnail
+      description: |
+        Returns a cached JPEG thumbnail (max edge 320 px) for raster images
+        (JPEG, PNG, GIF, WebP, BMP). Thumbnails are generated on demand and cached
+        under `BOX_THUMB_DIR`. Returns **404** for non-raster files.
+      parameters:
+        - $ref: "#/components/parameters/RequiredPathParam"
+      responses:
+        "200":
+          description: JPEG thumbnail
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Not a raster image, or file not found
+
+  /api/download-zip:
+    get:
+      operationId: downloadZip
+      tags: [Transfer]
+      summary: Download a directory as ZIP
+      description: Streams the given directory (recursively) as a ZIP archive.
+      parameters:
+        - $ref: "#/components/parameters/RequiredPathParam"
+      responses:
+        "200":
+          description: ZIP archive of the directory
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "403":
+          $ref: "#/components/responses/InvalidPath"
+
+  /api/download-zip-multi:
+    post:
+      operationId: downloadZipMulti
+      tags: [Transfer]
+      summary: Download selected paths as ZIP
+      description: Bundles an arbitrary selection of files and folders into a single `selection.zip`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paths]
+              properties:
+                paths:
+                  type: array
+                  description: Relative paths of the files/folders to include
+                  items:
+                    type: string
+            example: { "paths": ["docs/report.pdf", "photos"] }
+      responses:
+        "200":
+          description: ZIP archive (`selection.zip`)
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "403":
+          $ref: "#/components/responses/InvalidPath"
+
+  /api/folder:
+    post:
+      operationId: createFolder
+      tags: [Manage]
+      summary: Create a folder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  description: New folder name (≤255 chars; `/ \ NUL` stripped)
+                path:
+                  type: string
+                  description: Parent directory (upload root if omitted)
+            example: { "name": "invoices", "path": "docs" }
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "403":
+          $ref: "#/components/responses/InvalidPath"
+
+  /api/rename:
+    post:
+      operationId: renameItem
+      tags: [Manage]
+      summary: Rename a file or folder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path, new_name]
+              properties:
+                path:
+                  type: string
+                  description: Current relative path
+                new_name:
+                  type: string
+                  description: New name (sanitised server-side)
+            example: { "path": "docs/draft.md", "new_name": "final.md" }
+      responses:
+        "200":
+          description: Renamed; returns the sanitised name actually used
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  new_name:
+                    type: string
+              example: { "success": true, "new_name": "final.md" }
+        "403":
+          $ref: "#/components/responses/InvalidPath"
+        "409":
+          description: An item with the new name already exists
+
+  /api/move:
+    post:
+      operationId: moveItem
+      tags: [Manage]
+      summary: Move a file or folder
+      description: Moves an item into `dest_dir` (the upload root if omitted). Also used by the UI's clipboard **cut → paste**.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path]
+              properties:
+                path:
+                  type: string
+                  description: Relative path of the item to move
+                dest_dir:
+                  type: string
+                  description: Destination directory (upload root if omitted)
+            example: { "path": "inbox/report.pdf", "dest_dir": "docs" }
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "403":
+          $ref: "#/components/responses/InvalidPath"
+        "409":
+          description: An item with the same name already exists in the destination
+
+  /api/copy:
+    post:
+      operationId: copyItem
+      tags: [Manage]
+      summary: Copy a file or folder
+      description: Recursively copies an item into a destination folder. Name collisions are de-duplicated (`name_1`, …). Used by the UI's clipboard **copy → paste**.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path, destination]
+              properties:
+                path:
+                  type: string
+                  description: Relative path of the item to copy
+                destination:
+                  type: string
+                  description: Destination directory (empty string for the upload root)
+            example: { "path": "docs/report.pdf", "destination": "archive" }
+      responses:
+        "200":
+          description: Copied; returns the final path of the new item
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  path:
+                    type: string
+              example: { "ok": true, "path": "archive/report.pdf" }
+        "403":
+          $ref: "#/components/responses/InvalidPath"
+
+  /api/duplicate:
+    post:
+      operationId: duplicateItem
+      tags: [Manage]
+      summary: Duplicate a file or folder
+      description: Clones an item next to itself with a de-duplicated name (`name_1`, `name_2`, …).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path]
+              properties:
+                path:
+                  type: string
+                  description: Relative path of the item to duplicate
+            example: { "path": "docs/report.pdf" }
+      responses:
+        "200":
+          description: Duplicated; returns the new item's path
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  path:
+                    type: string
+              example: { "path": "docs/report_1.pdf" }
+        "403":
+          $ref: "#/components/responses/InvalidPath"
+
+  /api/delete:
+    post:
+      operationId: deleteItem
+      tags: [Manage]
+      summary: Delete a file or folder
+      description: Deletes a file, or a folder **recursively**. There is no trash — deletion is permanent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path]
+              properties:
+                path:
+                  type: string
+                  description: Relative path of the item to delete
+            example: { "path": "docs/old-draft.md" }
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "403":
+          $ref: "#/components/responses/InvalidPath"
+
+  /api/content:
+    get:
+      operationId: getContent
+      tags: [Content]
+      summary: Read an editable text file
+      description: |
+        Returns the raw text of a file whose extension is in the editable allow-list
+        (`txt, csv, py, json, md, rs, js, ts, html, css, toml, yaml, yml, sql, m3u, sh, go, rb, php, xml`).
+      parameters:
+        - $ref: "#/components/parameters/RequiredPathParam"
+      responses:
+        "200":
+          description: Raw file content
+          content:
+            text/plain:
+              schema:
+                type: string
+        "400":
+          description: Extension not in the editable allow-list, or file is not valid UTF-8
+        "403":
+          $ref: "#/components/responses/InvalidPath"
+        "404":
+          description: File not found
+    post:
+      operationId: saveContent
+      tags: [Content]
+      summary: Save an editable text file
+      description: Overwrites the file with the provided content. The UI calls this on **Ctrl/Cmd+S** and via 2-second-debounce autosave.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path, content]
+              properties:
+                path:
+                  type: string
+                  description: Relative path of an editable file
+                content:
+                  type: string
+                  description: Full new file content
+            example: { "path": "notes.md", "content": "# Notes\n\nHello." }
+      responses:
+        "200":
+          $ref: "#/components/responses/Success"
+        "403":
+          $ref: "#/components/responses/InvalidPath"
+
+  /api/newfile:
+    post:
+      operationId: createNewFile
+      tags: [Content]
+      summary: Create an empty text file
+      description: Creates an empty file with an editable extension in the given directory.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [filename]
+              properties:
+                filename:
+                  type: string
+                  description: File name including an editable extension
+                path:
+                  type: string
+                  description: Parent directory (upload root if omitted)
+            example: { "filename": "todo.md", "path": "docs" }
+      responses:
+        "200":
+          description: Created; returns the new file's path
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  path:
+                    type: string
+              example: { "success": true, "path": "docs/todo.md" }
+        "400":
+          description: Extension not in the editable allow-list
+        "403":
+          $ref: "#/components/responses/InvalidPath"
+        "409":
+          description: A file with that name already exists
+
+components:
+  parameters:
+    PathParam:
+      name: path
+      in: query
+      required: false
+      description: Directory path relative to the upload root (root if omitted)
+      schema:
+        type: string
+    RequiredPathParam:
+      name: path
+      in: query
+      required: true
+      description: File or folder path relative to the upload root
+      schema:
+        type: string
+  responses:
+    Success:
+      description: Operation succeeded
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+          example: { "success": true }
+    InvalidPath:
+      description: Path escapes the upload root or is otherwise invalid
+  schemas:
+    FileEntry:
+      type: object
+      description: One entry of a directory listing
+      properties:
+        name:
+          type: string
+          description: Entry name (no path component)
+        is_dir:
+          type: boolean
+        size:
+          type: integer
+          format: int64
+          description: Size in bytes (0 for directories)
+        modified:
+          type: integer
+          format: int64
+          description: Unix timestamp (seconds) of last modification
+    SearchResult:
+      type: object
+      description: One search hit, with its full relative path
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+          description: Path relative to the upload root
+        is_dir:
+          type: boolean
+        size:
+          type: integer
+          format: int64
+        modified:
+          type: integer
+          format: int64
+          description: Unix timestamp (seconds)
+    StatsResult:
+      type: object
+      description: Recursive directory totals
+      properties:
+        files:
+          type: integer
+          format: int64
+        folders:
+          type: integer
+          format: int64
+        bytes:
+          type: integer
+          format: int64

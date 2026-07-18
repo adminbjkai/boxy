@@ -1,0 +1,70 @@
+---
+title: Configuration
+subtitle: Everything is configured via environment variables — all optional
+---
+
+Boxy reads its configuration from environment variables at startup. Every variable has a
+sensible default, so `cargo run` with no environment works out of the box.
+
+<ParamField path="BOX_PORT" type="integer" default="8086">
+  HTTP listen port.
+</ParamField>
+
+<ParamField path="BOX_BIND_ADDR" type="string" default="127.0.0.1">
+  Bind address. Localhost-only by default — a TLS-terminating reverse proxy (nginx) fronts
+  the app in production. Never bind a public interface directly.
+</ParamField>
+
+<ParamField path="BOX_UPLOAD_DIR" type="string" default="./uploads">
+  Upload root directory. Created automatically if missing; volume-mount it in Docker.
+</ParamField>
+
+<ParamField path="BOX_MAX_UPLOAD_BYTES" type="integer" default="209715200">
+  Intended maximum request payload in bytes (default 200 MB). **Currently not enforced by
+  the app** — actix's payload config doesn't apply to the multipart/JSON extractors in
+  use — so the effective limit is your reverse proxy's `client_max_body_size` (500 MB on
+  the reference deployment). Set both to the same value you actually want.
+</ParamField>
+
+<ParamField path="BOX_THUMB_DIR" type="string" default="./thumbs">
+  Thumbnail cache directory, kept **outside** the upload root. Safe to delete at any time —
+  thumbnails regenerate on demand.
+</ParamField>
+
+## Examples
+
+<CodeGroup>
+```bash title="Shell"
+BOX_PORT=9000 BOX_UPLOAD_DIR=/srv/boxy/files cargo run --release
+```
+```ini title="systemd unit"
+[Service]
+Environment=BOX_PORT=8086
+Environment=BOX_BIND_ADDR=127.0.0.1
+Environment=BOX_UPLOAD_DIR=/apps/boxy/uploads
+Environment=BOX_MAX_UPLOAD_BYTES=524288000
+Environment=BOX_THUMB_DIR=/apps/boxy/thumbs
+```
+```yaml title="docker-compose.yml"
+services:
+  boxy:
+    build: .
+    ports:
+      - "8086:8086"
+    environment:
+      BOX_BIND_ADDR: 0.0.0.0   # container-internal; publish via the ports mapping
+    volumes:
+      - ./uploads:/app/uploads
+```
+</CodeGroup>
+
+<Warning>
+Boxy has no built-in authentication — keep `BOX_BIND_ADDR` at `127.0.0.1` and put access
+control at the proxy layer. See the [Security Model](/documentation/self-hosting/security-model).
+</Warning>
+
+## Client-side preferences
+
+UI preferences are stored per-browser in `localStorage`, not on the server: view mode
+(grid/list), sort column and direction, filter type, sidebar expansion state, zoom level,
+and the sidebar "show files" toggle.

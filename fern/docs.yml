@@ -1,0 +1,94 @@
+instances:
+  - url: boxy.docs.buildwithfern.com
+
+title: Boxy Docs
+favicon: ./assets/favicon.ico
+
+logo:
+  dark: ./assets/logo-dark.svg
+  light: ./assets/logo-light.svg
+  height: 26
+  href: https://boxy.bjk.ai
+
+announcement:
+  message: "Boxy v1.4.0 is live — server-side thumbnails, clipboard paste, and storage stats."
+
+navbar-links:
+  - type: minimal
+    text: Live app
+    href: https://boxy.bjk.ai
+  - type: filled
+    text: GitHub
+    href: https://github.com/adminbjkai/boxy
+
+tabs:
+  docs:
+    display-name: Documentation
+    icon: fa-solid fa-book
+  api:
+    display-name: API Reference
+    icon: fa-solid fa-code
+  changelog:
+    display-name: Changelog
+    icon: fa-solid fa-clock-rotate-left
+
+navigation:
+  - tab: docs
+    layout:
+      - section: Getting Started
+        contents:
+          - page: Overview
+            path: ./pages/overview.mdx
+          - page: Quickstart
+            path: ./pages/quickstart.mdx
+          - page: Installation
+            path: ./pages/installation.mdx
+          - page: Configuration
+            path: ./pages/configuration.mdx
+      - section: Using Boxy
+        contents:
+          - page: File Management
+            path: ./pages/guides/file-management.mdx
+          - page: Text Editor
+            path: ./pages/guides/text-editor.mdx
+          - page: Search & Navigation
+            path: ./pages/guides/search-and-navigation.mdx
+          - page: Keyboard Shortcuts
+            path: ./pages/guides/keyboard-shortcuts.mdx
+          - page: Real-Time Updates
+            path: ./pages/guides/real-time.mdx
+          - page: Cookbook
+            path: ./pages/guides/cookbook.mdx
+      - section: Self-Hosting
+        contents:
+          - page: Production Deployment
+            path: ./pages/self-hosting/deployment.mdx
+          - page: Security Model
+            path: ./pages/self-hosting/security.mdx
+          - page: Versioning & Releases
+            path: ./pages/self-hosting/releases.mdx
+      - section: Reference
+        contents:
+          - page: Architecture
+            path: ./pages/reference/architecture.mdx
+          - page: WebSocket Events
+            path: ./pages/reference/websocket.mdx
+  - tab: api
+    layout:
+      - api: API Reference
+        summary: ./pages/reference/api-overview.mdx
+  - tab: changelog
+    layout:
+      - changelog: ./changelog
+
+colors:
+  accent-primary:
+    dark: "#5a8dff"
+    light: "#2a61d9"
+  background:
+    dark: "#131416"
+    light: "#f3f1ed"
+
+layout:
+  searchbar-placement: header
+  tabs-placement: header

@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- Fern documentation site (`fern/`): guides with real app screenshots, OpenAPI
+  API reference, dated changelog — served at docs.boxy.bjk.ai; API also exposed
+  at api.boxy.bjk.ai
+- "Docs" button in the app header linking to docs.boxy.bjk.ai (opens in a new tab)
+
+### Fixed
+- Dockerfile now sets `BOX_BIND_ADDR=0.0.0.0` — previously the container bound
+  127.0.0.1, so `docker run -p 8086:8086` published a dead port
+
+### Known issues (documented)
+- `BOX_MAX_UPLOAD_BYTES` is not enforced by the app: actix `PayloadConfig` does
+  not apply to the Multipart/JSON extractors in use, so oversized bodies are
+  accepted; the effective upload cap is the reverse proxy's
+  `client_max_body_size`. ZIP streaming walks are not depth-capped (unlike
+  folder/search/stats walks).
+
 ## [1.4.0] - 2026-07-14
 
 ### Added

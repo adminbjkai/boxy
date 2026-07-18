@@ -58,3 +58,19 @@ docker compose up --build
 # or
 docker build -t boxy . && docker run -p 8086:8086 -v $(pwd)/uploads:/app/uploads boxy
 ```
+
+## Companion services (added 2026-07-18)
+
+- **docs.boxy.bjk.ai** — the documentation site. `boxy-docs.service` runs
+  `npx fern-api docs dev --port 3901 --backend-port 3911` (Fern preview server,
+  ~1 min startup); nginx vhost `docs.boxy.bjk.ai` proxies :3901 and serves
+  `/_local/` assets from :3911 (rewrites the preview server's localhost
+  redirects). Own LE cert at `/etc/letsencrypt/live/docs.boxy.bjk.ai/` — the
+  `*.bjk.ai` wildcard cannot cover two-level subdomains. Content edits under
+  `fern/` hot-reload; docs.yml/openapi changes are safest with
+  `sudo systemctl restart boxy-docs`.
+- **api.boxy.bjk.ai** — same app/API on a dedicated vhost proxying
+  127.0.0.1:8086, own LE cert at `/etc/letsencrypt/live/api.boxy.bjk.ai/`.
+- Note: certbot's nginx *installer* fails on this box ("Unsupported RSA key
+  length: 1024" from an unrelated vhost) — use `certbot certonly` and write the
+  TLS server block manually. Renewals (`certbot renew`) are unaffected.

@@ -106,6 +106,9 @@ npm run test:e2e
 If the server is already running on the configured port, Playwright reuses it.
 
 ## Documentation
+- **[docs.boxy.bjk.ai](https://docs.boxy.bjk.ai)** — the hosted docs site (guides, API reference, changelog)
+- `fern/` — [Fern](https://github.com/fern-api/fern) docs project behind it (guides + OpenAPI API reference + dated changelog); served by the `boxy-docs` systemd service, validate with `npx fern-api check`
+- The API is also exposed at **[api.boxy.bjk.ai](https://api.boxy.bjk.ai)** (same app, dedicated nginx vhost for integrations)
 - `docs/ARCHITECTURE.md` — components, data flow, API surface, env config
 - `docs/DEPLOYMENT.md` — production deployment (systemd + nginx reverse proxy)
 - `docs/TESTING.md` — e2e + manual test checklist for all current features
