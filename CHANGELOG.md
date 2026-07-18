@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-18
+
 ### Added
 - Fern documentation site (`fern/`): guides with real app screenshots, OpenAPI
   API reference, dated changelog — served at docs.boxy.bjk.ai; API also exposed
@@ -114,7 +116,8 @@ Everything shipped since the original v1.0.0 tag (56 commits, Jan–Jul 2026).
 Initial stable release: Rust (actix-web) file-sharing server with vanilla JS
 frontend — uploads, file management, websocket live updates, zip downloads.
 
-[Unreleased]: https://github.com/adminbjkai/boxy/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/adminbjkai/boxy/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/adminbjkai/boxy/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/adminbjkai/boxy/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/adminbjkai/boxy/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/adminbjkai/boxy/compare/v1.1.0...v1.2.0
