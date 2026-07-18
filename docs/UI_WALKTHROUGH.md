@@ -29,6 +29,8 @@ The app is a single-page file manager with three persistent regions:
 - **Live path bar** — editable `<input>` showing the current path; press Enter to jump to any path
   directly (useful for deep folder trees).
 - **Item count** — "N items" reflects the filtered view.
+- **Docs button** — book icon labelled "Docs" in the header; opens the documentation site
+  (docs.boxy.bjk.ai) in a new tab.
 - **Theme toggle** — sun/moon icon; persists in `localStorage`.
 - **Global search** — magnifier icon opens a full-screen search overlay; results are recursive.
 
