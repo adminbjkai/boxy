@@ -207,3 +207,10 @@ copy/cut/paste, storage stats, shortcuts help, loading polish.
   Docs button, 9b48aec fern docs site) -> main; CI completed success. Docs site
   + app + api verified 200/healthy post-push. Working tree clean except this
   PROGRESS line.
+
+### RELEASED & DEPLOYED v1.5.0 — 2026-07-18
+- bump-version.sh minor --release: tag v1.5.0 pushed, GitHub release live.
+- deploy.sh: binary rebuilt as 1.5.0, boxy restarted, health {"ok":true}.
+- Docs site synced: fern/changelog/2026-07-18.md (v1.5.0) + spec version 1.5.0,
+  pushed (e413d2c), boxy-docs restarted, /changelog shows v1.5.0. CI green on
+  both release and docs-sync commits. Sprint COMPLETE.
