@@ -228,3 +228,8 @@ copy/cut/paste, storage stats, shortcuts help, loading polish.
   RUN-verified (11/11 shots); e2e spec exact:true fix -> 5/5 pass on live server
   with cleaned frontend deployed; artifacts cleaned from prod uploads;
   cargo test 23/23; fern check 0 errors.
+
+### RELEASED & DEPLOYED v1.5.1 — 2026-07-18 (cleanup release)
+- Tag pushed, GitHub release live, deploy.sh OK (health {"ok":true}), docs site
+  synced (v1.5.1 on /changelog, spec 1.5.1). CI green x3 (cleanup, release,
+  docs-sync). Tree clean. Cleanup sprint COMPLETE.
