@@ -115,10 +115,10 @@ level. Single-clicking again (or clicking the triangle) collapses.
 
 - **Drag-and-drop** — drop files or folders anywhere on the page.
 - **File picker** — click the Upload button; supports multi-file selection.
-- **Clipboard paste** — Ctrl/Cmd+V pastes clipboard files.
+- **Paste from Clipboard button** — click the dedicated button in the drop zone for direct clipboard reads (images, binary files, text).
+- **Clipboard paste** — Ctrl/Cmd+V anywhere on the page pastes clipboard files, images, or text.
 - **Folder uploads** preserve nested structure and original modification dates.
-- The **Upload progress panel** appears during upload showing overall progress and per-file
-  status with progress bars and error messages.
+- The **Upload progress panel** appears during upload showing overall progress, transfer speed, dynamic ETA, and per-file status with progress bars and error messages.
 
 ---
 

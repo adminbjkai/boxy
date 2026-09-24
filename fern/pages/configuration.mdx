@@ -19,11 +19,8 @@ sensible default, so `cargo run` with no environment works out of the box.
   Upload root directory. Created automatically if missing; volume-mount it in Docker.
 </ParamField>
 
-<ParamField path="BOX_MAX_UPLOAD_BYTES" type="integer" default="209715200">
-  Intended maximum request payload in bytes (default 200 MB). **Currently not enforced by
-  the app** — actix's payload config doesn't apply to the multipart/JSON extractors in
-  use — so the effective limit is your reverse proxy's `client_max_body_size` (500 MB on
-  the reference deployment). Set both to the same value you actually want.
+<ParamField path="BOX_MAX_UPLOAD_BYTES" type="integer" default="107374182400">
+  Maximum upload request payload in bytes (default 100 GiB; set to 0 for unlimited). Enforced by the app during streaming multipart uploads, with partial file cleanup and HTTP 413 response on violation. Ensure your reverse proxy's `client_max_body_size` is also configured accordingly.
 </ParamField>
 
 <ParamField path="BOX_THUMB_DIR" type="string" default="./thumbs">

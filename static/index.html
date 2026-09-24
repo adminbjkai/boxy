@@ -405,6 +405,8 @@
         }
 
         .drop-zone p { color: var(--text-secondary); font-size: 14px; }
+        .paste-clipboard-btn { margin-top: 12px; }
+        .paste-clipboard-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
         /* File Grid */
         .file-grid {
@@ -2164,6 +2166,7 @@
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
             </svg>
             <p>Drop files here, click Upload, or paste from clipboard</p>
+            <button class="btn paste-clipboard-btn" id="pasteClipboardBtn" type="button">Paste from Clipboard</button>
         </div>
 
         <div class="nav-bar">
@@ -3325,25 +3328,38 @@
 
         async function processDataTransferItems(items) {
             const files = [];
-            const entries = [];
+            const dirEntries = [];
 
-            // First, get all entries (must be done synchronously before items expire)
+            // Must inspect items synchronously before they expire (esp. on paste).
             for (const item of items) {
-                if (item.kind === 'file') {
-                    const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
-                    if (entry) {
-                        entries.push(entry);
-                    } else {
-                        // Fallback for browsers without webkitGetAsEntry
-                        const file = item.getAsFile();
-                        if (file) files.push(file);
+                if (item.kind !== 'file') continue;
+
+                const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+
+                // Folders can only be walked via the entry API.
+                if (entry && entry.isDirectory) {
+                    dirEntries.push(entry);
+                    continue;
+                }
+
+                // Single files: getAsFile() is the direct, reliable path — reading
+                // through a FileSystemFileEntry (entry.file()) is a drag-and-drop-era
+                // API that's flaky for paste events (e.g. Finder copy -> Cmd+V) and
+                // can fail silently, so only fall back to it if getAsFile() is unavailable.
+                const file = item.getAsFile();
+                if (file) {
+                    files.push(file);
+                } else if (entry && entry.isFile) {
+                    try {
+                        files.push(await readEntryAsFile(entry));
+                    } catch (e) {
+                        console.warn('Could not read pasted file:', entry.name, e);
                     }
                 }
             }
 
-            // Process entries (can be async)
-            for (const entry of entries) {
-                const entryFiles = await collectFilesFromEntry(entry);
+            for (const dirEntry of dirEntries) {
+                const entryFiles = await collectFilesFromEntry(dirEntry);
                 files.push(...entryFiles);
             }
 
@@ -3416,11 +3432,24 @@
                 fill.style.width = '100%';
                 errorEl.textContent = item.error || 'Upload failed';
             } else if (item.status === 'uploading') {
-                statusEl.textContent = `Uploading ${pct}%`;
+                const loadedStr = formatSize(item.loaded);
+                const totalStr = formatSize(item.total || item.size);
+                statusEl.textContent = `Uploading ${pct}% (${loadedStr} / ${totalStr})`;
                 fill.style.width = `${pct}%`;
             } else {
                 statusEl.textContent = 'Queued';
             }
+        }
+
+        function formatETA(seconds) {
+            if (!isFinite(seconds) || seconds < 0) return '';
+            seconds = Math.round(seconds);
+            if (seconds < 60) return `${seconds}s`;
+            const mins = Math.floor(seconds / 60);
+            const remSecs = seconds % 60;
+            if (mins < 60) return `${mins}m ${remSecs}s`;
+            const hours = Math.floor(mins / 60);
+            return `${hours}h ${mins % 60}m`;
         }
 
         function updateOverallUploadProgress(state) {
@@ -3439,10 +3468,37 @@
             const completed = state.files.filter(item => item.status === 'done').length;
 
             fill.style.width = `${percent}%`;
-            meta.textContent = `${percent}% · ${completed}/${state.files.length} uploaded`;
+
+            const now = performance.now();
+            const elapsed = (now - (state.startTime || now)) / 1000;
+            let speedText = '';
+            let etaText = '';
+
+            if (elapsed > 0.4 && loadedBytes > 0) {
+                const speed = loadedBytes / elapsed;
+                speedText = `${formatSize(speed)}/s`;
+                const remainingBytes = Math.max(0, totalBytes - loadedBytes);
+                if (speed > 0 && percent < 100) {
+                    const eta = remainingBytes / speed;
+                    etaText = formatETA(eta);
+                }
+            }
+
+            if (percent < 100 && speedText) {
+                const speedPart = etaText ? ` · ${speedText} (${etaText} left)` : ` · ${speedText}`;
+                meta.textContent = `${percent}% · ${formatSize(loadedBytes)} / ${formatSize(totalBytes)}${speedPart} · ${completed}/${state.files.length} uploaded`;
+            } else {
+                meta.textContent = `${percent}% · ${completed}/${state.files.length} uploaded`;
+            }
         }
 
         function getUploadErrorText(xhr) {
+            if (xhr.status === 413) {
+                return 'File too large (exceeds server limit)';
+            }
+            if (xhr.status === 504 || xhr.status === 408) {
+                return 'Upload timed out';
+            }
             const raw = xhr.responseText || '';
             try {
                 const parsed = JSON.parse(raw);
@@ -3451,9 +3507,13 @@
                 }
             } catch (err) {}
             if (raw) {
-                return raw;
+                if (raw.includes('<title>')) {
+                    const match = raw.match(/<title>(.*?)<\/title>/i);
+                    if (match && match[1]) return match[1].replace(/^\d+\s*/, '');
+                }
+                return raw.length > 80 ? `Error (${xhr.status})` : raw;
             }
-            return `Upload failed (${xhr.status})`;
+            return `Upload failed (${xhr.status || 'network error'})`;
         }
 
         function uploadSingleFile(fileItem, state, url) {
@@ -3519,7 +3579,8 @@
 
             const state = {
                 files: items,
-                totalBytes: items.reduce((sum, item) => sum + (item.size || 0), 0)
+                totalBytes: items.reduce((sum, item) => sum + (item.size || 0), 0),
+                startTime: performance.now()
             };
 
             initUploadUI(items);
@@ -4096,8 +4157,11 @@
         // Paste Modal
         function showPasteModal(file) {
             pendingPasteFile = file;
-            const ext = file.type.split('/')[1] || 'png';
-            const defaultName = `image_${new Date().toISOString().slice(0,19).replace(/[T:]/g, '-')}.${ext}`;
+            const isText = file.type.startsWith('text/');
+            const stamp = new Date().toISOString().slice(0,19).replace(/[T:]/g, '-');
+            const defaultName = isText
+                ? `pasted-text-${stamp}.txt`
+                : `image_${stamp}.${file.type.split('/')[1] || 'png'}`;
 
             document.getElementById('pasteModal').classList.add('active');
             document.getElementById('pasteName').value = defaultName;
@@ -4293,8 +4357,8 @@
         function formatSize(bytes) {
             if (bytes === 0) return '0 B';
             const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
             return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
 
@@ -4487,22 +4551,139 @@
             renderFiles(allFiles);
         });
 
-        // Paste from clipboard (supports folders via webkitGetAsEntry)
+        // Paste from clipboard (supports files/dirs via webkitGetAsEntry, plus plain text)
+        function isEditableTarget(el) {
+            return !!(el && el.closest && el.closest('input, textarea, [contenteditable="true"]'));
+        }
+
+        // Diagnostic overlay: load Boxy with ?pastedebug=1 and paste to see exactly what
+        // the browser handed us. Makes "paste did nothing" reportable instead of guesswork.
+        function showPasteDebug(report, files) {
+            const box = document.createElement('div');
+            box.style.cssText = 'position:fixed;inset:auto 16px 16px 16px;max-height:60vh;overflow:auto;' +
+                'z-index:99999;background:var(--bg-elevated,#1c1c1e);color:var(--text-primary,#fff);' +
+                'border:1px solid var(--accent,#0a84ff);border-radius:12px;padding:16px;' +
+                'font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;box-shadow:0 8px 40px rgba(0,0,0,.5)';
+            box.textContent = 'PASTE DEBUG (tap to dismiss)\n\n' +
+                'files recovered: ' + files.length + '\n' +
+                (files.length ? files.map(f => `  - ${f.name} (${f.type || 'no type'}, ${f.size}b)\n`).join('') : '') +
+                '\ntypes: ' + JSON.stringify(report.types) +
+                '\nitems: ' + JSON.stringify(report.items, null, 1) +
+                '\nuri-list: ' + (report.uriList || '(empty)') +
+                '\ntext: ' + (report.plainText || '(empty)');
+            box.onclick = () => box.remove();
+            document.body.appendChild(box);
+        }
+
+        // Explicit clipboard read. Unlike the paste event this is driven by a click, so
+        // it never depends on where focus happens to be — the reliable path when Ctrl/Cmd+V
+        // appears to do nothing.
+        document.getElementById('pasteClipboardBtn').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const btn = e.currentTarget;
+
+            if (!navigator.clipboard || !navigator.clipboard.read) {
+                showToast('Clipboard access not supported here — use Ctrl/⌘+V or drag files in', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            try {
+                const clipboardItems = await navigator.clipboard.read();
+                const files = [];
+
+                for (const item of clipboardItems) {
+                    // Prefer real binary payloads; text is handled separately below.
+                    const type = item.types.find(t => t !== 'text/plain' && t !== 'text/html');
+                    if (!type) continue;
+                    const blob = await item.getType(type);
+                    const ext = type.split('/')[1] || 'bin';
+                    files.push(new File([blob], `clipboard-${Date.now()}.${ext}`, { type }));
+                }
+
+                if (files.length) {
+                    if (files.length === 1 && files[0].type.startsWith('image/')) {
+                        showPasteModal(files[0]);
+                    } else {
+                        uploadFiles(files);
+                    }
+                    return;
+                }
+
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    showPasteModal(new File([text], 'pasted-text.txt', { type: 'text/plain' }));
+                    return;
+                }
+
+                showToast('Nothing usable on the clipboard', 'error');
+            } catch (err) {
+                showToast('Clipboard read blocked by the browser — drag the file in instead', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
         document.addEventListener('paste', async (e) => {
             const items = e.clipboardData.items;
+            const hadFileItems = Array.from(items).some(item => item.kind === 'file');
+
+            // Always record what the clipboard actually carried. Paste behaviour varies
+            // sharply by OS/browser, so this inventory is the only reliable way to tell
+            // why a paste did nothing. Visible via console or the ?pastedebug=1 overlay.
+            const clipboardReport = {
+                types: Array.from(e.clipboardData.types || []),
+                items: Array.from(items).map(i => ({ kind: i.kind, type: i.type })),
+                uriList: e.clipboardData.getData('text/uri-list') || '',
+                plainText: (e.clipboardData.getData('text/plain') || '').slice(0, 200)
+            };
+            console.log('[Boxy paste] clipboard contents:', clipboardReport);
+            window.__boxyLastPaste = clipboardReport;
 
             // Use webkitGetAsEntry to detect folders
             const files = await processDataTransferItems(items);
 
-            if (files.length === 0) return;
-
-            // Single image without path (not from folder): show naming modal
-            if (files.length === 1 && files[0].type.startsWith('image/') && !files[0].name.includes('/')) {
-                showPasteModal(files[0]);
-            } else {
-                // Multiple files, folder contents, or non-image: upload directly
-                uploadFiles(files);
+            if (new URLSearchParams(location.search).has('pastedebug')) {
+                showPasteDebug(clipboardReport, files);
             }
+
+            if (files.length > 0) {
+                // Single image without path (not from folder): show naming modal
+                if (files.length === 1 && files[0].type.startsWith('image/') && !files[0].name.includes('/')) {
+                    showPasteModal(files[0]);
+                } else {
+                    // Multiple files, folder contents, or non-image: upload directly
+                    uploadFiles(files);
+                }
+                return;
+            }
+
+            if (hadFileItems) {
+                // The clipboard had file data but we couldn't read any of it — surface this
+                // instead of failing silently (some browsers don't expose OS-copied files to paste).
+                showToast("Couldn't read the pasted file — try dragging it in instead", 'error');
+                return;
+            }
+
+            // A file-manager copy (Finder/Explorer) puts a file reference here rather than
+            // bytes. Browsers refuse to hand those to a page, so say so explicitly instead
+            // of looking broken.
+            if (clipboardReport.uriList.startsWith('file://')) {
+                const name = decodeURIComponent(clipboardReport.uriList.split('\n')[0].split('/').pop());
+                showToast(`Your browser won't share "${name}" with a web page — drag it in instead`, 'error');
+                return;
+            }
+
+            // No files on the clipboard: don't hijack normal text paste into real
+            // editable fields (the hidden catcher doesn't count — it exists for us).
+            if (isEditableTarget(e.target)) return;
+
+            const text = e.clipboardData.getData('text/plain');
+            if (!text) return;
+
+            e.preventDefault();
+            const textFile = new File([text], 'pasted-text.txt', { type: 'text/plain' });
+            showPasteModal(textFile);
         });
 
         // Modal keyboard handling
@@ -4669,7 +4850,11 @@
                     }
                     break;
                 case 'v':
-                    if (e.metaKey || e.ctrlKey) {
+                    // Only claim Ctrl/Cmd+V when files are staged in Boxy's own clipboard.
+                    // Otherwise fall through without preventDefault so the browser still
+                    // fires its native paste event and OS-clipboard content (images,
+                    // files, text) reaches the paste handler below.
+                    if ((e.metaKey || e.ctrlKey) && clipboard.paths.length > 0) {
                         e.preventDefault();
                         pasteClipboard();
                     }

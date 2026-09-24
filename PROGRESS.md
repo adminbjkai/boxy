@@ -233,3 +233,17 @@ copy/cut/paste, storage stats, shortcuts help, loading polish.
 - Tag pushed, GitHub release live, deploy.sh OK (health {"ok":true}), docs site
   synced (v1.5.1 on /changelog, spec 1.5.1). CI green x3 (cleanup, release,
   docs-sync). Tree clean. Cleanup sprint COMPLETE.
+
+### Polish & reliability sweep — 2026-09-24
+- Frontend: "Paste from Clipboard" button in drop zone with direct `navigator.clipboard.read()`
+  for focus-independent uploads (images/text/binaries); `?pastedebug=1` URL diagnostic overlay;
+  transfer speed and dynamic ETA indicators in the overall upload progress panel; TB formatting.
+- Backend: Streaming `BufWriter` (256 KB buffer) for high-speed file uploads; app-side enforced
+  `BOX_MAX_UPLOAD_BYTES` (default 100 GiB; 0 = unlimited) with immediate partial file cleanup
+  and HTTP 413 on limit breach; `MAX_RECURSION_DEPTH = 64` depth-capping in `download_zip` and
+  `download_zip_multi` directory walks.
+- Automation & tools: `scripts/boxy-paste-mac.sh` for macOS Finder clipboard-to-Boxy uploads
+  via Cmd+C / hotkey; Playwright browser headless shell restored and e2e test suite 5/5 green.
+- Quality & documentation: `cargo fmt` clean, 0 clippy warnings, 25/25 Rust unit tests pass.
+  All docs synced: README, CHANGELOG, ARCHITECTURE, code-audit, MAINTENANCE, TESTING,
+  UI_WALKTHROUGH, IMPLEMENTATION_GUIDE, fern pages, and project-guide skill. Working tree clean.

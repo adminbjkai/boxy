@@ -9,6 +9,8 @@ test('loads the home screen', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('banner').getByText('Boxy')).toBeVisible();
   await expect(page.getByText('Drop files here, click Upload, or paste from clipboard')).toBeVisible();
+  await expect(page.locator('#pasteClipboardBtn')).toBeVisible();
+  await expect(page.locator('#pasteClipboardBtn')).toBeEnabled();
 });
 
 test('creates a folder and shows it in the grid', async ({ page }) => {

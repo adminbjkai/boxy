@@ -49,7 +49,8 @@ Preferences persisted in `localStorage`: `viewMode`, `filterType`, `listSortCol`
   `buildInlineChildren(path, depth)` renders nested rows with CSS `--inline-depth` for indentation
 - **Multi-select** — Ctrl/Cmd+click, Shift+click, or multi-select mode toggle; bulk bar with
   Move / ZIP Download / Delete; state in `selectedFiles` (Set)
-- **Upload progress** — per-file status panel; `uploadQueue` (Promise chain) serializes batches
+- **Upload progress** — per-file status panel with transfer speed and ETA; `uploadQueue` (Promise chain) serializes batches
+- **Clipboard paste & button** — "Paste from Clipboard" button in drop zone reads clipboard binary items & text directly via `navigator.clipboard.read()`; Ctrl/Cmd+V pastes images/files/text; `?pastedebug=1` diagnostic overlay; `scripts/boxy-paste-mac.sh` helper for macOS Finder integrations
 - **Global recursive search** — `/api/search?q=`, depth-capped
 - **Name filter + type filter** — debounced name filter, type buttons (Images/Documents/Code/Media)
 - **Live path bar** — editable `<input id="pathBar">` in nav bar

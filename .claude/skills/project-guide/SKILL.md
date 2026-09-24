@@ -35,11 +35,11 @@ boxy/
 ### Architecture
 - **Single-file design** - all handlers in main.rs
 - **AppState** holds: `broadcaster` (tokio broadcast sender), `upload_dir` (PathBuf),
-  `thumb_dir` (PathBuf, thumbnail cache)
+  `thumb_dir` (PathBuf, thumbnail cache), `max_upload_bytes` (usize)
 - **Settings from env** (main.rs `Settings::from_env`): `BOX_PORT` (default 8086),
   `BOX_UPLOAD_DIR` (default `./uploads`), `BOX_BIND_ADDR` (default `127.0.0.1`),
-  `BOX_MAX_UPLOAD_BYTES` (default 200 MB), `BOX_THUMB_DIR` (default `./thumbs`,
-  kept outside the upload root so cache files never appear in listings)
+  `BOX_MAX_UPLOAD_BYTES` (default 100 GiB; 0 in env = unlimited; app-enforced),
+  `BOX_THUMB_DIR` (default `./thumbs`, kept outside the upload root so cache files never appear in listings)
 - Frontend is served via `include_str!("../static/index.html")` — it is compiled into
   the binary, so **rebuild + restart after any frontend change**
 

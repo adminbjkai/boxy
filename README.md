@@ -17,7 +17,7 @@ so the app works fully offline.
 ## Features
 
 ### Files
-- Drag-and-drop, clipboard paste, and whole-folder uploads (original modification dates preserved)
+- Drag-and-drop, **Paste from Clipboard** button, direct clipboard paste (Ctrl/Cmd+V for images/files/text), and whole-folder uploads (original modification dates preserved; 256 KB buffered streaming with speed & ETA indicators)
 - **Collapsible sidebar folder tree** for fast navigation; drop files onto a folder to move them
 - Folder navigation with breadcrumbs and **URL hash navigation** (current folder reflected in the URL); create / move / **inline-rename** / delete
 - **Right-click context menu** (Preview, Download, Copy URL, Edit, Rename, Move, Copy, Cut, Paste, Delete)
@@ -56,7 +56,7 @@ Configuration (all optional, via environment variables):
 | `BOX_PORT` | `8086` | HTTP listen port |
 | `BOX_BIND_ADDR` | `127.0.0.1` | Bind address (localhost-only by default; nginx fronts it) |
 | `BOX_UPLOAD_DIR` | `./uploads` | Upload root directory |
-| `BOX_MAX_UPLOAD_BYTES` | `209715200` | Intended max payload (200 MB) — **not app-enforced**; the effective cap is the reverse proxy's `client_max_body_size` (see CHANGELOG Known Issues) |
+| `BOX_MAX_UPLOAD_BYTES` | `107374182400` | Max upload payload (default 100 GiB; `0` = unlimited). App-enforced during streaming uploads with automatic cleanup of partial files and HTTP 413 on limit breach |
 | `BOX_THUMB_DIR` | `./thumbs` | Thumbnail cache directory (outside the upload root) |
 
 ## API

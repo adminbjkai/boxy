@@ -75,7 +75,7 @@ Actix-web (src/main.rs) ─ broadcast::Sender fan-out ─┘
 - `BOX_PORT` (default `8086`)
 - `BOX_BIND_ADDR` (default `127.0.0.1` — localhost-only; nginx terminates TLS in front)
 - `BOX_UPLOAD_DIR` (default `./uploads`)
-- `BOX_MAX_UPLOAD_BYTES` (default `209715200`, 200 MB)
+- `BOX_MAX_UPLOAD_BYTES` (default 100 GiB / `107374182400`, `0` = unlimited; enforced by the app during streaming uploads, with partial file cleanup and HTTP 413 response on limit violation)
 - `BOX_THUMB_DIR` (default `./thumbs` — thumbnail cache, deliberately outside the upload root
   so it never appears in listings/search)
 
@@ -85,9 +85,10 @@ Actix-web (src/main.rs) ─ broadcast::Sender fan-out ─┘
   traversal). Every handler that touches user paths uses it.
 - **Input limits:** names capped at 255 chars, search query at 256; the upload `mtimes` metadata
   field is byte-capped before JSON parsing.
-- **Recursion:** folder/search walks are depth-capped (`MAX_RECURSION_DEPTH = 64`).
+- **Recursion:** folder/search/stats and ZIP walks are depth-capped (`MAX_RECURSION_DEPTH = 64`).
 - **De-dupe:** the unique-filename loop is bounded, falling back to a uuid suffix.
-- **Middleware:** `Compress` + `PayloadConfig` + request `Logger`. Note: `PayloadConfig` does **not** apply to the Multipart/Json extractors in use, so `BOX_MAX_UPLOAD_BYTES` is not enforced app-side — the reverse proxy's `client_max_body_size` is the effective cap (CHANGELOG Known Issues).
+- **Upload safety:** `upload_file` streams chunks through a 256 KB buffered writer and tracks total written bytes against `max_upload_bytes`; exceeding the limit or write errors immediately purge the partial file from disk.
+- **Middleware:** `Compress` + `PayloadConfig` + request `Logger`.
 
 ## Deployment
 Production runs as a systemd service bound to `127.0.0.1`, behind nginx (TLS via wildcard cert,

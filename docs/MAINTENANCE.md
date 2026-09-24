@@ -15,10 +15,7 @@ Internet → nginx (boxy.bjk.ai, TLS via Let's Encrypt live/bjk.ai)
 - Nginx vhost: `/etc/nginx/sites-available/boxy.bjk.ai` (symlinked in sites-enabled).
 - The Dockerfile / docker-compose.yml are **not used in production** — they're
   portable-deployment artifacts only.
-- Uploads live in `/apps/boxy/uploads/` (gitignored).
-- Upload cap: enforced by nginx `client_max_body_size` (500 MB). The app's
-  `BOX_MAX_UPLOAD_BYTES` is currently **not** enforced app-side (see CHANGELOG
-  Known Issues).
+- Upload cap: streaming multipart uploads enforce `BOX_MAX_UPLOAD_BYTES` app-side (default 100 GiB; 0 = unlimited), alongside nginx `client_max_body_size`.
 - Companion services: `boxy-docs.service` (docs.boxy.bjk.ai, Fern preview server
   on :3901/:3911) and the `api.boxy.bjk.ai` vhost — topology, certs, and quirks
   in `docs/DEPLOYMENT.md` ("Companion services").

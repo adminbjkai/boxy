@@ -35,8 +35,7 @@ cargo clippy              # optional lint pass
   to navigate directly.
 
 ### File operations
-- **Upload:** drag-drop, file picker, and clipboard paste all upload correctly; upload progress panel
-  shows per-file status with progress bars.
+- **Upload:** drag-drop, file picker, "Paste from Clipboard" button, and clipboard paste (Ctrl/Cmd+V) all upload correctly; upload progress panel shows per-file status with progress bars, transfer speed, and dynamic ETA.
 - **Create:** create folder and new empty text file.
 - **Inline rename:** right-click → Rename (or `F2` on the focused item) opens an in-place input;
   Enter commits, Esc cancels; works in both grid and list view.
@@ -94,7 +93,7 @@ cargo clippy              # optional lint pass
   backoff and re-loads files.
 
 ### Limits & errors
-- **Upload size:** the app does **not** enforce `BOX_MAX_UPLOAD_BYTES` (known issue, see CHANGELOG); in production, uploads over nginx's `client_max_body_size` (500 MB) are rejected with a 413 — test through the proxy.
+- **Upload size:** the app enforces `BOX_MAX_UPLOAD_BYTES` during streaming multipart uploads (default 100 GiB; `0` = unlimited), purging partial files and returning HTTP 413; in production, uploads exceeding reverse proxy `client_max_body_size` are also rejected with 413.
 - **Long names:** names longer than 255 characters produce a 400 error toast.
 
 ## Environment variables

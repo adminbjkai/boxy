@@ -14,7 +14,7 @@ const DEFAULT_UPLOAD_DIR: &str = "./uploads";
 const DEFAULT_THUMB_DIR: &str = "./thumbs";
 const DEFAULT_PORT: u16 = 8086;
 const DEFAULT_BIND_ADDR: &str = "127.0.0.1"; // localhost-only; nginx terminates TLS in front
-const DEFAULT_MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 200; // 200 MB
+const DEFAULT_MAX_UPLOAD_BYTES: usize = 100 * 1024 * 1024 * 1024; // 100 GiB (0 in env = unlimited)
 /// Source images larger than this are skipped for thumbnailing (404) rather than decoded.
 const MAX_THUMB_SOURCE_BYTES: u64 = 1024 * 1024 * 50; // 50 MB
 /// Longest edge, in pixels, of a generated thumbnail.
@@ -32,8 +32,8 @@ const MAX_MTIMES_BYTES: usize = 1024 * 1024; // 1 MiB
 /// Upper bound on filename de-dupe attempts before falling back to a uuid suffix.
 const MAX_DEDUPE_ATTEMPTS: u32 = 10_000;
 const EDITABLE_EXTENSIONS: &[&str] = &[
-    "txt", "csv", "py", "json", "md", "rs", "js", "html", "css", "toml", "yaml", "yml",
-    "sql", "m3u", "ts", "sh", "go", "rb", "php", "xml",
+    "txt", "csv", "py", "json", "md", "rs", "js", "html", "css", "toml", "yaml", "yml", "sql",
+    "m3u", "ts", "sh", "go", "rb", "php", "xml",
 ];
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -57,6 +57,7 @@ struct AppState {
     broadcaster: Broadcaster,
     upload_dir: PathBuf,
     thumb_dir: PathBuf,
+    max_upload_bytes: usize,
 }
 
 struct Settings {
@@ -80,11 +81,11 @@ impl Settings {
                 .ok()
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(DEFAULT_PORT),
-            bind_addr: env::var("BOX_BIND_ADDR")
-                .unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string()),
+            bind_addr: env::var("BOX_BIND_ADDR").unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string()),
             max_upload_bytes: env::var("BOX_MAX_UPLOAD_BYTES")
                 .ok()
                 .and_then(|p| p.parse().ok())
+                .map(|b| if b == 0 { usize::MAX } else { b })
                 .unwrap_or(DEFAULT_MAX_UPLOAD_BYTES),
         }
     }
@@ -267,7 +268,9 @@ async fn upload_file(
             while let Some(chunk) = field.next().await {
                 bytes.extend_from_slice(&chunk?);
                 if bytes.len() > MAX_MTIMES_BYTES {
-                    return Err(actix_web::error::ErrorBadRequest("mtimes metadata too large"));
+                    return Err(actix_web::error::ErrorBadRequest(
+                        "mtimes metadata too large",
+                    ));
                 }
             }
             if let Ok(parsed) =
@@ -303,11 +306,29 @@ async fn upload_file(
             written.to_string_lossy().to_string()
         };
 
-        let mut file = tokio::fs::File::create(&filepath).await?;
+        let write_result: Result<()> = async {
+            let file = tokio::fs::File::create(&filepath).await?;
+            let mut writer = tokio::io::BufWriter::with_capacity(256 * 1024, file);
+            let mut bytes_written: usize = 0;
 
-        while let Some(chunk) = field.next().await {
-            let data = chunk?;
-            file.write_all(&data).await?;
+            while let Some(chunk) = field.next().await {
+                let data = chunk?;
+                bytes_written = bytes_written.saturating_add(data.len());
+                if state.max_upload_bytes < usize::MAX && bytes_written > state.max_upload_bytes {
+                    return Err(actix_web::error::ErrorPayloadTooLarge(
+                        "File exceeds max upload size",
+                    ));
+                }
+                writer.write_all(&data).await?;
+            }
+            writer.flush().await?;
+            Ok(())
+        }
+        .await;
+
+        if let Err(e) = write_result {
+            let _ = tokio::fs::remove_file(&filepath).await;
+            return Err(e);
         }
 
         // Preserve original modification time if provided
@@ -449,7 +470,8 @@ fn generate_thumb(src: &Path) -> Option<Vec<u8>> {
     };
     let rgb = resized.to_rgb8();
     let mut buf = Vec::new();
-    let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buf, THUMB_JPEG_QUALITY);
+    let mut encoder =
+        image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buf, THUMB_JPEG_QUALITY);
     encoder.encode_image(&rgb).ok()?;
     Some(buf)
 }
@@ -475,7 +497,9 @@ async fn get_thumb(
         .map_err(|_| actix_web::error::ErrorNotFound("File not found"))?;
 
     if meta.len() > MAX_THUMB_SOURCE_BYTES {
-        return Err(actix_web::error::ErrorNotFound("Image too large to thumbnail"));
+        return Err(actix_web::error::ErrorNotFound(
+            "Image too large to thumbnail",
+        ));
     }
 
     let mtime_secs = meta
@@ -485,7 +509,9 @@ async fn get_thumb(
         .map(|d| d.as_secs())
         .unwrap_or(0);
 
-    let rel = clean_relative_path(path).to_string_lossy().replace('\\', "/");
+    let rel = clean_relative_path(path)
+        .to_string_lossy()
+        .replace('\\', "/");
     let cache_key = thumb_cache_key(&rel, mtime_secs);
     let cache_path = state.thumb_dir.join(format!("{}.jpg", cache_key));
 
@@ -541,7 +567,11 @@ async fn get_stats(
     let mut bytes = 0u64;
     collect_stats(base_path, &mut files, &mut folders, &mut bytes, 0).await;
 
-    Ok(HttpResponse::Ok().json(StatsResult { files, folders, bytes }))
+    Ok(HttpResponse::Ok().json(StatsResult {
+        files,
+        folders,
+        bytes,
+    }))
 }
 
 #[async_recursion::async_recursion]
@@ -666,10 +696,7 @@ async fn perform_copy(
         .replace('\\', "/"))
 }
 
-async fn copy_item(
-    body: web::Json<CopyReq>,
-    state: web::Data<AppState>,
-) -> Result<HttpResponse> {
+async fn copy_item(body: web::Json<CopyReq>, state: web::Data<AppState>) -> Result<HttpResponse> {
     let new_path = perform_copy(&state.upload_dir, &body.path, &body.destination)
         .await
         .map_err(actix_web::Error::from)?;
@@ -689,7 +716,9 @@ async fn create_folder(
     state: web::Data<AppState>,
 ) -> Result<HttpResponse> {
     if !valid_name_len(&body.name) {
-        return Err(actix_web::error::ErrorBadRequest("Folder name length invalid"));
+        return Err(actix_web::error::ErrorBadRequest(
+            "Folder name length invalid",
+        ));
     }
 
     let base = resolve_path_safe(&state.upload_dir, body.path.as_ref())
@@ -912,8 +941,14 @@ async fn collect_search_results(
 
                 // Recurse into directories
                 if meta.is_dir() {
-                    collect_search_results(entry.path(), full_path, search_term, results, depth + 1)
-                        .await;
+                    collect_search_results(
+                        entry.path(),
+                        full_path,
+                        search_term,
+                        results,
+                        depth + 1,
+                    )
+                    .await;
                 }
             }
         }
@@ -1120,7 +1155,11 @@ async fn download_file(
     response.insert_header(("Cache-Control", "private, max-age=3600"));
 
     // Set Content-Disposition: attachment for download, inline for preview
-    let force_download = query.download.as_deref().map(|v| v == "true" || v == "1").unwrap_or(false);
+    let force_download = query
+        .download
+        .as_deref()
+        .map(|v| v == "true" || v == "1")
+        .unwrap_or(false);
     if force_download {
         response.insert_header((
             "Content-Disposition",
@@ -1170,7 +1209,11 @@ async fn download_zip(
             base: &Path,
             dir: &Path,
             options: zip::write::SimpleFileOptions,
+            depth: usize,
         ) -> std::io::Result<()> {
+            if depth > MAX_RECURSION_DEPTH {
+                return Ok(());
+            }
             for entry in std::fs::read_dir(dir)? {
                 let entry = entry?;
                 let entry_path = entry.path();
@@ -1178,7 +1221,7 @@ async fn download_zip(
                 let rel_str = rel.to_string_lossy().replace('\\', "/");
                 if entry_path.is_dir() {
                     zip.add_directory(&rel_str, options)?;
-                    add_dir(zip, base, &entry_path, options)?;
+                    add_dir(zip, base, &entry_path, options, depth + 1)?;
                 } else {
                     zip.start_file(&rel_str, options)?;
                     let data = std::fs::read(&entry_path)?;
@@ -1188,7 +1231,7 @@ async fn download_zip(
             Ok(())
         }
 
-        add_dir(&mut zip, &dirpath, &dirpath, options)?;
+        add_dir(&mut zip, &dirpath, &dirpath, options, 0)?;
         let cursor = zip.finish()?;
         Ok(cursor.into_inner())
     })
@@ -1198,7 +1241,13 @@ async fn download_zip(
 
     Ok(HttpResponse::Ok()
         .insert_header(("Content-Type", "application/zip"))
-        .insert_header(("Content-Disposition", format!("attachment; filename=\"{}.zip\"", dirname.replace('"', "\\\""))))
+        .insert_header((
+            "Content-Disposition",
+            format!(
+                "attachment; filename=\"{}.zip\"",
+                dirname.replace('"', "\\\"")
+            ),
+        ))
         .insert_header(("Content-Length", buf.len().to_string()))
         .body(buf))
 }
@@ -1238,13 +1287,18 @@ async fn download_zip_multi(
             base_name: &str,
             entry_path: &Path,
             options: zip::write::SimpleFileOptions,
+            depth: usize,
         ) -> std::io::Result<()> {
+            if depth > MAX_RECURSION_DEPTH {
+                return Ok(());
+            }
             if entry_path.is_dir() {
                 zip.add_directory(base_name, options)?;
                 for child in std::fs::read_dir(entry_path)? {
                     let child = child?;
-                    let child_name = format!("{}/{}", base_name, child.file_name().to_string_lossy());
-                    add_entry(zip, &child_name, &child.path(), options)?;
+                    let child_name =
+                        format!("{}/{}", base_name, child.file_name().to_string_lossy());
+                    add_entry(zip, &child_name, &child.path(), options, depth + 1)?;
                 }
             } else {
                 zip.start_file(base_name, options)?;
@@ -1255,8 +1309,11 @@ async fn download_zip_multi(
         }
 
         for p in &paths {
-            let name = p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "file".to_string());
-            add_entry(&mut zip, &name, p, options)?;
+            let name = p
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "file".to_string());
+            add_entry(&mut zip, &name, p, options, 0)?;
         }
 
         let cursor = zip.finish()?;
@@ -1268,7 +1325,10 @@ async fn download_zip_multi(
 
     Ok(HttpResponse::Ok()
         .insert_header(("Content-Type", "application/zip"))
-        .insert_header(("Content-Disposition", "attachment; filename=\"selection.zip\""))
+        .insert_header((
+            "Content-Disposition",
+            "attachment; filename=\"selection.zip\"",
+        ))
         .insert_header(("Content-Length", buf.len().to_string()))
         .body(buf))
 }
@@ -1334,7 +1394,6 @@ async fn healthcheck() -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().json(serde_json::json!({"ok": true})))
 }
 
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
@@ -1348,6 +1407,7 @@ async fn main() -> std::io::Result<()> {
         broadcaster: tx,
         upload_dir: settings.upload_dir.clone(),
         thumb_dir: settings.thumb_dir.clone(),
+        max_upload_bytes: settings.max_upload_bytes,
     };
 
     let max_upload_bytes = settings.max_upload_bytes;
@@ -1370,11 +1430,23 @@ async fn main() -> std::io::Result<()> {
             .route("/", web::get().to(serve_index))
             .route("/favicon.ico", web::get().to(serve_favicon))
             .route("/vendor/prism.min.js", web::get().to(serve_vendor_prism_js))
-            .route("/vendor/prism-theme.min.css", web::get().to(serve_vendor_prism_css))
-            .route("/vendor/marked.min.js", web::get().to(serve_vendor_marked_js))
+            .route(
+                "/vendor/prism-theme.min.css",
+                web::get().to(serve_vendor_prism_css),
+            )
+            .route(
+                "/vendor/marked.min.js",
+                web::get().to(serve_vendor_marked_js),
+            )
             .route("/vendor/fonts.css", web::get().to(serve_vendor_fonts_css))
-            .route("/vendor/fraunces-latin.woff2", web::get().to(serve_vendor_fraunces_woff2))
-            .route("/vendor/space-grotesk-latin.woff2", web::get().to(serve_vendor_space_grotesk_woff2))
+            .route(
+                "/vendor/fraunces-latin.woff2",
+                web::get().to(serve_vendor_fraunces_woff2),
+            )
+            .route(
+                "/vendor/space-grotesk-latin.woff2",
+                web::get().to(serve_vendor_space_grotesk_woff2),
+            )
             .route("/ws", web::get().to(ws_handler))
             .route("/api/files", web::get().to(list_files))
             .route("/api/upload", web::post().to(upload_file))
@@ -1385,7 +1457,10 @@ async fn main() -> std::io::Result<()> {
             .route("/api/folders", web::get().to(list_all_folders))
             .route("/api/download", web::get().to(download_file))
             .route("/api/download-zip", web::get().to(download_zip))
-            .route("/api/download-zip-multi", web::post().to(download_zip_multi))
+            .route(
+                "/api/download-zip-multi",
+                web::post().to(download_zip_multi),
+            )
             .route("/api/search", web::get().to(search_files))
             .route("/api/content", web::get().to(get_content))
             .route("/api/content", web::post().to(save_content))
@@ -1637,7 +1712,9 @@ mod tests {
     async fn perform_copy_dedupes_name_collision() {
         let dir = unique_test_dir("copy_dedupe");
         tokio::fs::create_dir_all(dir.join("dest")).await.unwrap();
-        tokio::fs::write(dir.join("greeting.txt"), b"hi").await.unwrap();
+        tokio::fs::write(dir.join("greeting.txt"), b"hi")
+            .await
+            .unwrap();
         tokio::fs::write(dir.join("dest/greeting.txt"), b"existing")
             .await
             .unwrap();
@@ -1651,7 +1728,9 @@ mod tests {
         // Original and pre-existing destination file both untouched.
         assert!(dir.join("greeting.txt").exists());
         assert_eq!(
-            tokio::fs::read(dir.join("dest/greeting.txt")).await.unwrap(),
+            tokio::fs::read(dir.join("dest/greeting.txt"))
+                .await
+                .unwrap(),
             b"existing"
         );
 
@@ -1672,11 +1751,29 @@ mod tests {
     #[tokio::test]
     async fn perform_copy_rejects_folder_into_descendant() {
         let dir = unique_test_dir("copy_descendant");
-        tokio::fs::create_dir_all(dir.join("parent/child")).await.unwrap();
+        tokio::fs::create_dir_all(dir.join("parent/child"))
+            .await
+            .unwrap();
 
         let result = perform_copy(&dir, "parent", "parent/child").await;
         assert!(matches!(result, Err(CopyError::BadRequest(_))));
 
         tokio::fs::remove_dir_all(&dir).await.ok();
+    }
+
+    #[test]
+    fn settings_max_upload_bytes_handles_zero_as_unlimited() {
+        std::env::set_var("BOX_MAX_UPLOAD_BYTES", "0");
+        let settings = Settings::from_env();
+        assert_eq!(settings.max_upload_bytes, usize::MAX);
+        std::env::remove_var("BOX_MAX_UPLOAD_BYTES");
+    }
+
+    #[test]
+    fn settings_max_upload_bytes_handles_custom_value() {
+        std::env::set_var("BOX_MAX_UPLOAD_BYTES", "1048576");
+        let settings = Settings::from_env();
+        assert_eq!(settings.max_upload_bytes, 1048576);
+        std::env::remove_var("BOX_MAX_UPLOAD_BYTES");
     }
 }

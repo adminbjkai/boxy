@@ -27,6 +27,8 @@ tracks the security posture: what is enforced, and the trade-offs we accept.
 | Editing safety | `/api/content` only serves/saves whitelisted editable extensions and UTF-8-validated text. |
 | XSS | Frontend escapes all user content (`escapeHtml`/`escapeAttr`); toasts use `textContent`. |
 | Error handling | Global `window.onerror` / `unhandledrejection` surface a toast instead of a frozen UI. |
+| Upload cap | Streaming uploads enforce `BOX_MAX_UPLOAD_BYTES` (default 100 GiB; 0 = unlimited) with 256 KB buffered writes; exceeding limit or write aborts purge the partial file and return HTTP 413. |
+| ZIP recursion bounds | `download_zip` and `download_zip_multi` directory walks are depth-capped (`MAX_RECURSION_DEPTH = 64`). |
 | Config hygiene | Binds `127.0.0.1` by default (`BOX_BIND_ADDR`); startup log reflects the real bind address. |
 | localStorage safety | All `localStorage` reads go through an `ls` helper that wraps every call in try/catch so Safari/Firefox tracking-prevention blocking does not crash the app. |
 
@@ -42,13 +44,9 @@ revisit them if Boxy is ever exposed to untrusted multi-user traffic.
   limits if needed.
 - **No server-side trash / soft-delete.** Deletes are immediate and permanent on disk.
 
-## Known issues (v1.5.0, documented in CHANGELOG)
+## Known issues (all previous issues resolved)
 
-- **Upload cap not app-enforced.** `PayloadConfig` does not apply to the
-  `Multipart`/`Json` extractors in use, so `BOX_MAX_UPLOAD_BYTES` is currently
-  ineffective; the reverse proxy's `client_max_body_size` (500 MB) is the real cap.
-- **ZIP walks are not depth-capped.** `download_zip` / `download_zip_multi` recurse
-  without the `MAX_RECURSION_DEPTH` guard used by folder/search/stats walks.
+- *None currently open.* (The prior v1.5.0 upload-cap bypass and unconstrained ZIP recursion have both been resolved with streaming byte guards and `MAX_RECURSION_DEPTH` bounds.)
 
 ## Notes for future work
 - If multi-user exposure becomes a goal: add auth (e.g. reverse-proxy basic-auth or app sessions),

@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- "Paste from Clipboard" button in the drop zone for explicit, focus-independent clipboard reading via `navigator.clipboard.read()` (supporting images, binary files, and plain text)
+- Clipboard diagnostic overlay via `?pastedebug=1` URL query parameter to inspect clipboard data transfer items and MIME types
+- Real-time transfer speed and dynamic ETA indicator in the overall upload progress panel, plus TB formatting support
+- Streaming buffered writer (`BufWriter` with 256 KB buffer) in `upload_file` for high-throughput uploads
+- Helper script `scripts/boxy-paste-mac.sh` to upload Finder-copied or selected files directly to Boxy from macOS via hotkey or CLI
+
+### Fixed
+- App-enforced `BOX_MAX_UPLOAD_BYTES`: streaming uploads monitor written bytes and automatically purge partial files if the limit is exceeded, returning HTTP 413 Payload Too Large
+- Depth-capped ZIP archives: `download_zip` and `download_zip_multi` directory walks now enforce `MAX_RECURSION_DEPTH` (64)
+- Non-interfering keyboard shortcuts: Ctrl/Cmd+V now preserves native browser paste unless items are actively staged in Boxy's internal clipboard
+- E2e test suite: added assertion for `#pasteClipboardBtn` and restored Playwright browser headless shell dependencies
+
 ## [1.5.1] - 2026-07-18
 
 ### Fixed
