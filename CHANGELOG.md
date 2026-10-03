@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-10-03
+
 ### Fixed
 - Replaced the async-recursion macro dependency with native boxed async recursion, resolving Rust 1.99 strict-Clippy failures without changing folder/copy/search/stats behavior
 
@@ -176,7 +178,8 @@ Everything shipped since the original v1.0.0 tag (56 commits, Jan–Jul 2026).
 Initial stable release: Rust (actix-web) file-sharing server with vanilla JS
 frontend — uploads, file management, websocket live updates, zip downloads.
 
-[Unreleased]: https://github.com/adminbjkai/boxy/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/adminbjkai/boxy/compare/v1.6.1...HEAD
+[1.6.1]: https://github.com/adminbjkai/boxy/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/adminbjkai/boxy/compare/v1.5.1...v1.6.0
 [1.5.1]: https://github.com/adminbjkai/boxy/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/adminbjkai/boxy/compare/v1.4.0...v1.5.0
