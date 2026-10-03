@@ -6,24 +6,34 @@ npm install
 npx playwright install --with-deps chromium
 npm run test:e2e
 ```
-If the server is already running on the configured port, Playwright reuses it; otherwise it starts one.
+Playwright starts an isolated server on `127.0.0.1:18087`, with temporary upload/cache directories and no production-server reuse. Fixtures and the temporary directories are cleaned up automatically. The isolated server uses a 1 MiB upload cap to exercise overflow cleanup; production keeps its configured cap.
 Specs live in `tests/ui.spec.ts`.
 
 ## Unit tests (Rust)
 ```bash
-cargo test                # 23 tests: path safety, dedupe, name validation,
-                          # thumb cache keys, stats walk, copy rejection cases
+cargo test                # 27 tests: path safety, dedupe, name validation,
+                          # thumb cache keys, stats walk, copy rejection cases, archive safety
 ```
 
 ## Build verification
 ```bash
 cargo build --release     # must be warning-clean
-cargo clippy              # optional lint pass
+cargo clippy --locked -- -D warnings  # required lint pass
 ```
+
+## Automated behavior coverage
+
+Browser tests cover theme/sidebar startup, pin persistence, filter clearing, special filenames,
+editor-close save flushing, Markdown sanitization, stale navigation responses, mobile layout,
+byte-range and ZIP downloads, copy/cut/paste, inline rename, list selection, and corrupt storage.
+Additional HTTP behavior tests cover upload limits, cache invalidation, and live updates.
 
 ## Manual smoke checklist
 
 ### Core navigation
+- **Quick access:** pin/unpin a nested folder, reload, and navigate via the pinned entry.
+- **Mobile:** open Folders, navigate, and verify no page-wide horizontal scroll.
+- **Clear filters:** no-results state offers Clear filters and restores all items.
 - **Theme:** first load defaults to dark; toggle persists across reloads.
 - **Sidebar:** folder tree renders; clicking a folder navigates; expand/collapse carets work;
   the collapse toggle hides/shows the tree (state persists); dragging a file onto a tree node moves it.
@@ -94,7 +104,15 @@ cargo clippy              # optional lint pass
 
 ### Limits & errors
 - **Upload size:** the app enforces `BOX_MAX_UPLOAD_BYTES` during streaming multipart uploads (default 100 GiB; `0` = unlimited), purging partial files and returning HTTP 413; in production, uploads exceeding reverse proxy `client_max_body_size` are also rejected with 413.
-- **Long names:** names longer than 255 characters produce a 400 error toast.
+- **Long names:** names longer than 255 UTF-8 bytes produce a 400 error toast.
 
 ## Environment variables
 See the canonical table in `docs/ARCHITECTURE.md` (env config section).
+
+## v1.6.0 resource verification
+
+A controlled comparison used the previous/candidate release binaries in separate servers,
+a 128 MiB sparse binary, a client throttled to 1 MiB/s, and RSS samples every 100ms for
+three seconds. Peak additional RSS was 260608 KiB for the previous binary and 272 KiB for
+the candidate. This measures the download path under those conditions, not total app
+memory or a guarantee for all workloads. Production upload data was untouched.

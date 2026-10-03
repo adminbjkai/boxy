@@ -21,7 +21,7 @@ Files with other extensions are download/preview-only.
 
 ## Markdown preview
 
-`.md` files render to formatted HTML in view mode; toggle to **Edit** for the raw text:
+`.md` files render to formatted HTML in view mode, sanitized by vendored DOMPurify; toggle to **Edit** for the raw text:
 
 <Frame caption="Rendered Markdown preview (marked.js, vendored)">
   <img src="../../assets/editor-markdown-dark.png" alt="Boxy editor showing rendered Markdown" />
@@ -31,7 +31,11 @@ Files with other extensions are download/preview-only.
 
 While editing, changes save automatically after a **2-second** pause in typing.
 <kbd>Ctrl/⌘ S</kbd> saves immediately. Every save broadcasts an `edit` event over the
-WebSocket, so other clients viewing the same folder refresh instantly.
+WebSocket, so other clients viewing the same folder refresh after a short debounce.
+
+Closing the editor flushes pending changes. Failed saves keep the editor open with its
+content and an error message. Saves run in order so overlapping requests cannot overwrite
+newer edits. Leaving the page with unsaved edits prompts the browser warning.
 
 ## The content API
 

@@ -1,50 +1,26 @@
-# Boxy Agent Team — who does what
+# Contributor and review guide
 
-Claude (main session) is the orchestrator: plans, delegates, integrates, verifies,
-releases. Specialists below are invoked via the Agent tool (project agents live in
-`.claude/agents/`, generic ones are built in). Rule of thumb: 3+ independent lanes
-→ fan out in parallel; single-lane work → do it inline.
+The active assistant or developer owns integration, verification, documentation, and release.
+Project agent templates under `.claude/agents/` are optional aids for clients supporting them;
+follow the current runtime's delegation rules and available models.
 
-## Project specialists (`.claude/agents/`)
+| Template | Focus |
+|----------|-------|
+| boxy-frontend | Embedded markup/CSS/JS, accessibility, responsive behavior |
+| boxy-backend | Actix handlers, file safety, bounded I/O, resource limits |
+| boxy-chores | Read-only issue triage and documentation drafts |
+| code-reviewer | Correctness, security, regressions, and accurate release claims |
+| refactor-helper | Focused cleanup and duplication removal |
+| ui-improver | Layout, interactions, visual hierarchy, and usable existing features |
 
-| Agent | Model | Specialty | Use when |
-|---|---|---|---|
-| `boxy-frontend` | Sonnet | static/index.html UI work, verified with node + debug server | Any UI feature/styling/motion change |
-| `boxy-backend` | Sonnet | src/main.rs, actix-web, verified with cargo check/test | API, file handling, perf, unit tests |
-| `boxy-chores` | Haiku | Issue triage, changelog drafts, doc audits (read-only) | Mechanical chores, no code judgment |
-| `code-reviewer` | Sonnet | Boxy patterns, security, correctness | After any feature/fix, before release |
-| `refactor-helper` | Sonnet | Cleanup within single-file architecture | Code getting messy, extracting patterns |
-| `ui-improver` | Sonnet | Visual design, interactions, UX | Planning UI work |
+Read `.claude/skills/project-guide/SKILL.md`, `ui-patterns/SKILL.md`, and
+`quality-checklist/SKILL.md` for project conventions. They describe embedded assets in
+`static/index.html`, `static/app.css`, `static/app.js` and focused Rust modules.
 
-Default routing: implementation and review agents run on Sonnet; mechanical
-chores on Haiku; hard judgment calls stay with the session model.
+Before releasing: review the diff against the changelog, run Rust format/lint/tests and
+isolated browser/API tests, validate Fern documentation, regenerate screenshots for visual
+changes, and use `scripts/deploy.sh`. Verify local/public health, asset versions, and the
+production browser before marking work complete. Production files must never be test fixtures.
 
-## Generic lanes (built-in agent types)
-
-| Agent | Specialty | Use when |
-|---|---|---|
-| `fable-researcher` | Codebase/web investigation → sourced brief | Before planning; unfamiliar territory |
-| `fable-implementer` | Builds one scoped slice end-to-end | Parallel build lanes |
-| `fable-verifier` | Fresh-context PASS/FAIL vs. acceptance criteria | Stage boundaries, before "done" |
-| `fable-cheap-runner` | Bulk read/extract on a cheap model | High-volume, low-judgment reading |
-| `Explore` | Read-only broad search | Locating code across many files |
-
-## Standing review roster for releases
-
-Before any minor/major release, run in parallel:
-1. `code-reviewer` on the diff since the last tag
-2. `fable-verifier` against the CHANGELOG's claims
-3. Infra sanity: `nginx -t`, `systemctl status boxy`, upload smoke test
-
-## Project skills (`.claude/skills/`)
-
-`project-guide` (dev patterns), `ui-patterns` (frontend conventions),
-`quality-checklist` (pre-commit), `tldr-first` (token-efficient reading).
-Read `project-guide` before touching `src/`; `ui-patterns` before `static/`.
-
-## Key docs
-
-- `PROGRESS.md` — live task memory for any multi-step effort
-- `CHANGELOG.md` + `docs/VERSIONING.md` — release system
-- `docs/MAINTENANCE.md` — deployment & ops playbook
-- `docs/ARCHITECTURE.md`, `docs/DEPLOYMENT.md`, `docs/TESTING.md` — reference
+See `docs/ARCHITECTURE.md`, `docs/TESTING.md`, `docs/DEPLOYMENT.md`, and
+`docs/VERSIONING.md` for the current reference; `PROGRESS.md` preserves historical work.

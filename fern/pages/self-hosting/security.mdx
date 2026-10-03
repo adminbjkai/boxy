@@ -28,7 +28,7 @@ Any path that escapes the upload root yields **403 Forbidden**.
 
 | Input | Limit |
 |-------|-------|
-| File / folder names | ≤ 255 chars; `/`, `\`, and NUL replaced |
+| File / folder names | ≤ 255 UTF-8 bytes; `/`, `\`, and NUL replaced |
 | Search queries | Length-capped |
 | Recursive walks (folder listing, search, stats, ZIP) | Depth-capped at **64** to resist deep-tree and symlink-loop abuse |
 | Request payloads | App-enforced streaming upload byte cap (default 100 GiB; 0 = unlimited) plus reverse proxy's `client_max_body_size` |

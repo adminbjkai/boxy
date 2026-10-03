@@ -11,7 +11,7 @@ logo:
   href: https://boxy.bjk.ai
 
 announcement:
-  message: "Boxy v1.4.0 is live — server-side thumbnails, clipboard paste, and storage stats."
+  message: "Boxy v1.6.0 — pinned folders, a refreshed workspace, and lower-memory downloads."
 
 navbar-links:
   - type: minimal
@@ -83,11 +83,11 @@ navigation:
 
 colors:
   accent-primary:
-    dark: "#5a8dff"
-    light: "#2a61d9"
+    dark: "#80cdb5"
+    light: "#15574d"
   background:
-    dark: "#131416"
-    light: "#f3f1ed"
+    dark: "#11191c"
+    light: "#f4f3ed"
 
 layout:
   searchbar-placement: header

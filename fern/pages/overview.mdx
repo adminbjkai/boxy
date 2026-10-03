@@ -68,8 +68,8 @@ flowchart LR
 
 | Layer | Technology |
 |-------|------------|
-| Backend | Rust + Actix-web 4, single file (`src/main.rs`) |
-| Frontend | Vanilla JS + CSS in one embedded HTML page (`static/index.html`) |
+| Backend | Rust + Actix-web 4 (`src/main.rs`, `src/assets.rs`, `src/archive.rs`) |
+| Frontend | Vanilla JS + CSS + HTML (`static/app.js`, `static/app.css`, `static/index.html`), embedded in the binary |
 | Real-time | WebSocket fan-out on `/ws` via `tokio::sync::broadcast` |
 | Storage | The local `uploads/` directory — no database |
 | Theme | Dark-mode-first pure CSS, honours `prefers-reduced-motion` |

@@ -1,0 +1,9 @@
+target
+node_modules
+.git
+uploads
+thumbs
+uploads_docs
+test-results
+_ai_images
+tech_stack_ppt

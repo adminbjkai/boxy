@@ -5,11 +5,11 @@
 Boxy is a fast, self-hosted **file sharing** web app. It provides a real-time file
 manager (drag-and-drop uploads, folders, inline editing, live updates) — all in a single Rust
 binary that serves one embedded HTML page. No database, no build step for the frontend, and no
-runtime CDN dependencies — fonts, Prism.js, and marked.js are vendored under `static/vendor/`,
+runtime CDN dependencies — fonts, Prism.js, marked.js, and DOMPurify are vendored under `static/vendor/`,
 so the app works fully offline.
 
-- **Backend:** Rust + Actix-web 4 (single file, `src/main.rs`)
-- **Frontend:** Vanilla JS + CSS embedded in `static/index.html` (served via `include_str!`)
+- **Backend:** Rust + Actix-web 4 (`src/main.rs`, with focused asset/archive modules)
+- **Frontend:** HTML, vanilla JS, and CSS in `static/index.html`, `static/app.js`, and `static/app.css`; all embedded at compile time
 - **Real-time:** WebSocket fan-out (`/ws`) broadcasts every file mutation to all clients
 - **Storage:** the local `./uploads` directory (volume-mountable in Docker)
 - **Theme:** dark-mode-first, lightweight (pure CSS, honours `prefers-reduced-motion`)
@@ -17,7 +17,7 @@ so the app works fully offline.
 ## Features
 
 ### Files
-- Drag-and-drop, **Paste from Clipboard** button, direct clipboard paste (Ctrl/Cmd+V for images/files/text), and whole-folder uploads (original modification dates preserved; 256 KB buffered streaming with speed & ETA indicators)
+- Drag-and-drop, **Paste from Clipboard** button, direct clipboard paste (Ctrl/Cmd+V for images/files/text), and whole-folder uploads (exact filenames and original modification dates preserved; 256 KB buffered streaming with speed & ETA indicators)
 - **Collapsible sidebar folder tree** for fast navigation; drop files onto a folder to move them
 - Folder navigation with breadcrumbs and **URL hash navigation** (current folder reflected in the URL); create / move / **inline-rename** / delete
 - **Right-click context menu** (Preview, Download, Copy URL, Edit, Rename, Move, Copy, Cut, Paste, Delete)
@@ -35,11 +35,17 @@ so the app works fully offline.
 - **Image lightbox** — full-screen viewer with keyboard arrow navigation
 - In-browser text editor for editable types (`txt, csv, py, json, md, rs, js, ts, html, css, toml, yaml, yml, sql, m3u, sh, go, rb, php, xml`)
 - **Syntax highlighting** (Prism.js) and **rendered Markdown preview** in editor view mode
-- **Autosave** — 2-second debounce saves changes automatically while editing
+- **Autosave** — serialized 2-second debounce saves; closing the editor flushes pending changes, and failed saves keep the editor open
 - Create new empty text files in-app; **Duplicate** any file or folder via context menu
 - **ZIP downloads**: per-directory (`?download=1` on folder URLs) or multi-selection
 
 ### Platform
+- **Quick access** — pin up to 12 folders per browser, retained across reloads and synchronized across tabs
+- Folder heading with file/folder counts and local size; explicit Refresh action
+- Clear all active name/type/column filters in one click, with a distinct no-results state
+- Mobile folder navigation and touch-visible actions; dialog focus containment and return focus
+- Streaming file downloads with byte ranges (media seeking/resume); ZIPs use anonymous temporary files
+- Two concurrent thumbnail decoders with allocation/dimension limits; shared storage stats cache invalidated by mutations
 - Live updates across clients via WebSocket, with exponential-backoff reconnect
 - Dark/light theme toggle (dark by default); accessible focus styles and ARIA roles
 - Keyboard navigation (arrows, Enter, Backspace, Escape, `/` search, `F2` rename, Ctrl/Cmd+S save, Ctrl/Cmd+C/X/V clipboard) — press `?` for the in-app shortcuts reference
@@ -91,9 +97,9 @@ WebSocket messages are `{ action, path }` where `action` is one of
 ## Security model
 - All user paths pass through `clean_relative_path` + `resolve_path_safe` (canonicalised and
   verified to stay within the upload root — blocks `..`, backslash, and symlink traversal).
-- User-supplied names are length-capped (≤255) and have `/ \ \0` stripped; search queries are capped.
+- User-supplied names are length-capped (≤255 UTF-8 bytes) and normalize `/ \ \0`; search queries are capped.
 - Recursive folder/search walks are depth-capped (64) to resist deep-tree / symlink-loop abuse.
-- Frontend escapes all user content (`escapeHtml` / `escapeAttr`); `X-Content-Type-Options: nosniff`
+- Frontend uses distinct HTML-attribute and inline-JS escaping, and sanitizes rendered Markdown with DOMPurify; `X-Content-Type-Options: nosniff`
   on downloads. The app is designed to run **localhost-only behind nginx** (TLS terminated there).
 - See `docs/code-audit.md` for the current security posture and accepted trade-offs.
 
@@ -103,11 +109,11 @@ npm install
 npx playwright install --with-deps chromium
 npm run test:e2e
 ```
-If the server is already running on the configured port, Playwright reuses it.
+Playwright starts an isolated server on `127.0.0.1:18087` with temporary storage. It never reuses production.
 
 ## Documentation
-- **[docs.boxy.bjk.ai](https://docs.boxy.bjk.ai)** — the hosted docs site (guides, API reference, changelog)
-- `fern/` — [Fern](https://github.com/fern-api/fern) docs project behind it (guides + OpenAPI API reference + dated changelog); served by the `boxy-docs` systemd service, validate with `npx fern-api check`
+- `fern/` — docs-site source (guides, API reference, changelog); the previously documented docs.boxy.bjk.ai service is currently absent on this host
+- Validate the [Fern](https://github.com/fern-api/fern) project with `npx fern-api check`; see `docs/DEPLOYMENT.md` for the historical docs hosting setup
 - The API is also exposed at **[api.boxy.bjk.ai](https://api.boxy.bjk.ai)** (same app, dedicated nginx vhost for integrations)
 - `docs/ARCHITECTURE.md` — components, data flow, API surface, env config
 - `docs/DEPLOYMENT.md` — production deployment (systemd + nginx reverse proxy)
@@ -124,7 +130,7 @@ docker compose up --build      # or: docker build -t boxy . && docker run -p 808
 ## Diagrams and screenshots
 
 Current UI screenshots live in `fern/assets/` and are embedded throughout the
-[docs site](https://docs.boxy.bjk.ai). (Pre-2026 diagrams and decks are archived locally
+Fern docs source. (Pre-2026 diagrams and decks are archived locally
 outside the repo.)
 
 To regenerate the docs-site screenshots against the current build, run:

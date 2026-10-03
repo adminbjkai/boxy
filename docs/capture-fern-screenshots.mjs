@@ -24,6 +24,9 @@ fs.mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
 const page = await ctx.newPage();
+await ctx.addInitScript(() => {
+  if (!localStorage.getItem('boxy_pins')) localStorage.setItem('boxy_pins', JSON.stringify(['Code', 'Notes']));
+});
 
 const shot = async (name) => {
   await page.mouse.move(720, 870);          // clear hover tooltips
@@ -41,8 +44,10 @@ const setTheme = async (t) => {
 };
 
 const gotoPath = async (hash) => {
-  await page.goto(`${BASE}/#${hash}`, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(600);
+  await page.goto(`${BASE}/#${encodeURIComponent(hash)}`, { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => document.getElementById('fileGrid').getAttribute('aria-busy') === 'false');
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForTimeout(400);
 };
 
 const ensureGrid = async () => {
@@ -134,6 +139,12 @@ await items.nth(1).click({ modifiers: ['Control'] });
 await items.nth(2).click({ modifiers: ['Control'] }).catch(() => {});
 await page.waitForTimeout(400);
 await shot('multi-select-dark');
+
+// Mobile navigation and compact toolbar
+await page.setViewportSize({ width: 390, height: 844 });
+await gotoPath('Notes');
+await page.locator('#mobileFoldersBtn').click();
+await shot('mobile-dark');
 
 await browser.close();
 console.log('done →', OUT);

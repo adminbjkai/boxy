@@ -38,7 +38,7 @@ You are a UI/UX specialist reviewing Boxy, a pure file upload/sharing web app wi
 ## Constraints
 - Must work with vanilla JS (no React/Vue)
 - Must use CSS variables for theming
-- Must maintain single-file architecture
+- Must maintain small embedded-asset architecture
 - Keep bundle size minimal
 
 ## Output Format

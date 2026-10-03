@@ -1,7 +1,7 @@
 # Boxy UI Walkthrough
 
 > Current UI screenshots live in `fern/assets/` (embedded in the docs site). The flows below
-> describe the current (July 2026) UI. Regenerate with `docs/capture-fern-screenshots.mjs`.
+> describe the current (October 2026, v1.6.0) UI. Regenerate with `docs/capture-fern-screenshots.mjs`.
 
 ---
 
@@ -9,16 +9,12 @@
 
 The app is a single-page file manager with three persistent regions:
 
-```
-┌─────────────────────────────────────────────────────┐
-│  nav-bar: breadcrumb · path bar · meta count · icons │
-├──────────────┬──────────────────────────────────────┤
-│  sidebar     │  toolbar (view · zoom · upload · …)  │
-│  (folder     │  ─────────────────────────────────── │
-│   tree)      │  file grid / list view               │
-│              │                                       │
-│              │  (drop zone when empty)               │
-└──────────────┴──────────────────────────────────────┘
+```text
+Header: Boxy · live status · Docs · theme
+Sidebar: folder tools · Quick access · folder tree · root storage totals
+Workspace: folder heading/totals · Pin folder · Refresh
+Toolbar: filter/type/sort · view/selection/help/zoom · upload/create
+Upload strip · breadcrumbs/path/count · filter summary · files
 ```
 
 ---
@@ -30,7 +26,7 @@ The app is a single-page file manager with three persistent regions:
   directly (useful for deep folder trees).
 - **Item count** — "N items" reflects the filtered view.
 - **Docs button** — book icon labelled "Docs" in the header; opens the documentation site
-  (docs.boxy.bjk.ai) in a new tab.
+  (GitHub repository documentation) in a new tab.
 - **Theme toggle** — sun/moon icon; persists in `localStorage`.
 - **Global search** — magnifier icon opens a full-screen search overlay; results are recursive.
 
@@ -145,11 +141,11 @@ yml, sql, m3u, sh, go, rb, php, xml`) to open the editor modal.
 
 - **Syntax highlighting:** Prism.js highlights the file based on its extension.
 - **Rendered Markdown preview:** `.md` files have a toggle to switch between raw edit and a
-  rendered HTML preview (via marked.js).
+  rendered HTML preview (marked.js, sanitized with DOMPurify).
 - **Autosave:** edits are auto-saved with a 2-second debounce; a status indicator shows
   "Saving…" / "Saved".
 - **Manual save:** Ctrl/Cmd+S saves immediately.
-- **Close:** Esc or the × button.
+- **Close:** Esc or the × button flushes pending changes; failed saves keep the editor open.
 
 ---
 
@@ -227,3 +223,17 @@ Docs-site screenshots live in `fern/assets/`. To regenerate against the current 
    ```bash
    node docs/capture-fern-screenshots.mjs
    ```
+
+## Workspace controls (v1.6)
+
+The heading names the current folder and summarizes its direct files, subfolders, and file bytes.
+Refresh reloads the listing, folder tree, and root storage totals. Pin folder adds the current
+folder to Quick access (up to 12 folders, local to the browser). Pins persist and synchronize
+across tabs; the × control removes one. The root cannot be pinned.
+
+On small screens, Folders opens the navigation panel. Choosing a folder closes it. The compact
+upload strip supports all existing picker, drop, and clipboard routes. Name/type/column filters
+show a summary and a Clear filters action; zero matches differs from an empty folder.
+
+Editor closing flushes unsaved changes. A failed save leaves the editor open with its content
+and an error. Markdown previews are sanitized; scripts and unsafe links are removed.

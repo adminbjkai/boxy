@@ -9,40 +9,18 @@ alwaysApply: false
 ## Tech Stack
 - Vanilla JavaScript (no frameworks)
 - CSS variables for theming
-- CSS embedded in `static/index.html` (single-file frontend)
-- JS remains in `static/index.html`
+- CSS in `static/app.css` (embedded in the binary)
+- JS lives in `static/app.js`
 
 ## CSS Architecture
 
 ### Theme Variables
-The app is **dark-mode-first**: `:root` (and `[data-theme="dark"]`) holds the dark palette;
-`[data-theme="light"]` overrides to the light palette.
+The app is **dark-mode-first**: JavaScript chooses dark by default. `:root` holds the light palette and
+`[data-theme="dark"]` overrides it.
 
 ```css
-:root,
-[data-theme="dark"] {
-    --bg: #161719;
-    --bg-secondary: #212327;
-    --bg-tertiary: #2b2f35;
-    --border: #343944;
-    --text: #f4f2ee;
-    --text-secondary: #a2a5ad;
-    --accent: #2f6df6;
-    --accent-hover: #2a61d9;
-    --danger: #ff3b30;
-    --success: #34c759;
-    --shadow: rgba(0,0,0,0.08);
-    --transition: 0.2s ease;
-}
-
-[data-theme="light"] {
-    --bg: #f3f1ed;
-    --bg-secondary: #ffffff;
-    --bg-tertiary: #ece9e3;
-    --border: #d8d2c9;
-    --text: #1a1a1a;
-    --text-secondary: #6d6d6d;
-}
+:root { --bg: #f4f3ed; --text: #202e2e; --accent: #23786b; }
+[data-theme="dark"] { --bg: #11191c; --text: #e5eeea; --accent: #80cdb5; }
 ```
 Also defined as tokens (use these instead of hardcoded values):
 `--radius-{sm,md,lg,xl}`, motion (`--ease`, `--motion`, `--motion-fast`),
@@ -204,7 +182,7 @@ const iconMap = {
 
 ## Rules
 1. No JS frameworks; only the vendored libs under `static/vendor/` (Prism.js, marked.js) — don't add more
-2. Use CSS variables for all colors (defined in the `<style>` block of `static/index.html`)
+2. Use CSS variables for all colors (defined in `static/app.css`)
 3. Always escape user content (XSS)
 4. Auto-reconnect WebSocket on disconnect
 5. Stagger animations for visual polish

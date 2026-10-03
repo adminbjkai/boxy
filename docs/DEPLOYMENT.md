@@ -9,16 +9,12 @@ Internet ──HTTPS──▶ nginx (boxy.bjk.ai, :443) ──proxy──▶ 127
 ```
 
 ## Build & restart (the core loop)
-The frontend (`static/index.html`) is embedded into the binary at compile time, so **any change to
+The frontend (`static/index.html`, `static/app.css`, `static/app.js`) is embedded into the binary at compile time, so **any change to
 the backend or the frontend requires a rebuild and restart**:
 ```bash
-cargo build --release
-sudo systemctl restart boxy
-systemctl is-active boxy
-curl -s http://127.0.0.1:8086/api/health     # {"ok":true}
-curl -I  https://boxy.bjk.ai
+./scripts/deploy.sh
 ```
-Tip: keep a rollback copy before restarting — `cp target/release/boxy target/release/boxy.bak`.
+The script preserves the actual running executable as a rollback binary in `/tmp/boxy-deploy-*`, builds with two jobs by default (`BOX_BUILD_JOBS` overrides), verifies local/public health and the UI version, and restores the old binary on restart/verification failure. Keep the reported backup path until the release is verified.
 
 ## systemd unit
 `/etc/systemd/system/boxy.service` runs `/apps/boxy/target/release/boxy` as user `bjkai` with
@@ -59,7 +55,11 @@ docker compose up --build
 docker build -t boxy . && docker run -p 8086:8086 -v $(pwd)/uploads:/app/uploads boxy
 ```
 
-## Companion services (added 2026-07-18)
+## Companion services and current state
+
+Checked October 3, 2026: the app and API are active. The docs hostname does not resolve,
+and `boxy-docs.service` and its nginx vhost are absent. The app Docs button links to
+GitHub documentation. The following docs setup is historical, retained for restoration:
 
 - **docs.boxy.bjk.ai** — the documentation site. `boxy-docs.service` runs
   `npx fern-api docs dev --port 3901 --backend-port 3911` (Fern preview server,

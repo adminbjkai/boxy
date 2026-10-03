@@ -12,11 +12,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Format
+        run: cargo fmt --check
       - name: Check
         run: cargo check --locked
       - name: Clippy
         run: cargo clippy --locked -- -D warnings
-        continue-on-error: true
       - name: Test
         run: cargo test --locked
 
@@ -30,3 +31,22 @@ jobs:
           NPM=$(node -p "require('./package.json').version")
           echo "Cargo.toml=$CARGO package.json=$NPM"
           test "$CARGO" = "$NPM"
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-traces
+          path: test-results/

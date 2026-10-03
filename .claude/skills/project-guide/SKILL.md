@@ -8,7 +8,7 @@ alwaysApply: false
 
 ## Tech Stack
 - **Backend**: Rust + Actix-web 4
-- **Frontend**: Vanilla JS + HTML + CSS (all embedded in one file)
+- **Frontend**: Vanilla JS + HTML + CSS (embedded assets, split by concern)
 - **Real-time**: WebSocket broadcast
 - **Tests**: Playwright e2e
 - **Deploy**: native systemd + nginx (Docker available as portable alternative)
@@ -18,7 +18,7 @@ alwaysApply: false
 boxy/
 ├── src/main.rs              # Backend (all handlers)
 ├── static/
-│   ├── index.html           # Main app (HTML + CSS + JS, single file)
+│   ├── index.html           # Main app markup (CSS: app.css; JS: app.js)
 │   ├── favicon.ico
 │   └── vendor/              # Vendored Prism.js, marked.js, fonts (offline)
 ├── fern/                    # Docs site (docs.boxy.bjk.ai): docs.yml, OpenAPI, pages
@@ -33,7 +33,7 @@ boxy/
 ## Backend Patterns (src/main.rs)
 
 ### Architecture
-- **Single-file design** - all handlers in main.rs
+- **Single-file design** - API handlers in main.rs, asset/archive helpers in focused modules
 - **AppState** holds: `broadcaster` (tokio broadcast sender), `upload_dir` (PathBuf),
   `thumb_dir` (PathBuf, thumbnail cache), `max_upload_bytes` (usize)
 - **Settings from env** (main.rs `Settings::from_env`): `BOX_PORT` (default 8086),
@@ -70,7 +70,7 @@ async fn handler(
 ### WebSocket Broadcasting
 ```rust
 // Broadcast all file mutations; clients receive JSON {action, path} on /ws
-broadcast_update(&state.broadcaster, "upload", &path);
+broadcast_update(&state, "upload", &path);
 // Actions: upload, folder, rename, move, delete, edit, copy
 ```
 
@@ -89,8 +89,8 @@ docker compose up --build   # Docker deployment
 ```
 
 ## Rules
-1. Keep backend in single main.rs (no module splitting unless >1000 lines)
-2. HTML, CSS, and JS all live in `static/index.html` (CSS in the `<style>` block near the top)
+1. Keep API handlers in main.rs and shared archive/asset operations in their focused modules
+2. Markup lives in `static/index.html`, CSS in `static/app.css`, and JS in `static/app.js`; all are embedded in the binary
 3. Always sanitize paths before filesystem access
 4. Broadcast all mutations via WebSocket
 5. Use env vars for config with sensible defaults

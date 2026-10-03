@@ -41,7 +41,7 @@ host has full read/write access. See the [Security Model](/documentation/self-ho
 | Status | Meaning |
 |--------|---------|
 | `200` | Success (an empty search query also returns `200` with `[]`) |
-| `400` | Malformed request — bad JSON, missing `Content-Type`, over-long search query (> 256 chars), non-editable extension or non-UTF-8 content on `/api/content`, missing `path` on `/api/download-zip` |
+| `400` | Malformed request — bad JSON, missing `Content-Type`, over-long search query (> 256 UTF-8 bytes), non-editable extension or non-UTF-8 content on `/api/content`, missing `path` on `/api/download-zip` |
 | `403` | Path escapes the upload root (symlink traversal) or is otherwise invalid |
 | `404` | File or folder not found — including `POST /api/content` on a nonexistent file, and non-raster files on `/api/thumb` |
 | `409` | Name collision on `/api/rename`, `/api/move`, or `/api/newfile` |

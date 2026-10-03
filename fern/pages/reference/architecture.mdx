@@ -10,7 +10,7 @@ lives on disk, and per-browser UI preferences live in `localStorage`.
 ```mermaid
 flowchart TB
     subgraph Browser
-        UI["static/index.html<br/>HTML + CSS + vanilla JS"]
+        UI["index.html + app.css + app.js<br/>Embedded vanilla frontend"]
     end
     subgraph Server["Actix-web binary (src/main.rs)"]
         H["HTTP handlers<br/>one async fn per endpoint"]
@@ -29,7 +29,8 @@ flowchart TB
 
 <AccordionGroup>
 <Accordion title="Web UI — static/index.html">
-A single ~5,300-line file containing all HTML, CSS, and vanilla JS. It implements the
+Markup, CSS, and vanilla JS are separated into `static/index.html`, `static/app.css`,
+and `static/app.js`, all embedded at compile time. It implements the
 sidebar folder tree, grid/list browser, drag-and-drop upload/move, context menu, inline
 rename, multi-select with bulk ZIP download, search/filter/sort, the text editor with
 syntax highlighting and Markdown preview, the image lightbox, and URL hash navigation.
@@ -38,7 +39,7 @@ Dark-mode-first theme built on CSS custom-property tokens. Embedded into the bin
 under `static/vendor/`.
 </Accordion>
 <Accordion title="HTTP API — src/main.rs">
-A single ~1,700-line file: one async handler per endpoint, listed in the
+API handlers in `src/main.rs`, with focused `assets.rs` and `archive.rs` helpers: one async handler per endpoint, listed in the
 [API Reference](/api-reference). All mutating handlers broadcast a WebSocket event after
 succeeding. Path safety is centralised in `clean_relative_path` + `resolve_path_safe`
 (see [Security Model](/documentation/self-hosting/security-model)).
@@ -70,9 +71,13 @@ are cached in a separate directory (`BOX_THUMB_DIR`) outside the upload root.
 ```text
 boxy/
 ├── src/
-│   └── main.rs            # entire backend
+│   ├── main.rs            # API and configuration
+│   ├── assets.rs          # embedded asset allowlist
+│   └── archive.rs         # bounded disk-backed ZIPs
 ├── static/
-│   ├── index.html         # entire frontend
+│   ├── index.html         # markup
+│   ├── app.css            # theme and layout
+│   ├── app.js             # behavior
 │   └── vendor/            # Prism.js, marked.js, fonts
 ├── fern/                  # this documentation site
 ├── docs/                  # internal docs
@@ -92,3 +97,14 @@ boxy/
 | `docs/` | Internal docs: architecture, deployment, testing, audits |
 | `scripts/` | `bump-version.sh`, `deploy.sh` |
 | `tests/` | Playwright e2e suite |
+
+## Resource and correctness bounds
+
+File downloads stream with range/conditional requests. ZIP source files copy through a buffer
+into anonymous temporary files, with one archive builder and no nested symlink traversal.
+Two thumbnail decoders share dimension/allocation limits. Storage scans share a five-second
+cache invalidated by each mutation. HTTP workers are capped at four.
+
+The browser aborts superseded listing/search requests and verifies their generations. Live
+refreshes coalesce, unchanged listings avoid DOM replacement, and hidden tabs defer updates.
+Editor saves run in order and pending content is flushed before closing. Markdown is sanitized.

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Boxy API
-  version: 1.5.1
+  version: 1.6.0
   description: |
     REST + WebSocket API for Boxy, the self-hosted file sharing app.
 
@@ -115,7 +115,7 @@ paths:
               example:
                 - { "name": "report.pdf", "path": "docs/report.pdf", "is_dir": false, "size": 51200, "modified": 1752810000 }
         "400":
-          description: Query longer than 256 characters
+          description: Query longer than 256 UTF-8 bytes
 
   /api/folders:
     get:
@@ -139,7 +139,7 @@ paths:
       operationId: getStats
       tags: [Browse]
       summary: Recursive directory stats
-      description: Recursive totals for a directory (the upload root if `path` is omitted). Powers the sidebar storage footer.
+      description: Recursive totals for a directory (the upload root if `path` is omitted). Shared cache expires after five seconds and is invalidated by app mutations. Powers the sidebar storage footer.
       parameters:
         - $ref: "#/components/parameters/PathParam"
       responses:
@@ -164,8 +164,10 @@ paths:
         uploads. Name collisions are de-duplicated server-side (`name`, `name_1`, …).
         Original modification times are preserved when the client sends them.
         Payload size is limited by the reverse proxy's `client_max_body_size`
-        (500 MB on the reference deployment); the app itself does not reject
-        oversized bodies.
+        (500 MB on the reference deployment) and by BOX_MAX_UPLOAD_BYTES (default
+        100 GiB; 0 means unlimited). App-side overflow returns 413 and removes partial files.
+        Optional original_name text parts precede their file part to preserve quotes/newlines
+        escaped by browser multipart headers (UTF-8, at most 4096 bytes).
       parameters:
         - $ref: "#/components/parameters/PathParam"
       requestBody:
@@ -175,6 +177,12 @@ paths:
             schema:
               type: object
               properties:
+                original_name:
+                  type: string
+                  description: Optional exact filename for the next file part; send before that part
+                mtimes:
+                  type: string
+                  description: JSON map of original filenames to millisecond timestamps; at most 1 MiB
                 file:
                   type: array
                   description: One or more file parts
@@ -203,7 +211,8 @@ paths:
         Streams a file. With `download=true` the response carries a
         `Content-Disposition: attachment` header; otherwise the file is served inline
         (for previews) with a content type inferred from its extension.
-        `X-Content-Type-Options: nosniff` is always set.
+        `X-Content-Type-Options: nosniff` and a sandbox CSP are always set.
+        Supports Range requests (206), conditional requests (304), and streamed bodies.
       parameters:
         - $ref: "#/components/parameters/RequiredPathParam"
         - name: download
@@ -313,7 +322,7 @@ paths:
               properties:
                 name:
                   type: string
-                  description: New folder name (≤255 chars; `/ \ NUL` stripped)
+                  description: New folder name (≤255 UTF-8 bytes; `/ \ NUL` stripped)
                 path:
                   type: string
                   description: Parent directory (upload root if omitted)
@@ -616,11 +625,14 @@ components:
         size:
           type: integer
           format: int64
-          description: Size in bytes (0 for directories)
+          description: Filesystem metadata size in bytes; directory sizes are not recursive totals
         modified:
           type: integer
           format: int64
           description: Unix timestamp (seconds) of last modification
+        version:
+          type: string
+          description: Opaque high-resolution metadata token used for thumbnail and listing freshness
     SearchResult:
       type: object
       description: One search hit, with its full relative path

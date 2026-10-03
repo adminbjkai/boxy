@@ -1,14 +1,25 @@
+mod archive;
+mod assets;
+
+use actix_files::NamedFile;
 use actix_multipart::Multipart;
+use actix_web::http::header::{ContentDisposition, DispositionParam, DispositionType};
 use actix_web::{
     middleware::{Compress, Logger},
     web, App, HttpRequest, HttpResponse, HttpServer, Result,
 };
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
+use std::time::{Duration, Instant};
 use tokio::io::AsyncWriteExt;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, Semaphore};
 
 const DEFAULT_UPLOAD_DIR: &str = "./uploads";
 const DEFAULT_THUMB_DIR: &str = "./thumbs";
@@ -42,6 +53,8 @@ struct FileEntry {
     is_dir: bool,
     size: u64,
     modified: u64,
+    #[serde(default)]
+    version: String,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -51,6 +64,7 @@ struct WsMessage {
 }
 
 type Broadcaster = broadcast::Sender<String>;
+type StatsCache = Arc<tokio::sync::Mutex<HashMap<PathBuf, (Instant, u64, StatsResult)>>>;
 
 #[derive(Clone)]
 struct AppState {
@@ -58,6 +72,10 @@ struct AppState {
     upload_dir: PathBuf,
     thumb_dir: PathBuf,
     max_upload_bytes: usize,
+    thumb_slots: Arc<Semaphore>,
+    archive_slots: Arc<Semaphore>,
+    revision: Arc<AtomicU64>,
+    stats_cache: StatsCache,
 }
 
 struct Settings {
@@ -91,13 +109,14 @@ impl Settings {
     }
 }
 
-fn broadcast_update(tx: &Broadcaster, action: &str, path: &str) {
+fn broadcast_update(state: &AppState, action: &str, path: &str) {
+    state.revision.fetch_add(1, Ordering::Relaxed);
     let msg = serde_json::to_string(&WsMessage {
         action: action.to_string(),
         path: path.to_string(),
     })
     .unwrap_or_default();
-    let _ = tx.send(msg);
+    let _ = state.broadcaster.send(msg);
 }
 
 async fn ws_handler(
@@ -233,6 +252,12 @@ async fn list_files(
             is_dir: meta.is_dir(),
             size: meta.len(),
             modified,
+            version: meta
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| format!("{}-{}", d.as_nanos(), meta.len()))
+                .unwrap_or_default(),
         });
     }
 
@@ -256,11 +281,29 @@ async fn upload_file(
     tokio::fs::create_dir_all(&base_path).await?;
 
     let mut uploaded = Vec::new();
+    let mut original_name: Option<String> = None;
     let mut mtimes: std::collections::HashMap<String, u64> = std::collections::HashMap::new();
 
     while let Some(item) = payload.next().await {
         let mut field = item?;
         let field_name = field.name().map(|s| s.to_string()).unwrap_or_default();
+
+        // Browsers percent-escape quotes/newlines in multipart filename headers.
+        // An optional text part applies only to the immediately following file.
+        if field_name == "original_name" {
+            let mut bytes = Vec::new();
+            while let Some(chunk) = field.next().await {
+                bytes.extend_from_slice(&chunk?);
+                if bytes.len() > 4096 {
+                    return Err(actix_web::error::ErrorBadRequest("Original name too long"));
+                }
+            }
+            original_name = Some(
+                String::from_utf8(bytes)
+                    .map_err(|_| actix_web::error::ErrorBadRequest("Invalid filename encoding"))?,
+            );
+            continue;
+        }
 
         // Check if this is the mtimes metadata field
         if field_name == "mtimes" {
@@ -281,14 +324,25 @@ async fn upload_file(
             continue;
         }
 
-        let filename = field
-            .content_disposition()
-            .and_then(|cd| cd.get_filename().map(|s| s.to_string()))
-            .unwrap_or_else(|| format!("file_{}", uuid::Uuid::new_v4()));
+        let filename = original_name.take().unwrap_or_else(|| {
+            field
+                .content_disposition()
+                .and_then(|cd| cd.get_filename().map(|s| s.to_string()))
+                .unwrap_or_else(|| format!("file_{}", uuid::Uuid::new_v4()))
+        });
 
         // Support nested paths for folder uploads - clean each segment
         let clean_path = clean_relative_path(&filename);
-        let filepath = base_path.join(&clean_path);
+        if clean_path.as_os_str().is_empty()
+            || clean_path
+                .components()
+                .any(|part| !valid_name_len(&part.as_os_str().to_string_lossy()))
+        {
+            return Err(actix_web::error::ErrorBadRequest("Invalid filename"));
+        }
+        let clean_name = clean_path.to_string_lossy().into_owned();
+        let filepath = resolve_path_safe(&base_path, Some(&clean_name))
+            .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid upload path"))?;
 
         // Create parent directories if needed (for folder uploads)
         if let Some(parent) = filepath.parent() {
@@ -346,7 +400,7 @@ async fn upload_file(
             .map(|p| format!("{}/{}", p, final_name))
             .unwrap_or(final_name.clone());
 
-        broadcast_update(&state.broadcaster, "upload", &rel_path);
+        broadcast_update(&state, "upload", &rel_path);
         uploaded.push(final_name);
     }
 
@@ -415,7 +469,7 @@ async fn duplicate_item(
         .unwrap_or(&dest)
         .to_string_lossy()
         .replace('\\', "/");
-    broadcast_update(&state.broadcaster, "upload", &rel);
+    broadcast_update(&state, "upload", &rel);
     Ok(HttpResponse::Ok().json(serde_json::json!({ "path": rel })))
 }
 
@@ -457,7 +511,16 @@ fn thumb_cache_key(rel_path: &str, mtime_secs: u64) -> String {
 /// Decode, downscale (never upscale) and JPEG-encode an image. Runs on a blocking
 /// thread; returns None on any decode/encode failure so callers can 404.
 fn generate_thumb(src: &Path) -> Option<Vec<u8>> {
-    let img = image::open(src).ok()?;
+    let mut reader = image::ImageReader::open(src)
+        .ok()?
+        .with_guessed_format()
+        .ok()?;
+    let mut limits = image::Limits::default();
+    limits.max_alloc = Some(128 * 1024 * 1024);
+    limits.max_image_width = Some(16384);
+    limits.max_image_height = Some(16384);
+    reader.limits(limits);
+    let img = reader.decode().ok()?;
     let (w, h) = (img.width(), img.height());
     let longest = w.max(h);
     let resized = if longest > THUMB_MAX_EDGE {
@@ -506,13 +569,14 @@ async fn get_thumb(
         .modified()
         .ok()
         .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0)
+        ^ meta.len();
 
     let rel = clean_relative_path(path)
         .to_string_lossy()
         .replace('\\', "/");
-    let cache_key = thumb_cache_key(&rel, mtime_secs);
+    let cache_key = thumb_cache_key(&format!("{}:{}", rel, meta.len()), mtime_secs);
     let cache_path = state.thumb_dir.join(format!("{}.jpg", cache_key));
 
     if let Ok(bytes) = tokio::fs::read(&cache_path).await {
@@ -522,9 +586,23 @@ async fn get_thumb(
             .body(bytes));
     }
 
+    let permit = state
+        .thumb_slots
+        .clone()
+        .acquire_owned()
+        .await
+        .map_err(actix_web::error::ErrorInternalServerError)?;
+    // Another request may have populated the same cache while we waited.
+    if let Ok(bytes) = tokio::fs::read(&cache_path).await {
+        return Ok(HttpResponse::Ok()
+            .content_type("image/jpeg")
+            .insert_header(("Cache-Control", "private, max-age=86400"))
+            .body(bytes));
+    }
     let src = filepath.clone();
     let cache_path_write = cache_path.clone();
     let bytes = tokio::task::spawn_blocking(move || {
+        let _permit = permit;
         let buf = generate_thumb(&src)?;
         let _ = std::fs::write(&cache_path_write, &buf);
         Some(buf)
@@ -544,7 +622,7 @@ async fn get_thumb(
 
 // ---- stats ----
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 struct StatsResult {
     files: u64,
     folders: u64,
@@ -562,16 +640,30 @@ async fn get_stats(
         return Err(actix_web::error::ErrorNotFound("Directory not found"));
     }
 
+    let revision = state.revision.load(Ordering::Relaxed);
+    // Serialize recursive scans and share short-lived results across connected clients.
+    let mut cache = state.stats_cache.lock().await;
+    if let Some((time, cached_revision, result)) = cache.get(&base_path) {
+        if *cached_revision == revision && time.elapsed() < Duration::from_secs(5) {
+            return Ok(HttpResponse::Ok().json(result));
+        }
+    }
+    let cache_path = base_path.clone();
     let mut files = 0u64;
     let mut folders = 0u64;
     let mut bytes = 0u64;
     collect_stats(base_path, &mut files, &mut folders, &mut bytes, 0).await;
 
-    Ok(HttpResponse::Ok().json(StatsResult {
+    let result = StatsResult {
         files,
         folders,
         bytes,
-    }))
+    };
+    if cache.len() >= 64 {
+        cache.clear();
+    }
+    cache.insert(cache_path, (Instant::now(), revision, result.clone()));
+    Ok(HttpResponse::Ok().json(result))
 }
 
 #[async_recursion::async_recursion]
@@ -701,7 +793,7 @@ async fn copy_item(body: web::Json<CopyReq>, state: web::Data<AppState>) -> Resu
         .await
         .map_err(actix_web::Error::from)?;
 
-    broadcast_update(&state.broadcaster, "copy", &new_path);
+    broadcast_update(&state, "copy", &new_path);
     Ok(HttpResponse::Ok().json(serde_json::json!({"ok": true, "path": new_path})))
 }
 
@@ -735,7 +827,7 @@ async fn create_folder(
         .map(|p| format!("{}/{}", p, safe_name))
         .unwrap_or(safe_name);
 
-    broadcast_update(&state.broadcaster, "folder", &rel_path);
+    broadcast_update(&state, "folder", &rel_path);
 
     Ok(HttpResponse::Ok().json(serde_json::json!({"success": true})))
 }
@@ -778,7 +870,7 @@ async fn rename_item(
 
     tokio::fs::rename(&old_path, &new_path).await?;
 
-    broadcast_update(&state.broadcaster, "rename", &body.path);
+    broadcast_update(&state, "rename", &body.path);
 
     Ok(HttpResponse::Ok().json(serde_json::json!({"success": true, "new_name": safe_name})))
 }
@@ -813,7 +905,7 @@ async fn move_item(body: web::Json<MoveReq>, state: web::Data<AppState>) -> Resu
     tokio::fs::create_dir_all(&dest_base).await?;
     tokio::fs::rename(&src_path, &dest_path).await?;
 
-    broadcast_update(&state.broadcaster, "move", &body.path);
+    broadcast_update(&state, "move", &body.path);
 
     Ok(HttpResponse::Ok().json(serde_json::json!({"success": true})))
 }
@@ -968,7 +1060,7 @@ async fn delete_item(
         } else {
             tokio::fs::remove_file(&filepath).await?;
         }
-        broadcast_update(&state.broadcaster, "delete", &body.path);
+        broadcast_update(&state, "delete", &body.path);
     }
 
     Ok(HttpResponse::Ok().json(serde_json::json!({"success": true})))
@@ -1037,7 +1129,7 @@ async fn save_content(
 
     tokio::fs::write(&filepath, &body.content).await?;
 
-    broadcast_update(&state.broadcaster, "edit", &body.path);
+    broadcast_update(&state, "edit", &body.path);
 
     Ok(HttpResponse::Ok().json(serde_json::json!({"success": true})))
 }
@@ -1084,12 +1176,13 @@ async fn create_new_file(
         .map(|p| format!("{}/{}", p, filename))
         .unwrap_or(filename.clone());
 
-    broadcast_update(&state.broadcaster, "upload", &rel_path);
+    broadcast_update(&state, "upload", &rel_path);
 
     Ok(HttpResponse::Ok().json(serde_json::json!({"success": true, "path": rel_path})))
 }
 
 async fn download_file(
+    req: HttpRequest,
     state: web::Data<AppState>,
     query: web::Query<PathQuery>,
 ) -> Result<HttpResponse> {
@@ -1108,75 +1201,38 @@ async fn download_file(
     let filename = filepath
         .file_name()
         .and_then(|n| n.to_str())
-        .unwrap_or("download");
-
-    // Get correct MIME type - override for common previewable types
-    let ext = filepath.extension().and_then(|e| e.to_str()).unwrap_or("");
-    let content_type: String = match ext.to_lowercase().as_str() {
-        "pdf" => "application/pdf".to_string(),
-        "mp4" => "video/mp4".to_string(),
-        "webm" => "video/webm".to_string(),
-        "mp3" => "audio/mpeg".to_string(),
-        "wav" => "audio/wav".to_string(),
-        "ogg" => "audio/ogg".to_string(),
-        "txt" => "text/plain; charset=utf-8".to_string(),
-        "html" | "htm" => "text/html; charset=utf-8".to_string(),
-        "css" => "text/css; charset=utf-8".to_string(),
-        "js" => "text/javascript; charset=utf-8".to_string(),
-        "json" => "application/json; charset=utf-8".to_string(),
-        "xml" => "application/xml; charset=utf-8".to_string(),
-        "svg" => "image/svg+xml".to_string(),
-        "png" => "image/png".to_string(),
-        "jpg" | "jpeg" => "image/jpeg".to_string(),
-        "gif" => "image/gif".to_string(),
-        "webp" => "image/webp".to_string(),
-        "ico" => "image/x-icon".to_string(),
-        _ => mime_guess::from_path(&filepath)
-            .first_or_octet_stream()
-            .essence_str()
-            .to_string(),
-    };
-
-    let file_content = tokio::fs::read(&filepath).await?;
-    let file_size = file_content.len();
-
-    let mut response = HttpResponse::Ok();
-
-    // Set Content-Type
-    response.insert_header(("Content-Type", content_type));
-
-    // Set Content-Length
-    response.insert_header(("Content-Length", file_size.to_string()));
-
-    // Prevent MIME sniffing - browser must use our Content-Type
-    response.insert_header(("X-Content-Type-Options", "nosniff"));
-
-    // Cache for 1 hour for preview, helps with repeated views
-    response.insert_header(("Cache-Control", "private, max-age=3600"));
-
-    // Set Content-Disposition: attachment for download, inline for preview
-    let force_download = query
-        .download
-        .as_deref()
-        .map(|v| v == "true" || v == "1")
-        .unwrap_or(false);
-    if force_download {
-        response.insert_header((
-            "Content-Disposition",
-            format!("attachment; filename=\"{}\"", filename.replace('"', "\\\"")),
-        ));
-    } else {
-        // Explicit inline directive for preview - required by Edge for PDF viewing
-        response.insert_header((
-            "Content-Disposition",
-            format!("inline; filename=\"{}\"", filename.replace('"', "\\\"")),
-        ));
-    }
-
-    Ok(response.body(file_content))
+        .unwrap_or("download")
+        .to_owned();
+    let force_download = matches!(query.download.as_deref(), Some("true" | "1"));
+    let file = NamedFile::open_async(filepath)
+        .await?
+        .set_content_disposition(ContentDisposition {
+            disposition: if force_download {
+                DispositionType::Attachment
+            } else {
+                DispositionType::Inline
+            },
+            parameters: vec![DispositionParam::Filename(filename)],
+        });
+    let mut response = file.into_response(&req);
+    response.headers_mut().insert(
+        actix_web::http::header::CACHE_CONTROL,
+        actix_web::http::header::HeaderValue::from_static("private, no-cache"),
+    );
+    response.headers_mut().insert(
+        actix_web::http::header::X_CONTENT_TYPE_OPTIONS,
+        actix_web::http::header::HeaderValue::from_static("nosniff"),
+    );
+    // Uploaded active documents are isolated from the app origin when opened directly.
+    response.headers_mut().insert(
+        actix_web::http::header::CONTENT_SECURITY_POLICY,
+        actix_web::http::header::HeaderValue::from_static("sandbox"),
+    );
+    Ok(response)
 }
 
 async fn download_zip(
+    req: HttpRequest,
     state: web::Data<AppState>,
     query: web::Query<PathQuery>,
 ) -> Result<HttpResponse> {
@@ -1184,72 +1240,19 @@ async fn download_zip(
         .path
         .as_ref()
         .ok_or_else(|| actix_web::error::ErrorBadRequest("path required"))?;
-
     let dirpath = resolve_path_safe(&state.upload_dir, Some(path))
         .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
-
-    if !dirpath.exists() || !dirpath.is_dir() {
+    if !dirpath.is_dir() {
         return Err(actix_web::error::ErrorNotFound("Directory not found"));
     }
-
-    let dirname = dirpath
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("archive")
-        .to_string();
-
-    let buf = tokio::task::spawn_blocking(move || -> std::io::Result<Vec<u8>> {
-        let cursor = std::io::Cursor::new(Vec::new());
-        let mut zip = zip::ZipWriter::new(cursor);
-        let options = zip::write::SimpleFileOptions::default()
-            .compression_method(zip::CompressionMethod::Deflated);
-
-        fn add_dir(
-            zip: &mut zip::ZipWriter<std::io::Cursor<Vec<u8>>>,
-            base: &Path,
-            dir: &Path,
-            options: zip::write::SimpleFileOptions,
-            depth: usize,
-        ) -> std::io::Result<()> {
-            if depth > MAX_RECURSION_DEPTH {
-                return Ok(());
-            }
-            for entry in std::fs::read_dir(dir)? {
-                let entry = entry?;
-                let entry_path = entry.path();
-                let rel = entry_path.strip_prefix(base).unwrap_or(&entry_path);
-                let rel_str = rel.to_string_lossy().replace('\\', "/");
-                if entry_path.is_dir() {
-                    zip.add_directory(&rel_str, options)?;
-                    add_dir(zip, base, &entry_path, options, depth + 1)?;
-                } else {
-                    zip.start_file(&rel_str, options)?;
-                    let data = std::fs::read(&entry_path)?;
-                    std::io::Write::write_all(zip, &data)?;
-                }
-            }
-            Ok(())
-        }
-
-        add_dir(&mut zip, &dirpath, &dirpath, options, 0)?;
-        let cursor = zip.finish()?;
-        Ok(cursor.into_inner())
-    })
-    .await
-    .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?
-    .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?;
-
-    Ok(HttpResponse::Ok()
-        .insert_header(("Content-Type", "application/zip"))
-        .insert_header((
-            "Content-Disposition",
-            format!(
-                "attachment; filename=\"{}.zip\"",
-                dirname.replace('"', "\\\"")
-            ),
-        ))
-        .insert_header(("Content-Length", buf.len().to_string()))
-        .body(buf))
+    let name = format!(
+        "{}.zip",
+        dirpath
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("archive")
+    );
+    archive::respond(req, state.archive_slots.clone(), vec![dirpath], name, true).await
 }
 
 #[derive(Deserialize)]
@@ -1258,79 +1261,44 @@ struct ZipMultiReq {
 }
 
 async fn download_zip_multi(
+    req: HttpRequest,
     state: web::Data<AppState>,
     body: web::Json<ZipMultiReq>,
 ) -> Result<HttpResponse> {
-    if body.paths.is_empty() {
-        return Err(actix_web::error::ErrorBadRequest("paths required"));
+    if body.paths.is_empty() || body.paths.len() > 1000 {
+        return Err(actix_web::error::ErrorBadRequest(
+            "Select between 1 and 1000 paths",
+        ));
     }
-
-    let upload_dir = state.upload_dir.clone();
-    let paths: Vec<PathBuf> = body
-        .paths
+    let mut paths = Vec::new();
+    for path in &body.paths {
+        let resolved = resolve_path_safe(&state.upload_dir, Some(path))
+            .ok_or_else(|| actix_web::error::ErrorForbidden("Invalid path"))?;
+        if !resolved.exists() {
+            return Err(actix_web::error::ErrorNotFound("File not found"));
+        }
+        if !paths.contains(&resolved) {
+            paths.push(resolved);
+        }
+    }
+    // A selected parent already includes its descendants.
+    let roots: Vec<_> = paths
         .iter()
-        .filter_map(|p| resolve_path_safe(&upload_dir, Some(p)))
+        .filter(|p| {
+            !paths
+                .iter()
+                .any(|other| *p != other && p.starts_with(other))
+        })
+        .cloned()
         .collect();
-
-    if paths.is_empty() {
-        return Err(actix_web::error::ErrorForbidden("No valid paths"));
-    }
-
-    let buf = tokio::task::spawn_blocking(move || -> std::io::Result<Vec<u8>> {
-        let cursor = std::io::Cursor::new(Vec::new());
-        let mut zip = zip::ZipWriter::new(cursor);
-        let options = zip::write::SimpleFileOptions::default()
-            .compression_method(zip::CompressionMethod::Deflated);
-
-        fn add_entry(
-            zip: &mut zip::ZipWriter<std::io::Cursor<Vec<u8>>>,
-            base_name: &str,
-            entry_path: &Path,
-            options: zip::write::SimpleFileOptions,
-            depth: usize,
-        ) -> std::io::Result<()> {
-            if depth > MAX_RECURSION_DEPTH {
-                return Ok(());
-            }
-            if entry_path.is_dir() {
-                zip.add_directory(base_name, options)?;
-                for child in std::fs::read_dir(entry_path)? {
-                    let child = child?;
-                    let child_name =
-                        format!("{}/{}", base_name, child.file_name().to_string_lossy());
-                    add_entry(zip, &child_name, &child.path(), options, depth + 1)?;
-                }
-            } else {
-                zip.start_file(base_name, options)?;
-                let data = std::fs::read(entry_path)?;
-                std::io::Write::write_all(zip, &data)?;
-            }
-            Ok(())
-        }
-
-        for p in &paths {
-            let name = p
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_else(|| "file".to_string());
-            add_entry(&mut zip, &name, p, options, 0)?;
-        }
-
-        let cursor = zip.finish()?;
-        Ok(cursor.into_inner())
-    })
+    archive::respond(
+        req,
+        state.archive_slots.clone(),
+        roots,
+        "selection.zip".into(),
+        false,
+    )
     .await
-    .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?
-    .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?;
-
-    Ok(HttpResponse::Ok()
-        .insert_header(("Content-Type", "application/zip"))
-        .insert_header((
-            "Content-Disposition",
-            "attachment; filename=\"selection.zip\"",
-        ))
-        .insert_header(("Content-Length", buf.len().to_string()))
-        .body(buf))
 }
 
 async fn serve_index() -> Result<HttpResponse> {
@@ -1340,54 +1308,6 @@ async fn serve_index() -> Result<HttpResponse> {
         .insert_header(("Pragma", "no-cache"))
         .insert_header(("Expires", "0"))
         .body(include_str!("../static/index.html")))
-}
-
-async fn serve_favicon() -> HttpResponse {
-    HttpResponse::Ok()
-        .content_type("image/x-icon")
-        .body(include_bytes!("../static/favicon.ico").as_ref())
-}
-
-async fn serve_vendor_prism_js() -> HttpResponse {
-    HttpResponse::Ok()
-        .content_type("application/javascript; charset=utf-8")
-        .insert_header(("Cache-Control", "public, max-age=31536000, immutable"))
-        .body(include_str!("../static/vendor/prism.min.js"))
-}
-
-async fn serve_vendor_prism_css() -> HttpResponse {
-    HttpResponse::Ok()
-        .content_type("text/css; charset=utf-8")
-        .insert_header(("Cache-Control", "public, max-age=31536000, immutable"))
-        .body(include_str!("../static/vendor/prism-theme.min.css"))
-}
-
-async fn serve_vendor_marked_js() -> HttpResponse {
-    HttpResponse::Ok()
-        .content_type("application/javascript; charset=utf-8")
-        .insert_header(("Cache-Control", "public, max-age=31536000, immutable"))
-        .body(include_str!("../static/vendor/marked.min.js"))
-}
-
-async fn serve_vendor_fonts_css() -> HttpResponse {
-    HttpResponse::Ok()
-        .content_type("text/css; charset=utf-8")
-        .insert_header(("Cache-Control", "public, max-age=31536000, immutable"))
-        .body(include_str!("../static/vendor/fonts.css"))
-}
-
-async fn serve_vendor_fraunces_woff2() -> HttpResponse {
-    HttpResponse::Ok()
-        .content_type("font/woff2")
-        .insert_header(("Cache-Control", "public, max-age=31536000, immutable"))
-        .body(include_bytes!("../static/vendor/fraunces-latin.woff2").as_ref())
-}
-
-async fn serve_vendor_space_grotesk_woff2() -> HttpResponse {
-    HttpResponse::Ok()
-        .content_type("font/woff2")
-        .insert_header(("Cache-Control", "public, max-age=31536000, immutable"))
-        .body(include_bytes!("../static/vendor/space-grotesk-latin.woff2").as_ref())
 }
 
 async fn healthcheck() -> Result<HttpResponse> {
@@ -1408,6 +1328,10 @@ async fn main() -> std::io::Result<()> {
         upload_dir: settings.upload_dir.clone(),
         thumb_dir: settings.thumb_dir.clone(),
         max_upload_bytes: settings.max_upload_bytes,
+        thumb_slots: Arc::new(Semaphore::new(2)),
+        archive_slots: Arc::new(Semaphore::new(1)),
+        revision: Arc::new(AtomicU64::new(0)),
+        stats_cache: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
     };
 
     let max_upload_bytes = settings.max_upload_bytes;
@@ -1428,25 +1352,9 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .wrap(Compress::default())
             .route("/", web::get().to(serve_index))
-            .route("/favicon.ico", web::get().to(serve_favicon))
-            .route("/vendor/prism.min.js", web::get().to(serve_vendor_prism_js))
-            .route(
-                "/vendor/prism-theme.min.css",
-                web::get().to(serve_vendor_prism_css),
-            )
-            .route(
-                "/vendor/marked.min.js",
-                web::get().to(serve_vendor_marked_js),
-            )
-            .route("/vendor/fonts.css", web::get().to(serve_vendor_fonts_css))
-            .route(
-                "/vendor/fraunces-latin.woff2",
-                web::get().to(serve_vendor_fraunces_woff2),
-            )
-            .route(
-                "/vendor/space-grotesk-latin.woff2",
-                web::get().to(serve_vendor_space_grotesk_woff2),
-            )
+            .route("/favicon.ico", web::get().to(assets::favicon))
+            .route("/assets/{name}", web::get().to(assets::app_asset))
+            .route("/vendor/{name}", web::get().to(assets::vendor_asset))
             .route("/ws", web::get().to(ws_handler))
             .route("/api/files", web::get().to(list_files))
             .route("/api/upload", web::post().to(upload_file))
@@ -1471,6 +1379,12 @@ async fn main() -> std::io::Result<()> {
             .route("/api/copy", web::post().to(copy_item))
             .route("/api/health", web::get().to(healthcheck))
     })
+    .workers(
+        std::thread::available_parallelism()
+            .map(|n| n.get().min(4))
+            .unwrap_or(2),
+    )
+    .worker_max_blocking_threads(4)
     .bind(bind)?
     .run()
     .await
@@ -1761,8 +1675,11 @@ mod tests {
         tokio::fs::remove_dir_all(&dir).await.ok();
     }
 
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn settings_max_upload_bytes_handles_zero_as_unlimited() {
+        let _guard = ENV_LOCK.lock().unwrap();
         std::env::set_var("BOX_MAX_UPLOAD_BYTES", "0");
         let settings = Settings::from_env();
         assert_eq!(settings.max_upload_bytes, usize::MAX);
@@ -1771,6 +1688,7 @@ mod tests {
 
     #[test]
     fn settings_max_upload_bytes_handles_custom_value() {
+        let _guard = ENV_LOCK.lock().unwrap();
         std::env::set_var("BOX_MAX_UPLOAD_BYTES", "1048576");
         let settings = Settings::from_env();
         assert_eq!(settings.max_upload_bytes, 1048576);

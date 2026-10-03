@@ -16,16 +16,15 @@ Internet → nginx (boxy.bjk.ai, TLS via Let's Encrypt live/bjk.ai)
 - The Dockerfile / docker-compose.yml are **not used in production** — they're
   portable-deployment artifacts only.
 - Upload cap: streaming multipart uploads enforce `BOX_MAX_UPLOAD_BYTES` app-side (default 100 GiB; 0 = unlimited), alongside nginx `client_max_body_size`.
-- Companion services: `boxy-docs.service` (docs.boxy.bjk.ai, Fern preview server
-  on :3901/:3911) and the `api.boxy.bjk.ai` vhost — topology, certs, and quirks
+- Companion API: the `api.boxy.bjk.ai` vhost. The historical docs hostname/service
+  is absent as of October 3, 2026; its source remains in `fern/` — topology, certs, and quirks
   in `docs/DEPLOYMENT.md` ("Companion services").
 
 ## Deploy a change
 
 ```bash
 cd /apps/boxy
-cargo build --release
-sudo systemctl restart boxy
+./scripts/deploy.sh
 systemctl status boxy --no-pager   # confirm active
 ```
 
@@ -35,7 +34,7 @@ systemctl status boxy --no-pager   # confirm active
 systemctl status boxy --no-pager
 ss -tlnp | grep 8086               # app listening
 sudo nginx -t                      # before any nginx reload
-curl -sI https://boxy.bjk.ai | head -3
+curl -s -D - -o /dev/null https://boxy.bjk.ai | head -3
 journalctl -u boxy -n 50 --no-pager   # app logs
 ```
 
@@ -53,8 +52,8 @@ vhosts; a bad reload affects all of them.
 
 ## Known constraints
 
-- Single-file architecture by design (`src/main.rs`, `static/index.html` +
-  companions) — see `.claude/skills/project-guide`.
+- Small embedded-asset architecture (`src/main.rs` + focused archive/asset modules;
+  `static/index.html`, `app.css`, `app.js`) — see `.claude/skills/project-guide`.
 - The repo is lean post-history-rewrite (~10 MB pack). Don't commit binaries;
   new visuals go to `_ai_images/` (gitignored) or external storage. Docs-site
   screenshots in `fern/assets/` are the tracked exception — keep them compressed.

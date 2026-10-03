@@ -1,17 +1,17 @@
 # Boxy Implementation Guide (AI Dev)
 
 **Audience:** Developers implementing UX and feature improvements
-**Last updated:** July 18, 2026 (v1.5.0)
+**Last updated:** October 3, 2026 (v1.6.0)
 
 ---
 
 ## Architecture in one paragraph
 
-Boxy is a single Rust binary (`src/main.rs`, ~1680 lines) that embeds the entire frontend as a
-compile-time string (`include_str!("../static/index.html")`). All UI logic — HTML, CSS, and JS — lives
-in `static/index.html` (~5370 lines). There is no build step for the frontend; no bundler, no
-framework. Any change to either file requires `cargo build --release` and a service restart to take
-effect. See `docs/ARCHITECTURE.md` for the full component map.
+Boxy is a single Rust binary. `src/main.rs` owns API handlers and configuration;
+`src/assets.rs` serves explicitly allowlisted embedded assets and `src/archive.rs` builds ZIPs.
+The UI is `static/index.html` (markup), `static/app.css` (styles), and `static/app.js` (behavior).
+There is no frontend build step, bundler, or framework. All assets are embedded at compile time;
+rebuild and restart after changes. See `docs/ARCHITECTURE.md` for the component map.
 
 ---
 
@@ -25,22 +25,24 @@ effect. See `docs/ARCHITECTURE.md` for the full component map.
 | Server config | Environment variables (see ARCHITECTURE.md) |
 
 Preferences persisted in `localStorage`: `viewMode`, `filterType`, `listSortCol`, `listSortDir`,
-`boxy_sidebar_expanded`, `boxy_sidebar_collapsed`, `itemScale`, `sidebarShowFiles`, `theme`.
+`boxy_sidebar_expanded`, `boxy_sidebar_collapsed`, `itemScale`, `sidebarShowFiles`, `theme`, `sortMode`, `boxy_pins`.
 
 ---
 
-## Feature inventory (current as of July 2026)
+## Feature inventory (current as of October 2026)
 
 ### Header
-- **Docs button** — links to docs.boxy.bjk.ai (new tab); **theme toggle**; live WS status dot
+- **Docs button** — links to repository documentation (new tab); **theme toggle**; live WS status dot
 
 ### Files view
+- **Quick access** — pinned folders (maximum 12) persist locally and sync across tabs.
+- **Workspace controls** — folder summary, Refresh, clear-all filters, mobile folder toggle.
 - **Grid / list toggle** — persisted; grid shows image thumbnails (cached 320px JPEGs from
   `/api/thumb` for raster formats, `RASTER_THUMB_EXTENSIONS`; SVG stays on `/api/download`),
   list shows sortable columns
 - **Skeleton loading** — `showSkeleton()` renders shimmer placeholder tiles/rows while a
   folder listing fetches (only when navigating to a different path)
-- **Zoom slider** — CSS `--item-scale` custom property, 80–200 px range, persisted as `itemScale`
+- **Zoom slider** — grid column width/list padding, 80–200 px range, persisted as `itemScale`
 - **List view** — Name / Type / Size / Date (MM/DD/YYYY) / Time columns, sortable; folders first
 - **Per-column Excel-style filters** — dropdown with text search + checkbox values + Clear;
   state in `colFilters` (checkbox) and `colTextFilters` (text) module-scope vars
@@ -52,7 +54,7 @@ Preferences persisted in `localStorage`: `viewMode`, `filterType`, `listSortCol`
 - **Upload progress** — per-file status panel with transfer speed and ETA; `uploadQueue` (Promise chain) serializes batches
 - **Clipboard paste & button** — "Paste from Clipboard" button in drop zone reads clipboard binary items & text directly via `navigator.clipboard.read()`; Ctrl/Cmd+V pastes images/files/text; `?pastedebug=1` diagnostic overlay; `scripts/boxy-paste-mac.sh` helper for macOS Finder integrations
 - **Global recursive search** — `/api/search?q=`, depth-capped
-- **Name filter + type filter** — debounced name filter, type buttons (Images/Documents/Code/Media)
+- **Name filter + type filter** — debounced name filter, type selector (Images/Documents/Code/Media)
 - **Live path bar** — editable `<input id="pathBar">` in nav bar
 - **Sidebar** — folder tree from `/api/folders`; expand/collapse; show-files toggle (async fetches
   children for open nodes); drag-drop move; expand-all / collapse-all toolbar
@@ -79,8 +81,8 @@ Preferences persisted in `localStorage`: `viewMode`, `filterType`, `listSortCol`
 ### Editor
 - **Open** — double-click any file in `EDITABLE_EXTENSIONS` list
 - **Syntax highlight** — Prism.js, vendored under `static/vendor/` (no CDN)
-- **Markdown preview** — marked.js, vendored under `static/vendor/` (no CDN)
-- **Autosave** — 2-second debounce; Ctrl/Cmd+S for immediate save
+- **Markdown preview** — marked.js + DOMPurify sanitization, vendored under `static/vendor/` (no CDN)
+- **Autosave** — serialized 2-second debounce; close flushes pending edits; errors retain editor content; Ctrl/Cmd+S saves immediately
 
 ### Image lightbox
 - Full-screen; keyboard ← → to navigate; Esc to close
@@ -104,17 +106,17 @@ Preferences persisted in `localStorage`: `viewMode`, `filterType`, `listSortCol`
 
 ### Adding a new editable file type
 - Backend: add the extension to `EDITABLE_EXTENSIONS` in `src/main.rs`.
-- Frontend: add it to the `EDITABLE_EXTENSIONS` array in `static/index.html`.
+- Frontend: add it to the `EDITABLE_EXTENSIONS` array in `static/app.js`.
 - Prism.js will auto-highlight if it knows the language; otherwise the editor falls back to plain text.
 
 ### Adding a new UI preference
-- Add `let myPref = ls.get('myPref', 'default');` in the module-scope state block (~line 2060).
+- Add `let myPref = ls.get('myPref', 'default');` in the module-scope state block (near the start of `static/app.js`).
 - Persist on change: `ls.set('myPref', value)`.
 - The `ls` wrapper handles `localStorage` unavailability (privacy-blocking browsers).
 
 ### CSS conventions
-- All colour and spacing tokens are CSS custom properties on `:root` (dark) and
-  `[data-theme="light"]` override blocks.
+- Colour and layout tokens live in `static/app.css`: `:root` defines light mode and
+  `[data-theme="dark"]` overrides it. JavaScript defaults to dark when no preference is stored.
 - Animation: use `transition` / `@keyframes`; honour `prefers-reduced-motion`.
 - Tooltips: `data-tip="label"` on any element renders a CSS-only tooltip via `[data-tip]::after`.
 
@@ -124,8 +126,12 @@ Preferences persisted in `localStorage`: `viewMode`, `filterType`, `listSortCol`
 
 | File | Changes to |
 |------|-----------|
-| `src/main.rs` | Backend handlers, routes, security, ZIP/duplicate logic |
-| `static/index.html` | All UI: HTML structure, CSS tokens, JS state and handlers |
+| `src/main.rs` | Backend handlers, routes, path safety, and copy/duplicate logic |
+| `static/index.html` | Accessible HTML structure |
+| `static/app.css` | Theme tokens, layouts, and motion |
+| `static/app.js` | UI state, requests, and handlers |
+| `src/assets.rs` | Embedded asset allowlist |
+| `src/archive.rs` | Bounded disk-backed ZIP creation |
 | `docs/ARCHITECTURE.md` | When API or component model changes |
 | `docs/TESTING.md` | When new testable behaviors are added |
 | `README.md` | When features or API surface changes |
@@ -137,3 +143,12 @@ Preferences persisted in `localStorage`: `viewMode`, `filterType`, `listSortCol`
 The full manual checklist lives in `docs/TESTING.md` (single source of truth) — run it
 after any UI-facing change. Quick smoke: upload, rename, move, delete, edit+autosave,
 search, multi-select ZIP, and a second tab receiving WebSocket updates.
+
+## Request and rendering rules
+
+- Use `htmlAttr()` for plain HTML attributes, `escapeAttr()` for JS strings inside inline event attributes, `escapeHtml()` for HTML text, and `textContent` whenever possible.
+- Never pass marked output directly to `innerHTML`; sanitize with DOMPurify first.
+- `loadFiles()`/`performGlobalSearch()` use abort controllers plus generation checks; retain both protections.
+- Keep file downloads streamed through NamedFile; ZIPs must stay disk-backed and skip symlinks.
+- `broadcast_update(&state, ...)` invalidates the shared stats cache before broadcasting.
+- Tests run on 18087 with temporary storage; never reuse the live service for mutation tests.

@@ -1,7 +1,7 @@
 # Versioning & Releases
 
 Boxy uses [SemVer](https://semver.org/). **`Cargo.toml` is the single source of
-truth** — `package.json` and git tags are kept in sync by the bump script.
+truth** — `package.json`, package-lock, OpenAPI, asset URLs, and git tags are kept in sync by the bump script.
 
 - **patch** (1.1.x) — bug fixes only
 - **minor** (1.x.0) — new features, UI additions, backwards-compatible changes
@@ -17,10 +17,10 @@ truth** — `package.json` and git tags are kept in sync by the bump script.
    ```bash
    ./scripts/bump-version.sh minor --release   # or patch / major / X.Y.Z
    ```
-   This syncs `Cargo.toml` + `package.json`, moves Unreleased → the new version
+   This syncs Cargo/npm manifests, locks, OpenAPI, and frontend asset URLs, moves Unreleased → the new version
    in `CHANGELOG.md`, commits, tags `vX.Y.Z`, pushes, and publishes a GitHub
    release with the changelog section as notes.
-3. Deploy: `cargo build --release && sudo systemctl restart boxy`
+3. Deploy: `./scripts/deploy.sh` (backup, verification, automatic rollback)
 
 Without `--release` the script stops after the local commit + tag so you can
 inspect before pushing.

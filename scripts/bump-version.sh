@@ -21,16 +21,27 @@ esac
 
 echo "Bumping $CURRENT -> $NEW"
 sed -i "0,/^version = \"$CURRENT\"/s//version = \"$NEW\"/" Cargo.toml
-sed -i "s/\"version\": \"$CURRENT\"/\"version\": \"$NEW\"/" package.json
-cargo check --quiet 2>/dev/null || true   # refresh Cargo.lock version stanza
-grep -q "\"version\": \"$NEW\"" package.json || { echo "package.json bump failed"; exit 1; }
+python3 - "$NEW" <<'PYTHON'
+import json, re, sys
+from pathlib import Path
+version = sys.argv[1]
+for file in ['package.json', 'package-lock.json']:
+    path = Path(file); data = json.loads(path.read_text()); data['version'] = version
+    if 'packages' in data: data['packages']['']['version'] = version
+    path.write_text(json.dumps(data, indent=2) + '\n')
+path = Path('fern/openapi/openapi.yml')
+path.write_text(re.sub(r'(?m)^  version: .*$', '  version: ' + version, path.read_text(), count=1))
+path = Path('static/index.html')
+path.write_text(re.sub(r'(/assets/app\.(?:css|js)\?v=)[^"\s]+', r'\g<1>' + version, path.read_text()))
+PYTHON
+cargo check --quiet
 
 TODAY=$(date +%Y-%m-%d)
 # Move Unreleased content into the new version section
 sed -i "s/^## \[Unreleased\]$/## [Unreleased]\n\n## [$NEW] - $TODAY/" CHANGELOG.md
 sed -i "s|^\[Unreleased\]: .*|[Unreleased]: https://github.com/adminbjkai/boxy/compare/v$NEW...HEAD\n[$NEW]: https://github.com/adminbjkai/boxy/compare/v$CURRENT...v$NEW|" CHANGELOG.md
 
-git add Cargo.toml Cargo.lock package.json CHANGELOG.md
+git add Cargo.toml Cargo.lock package.json package-lock.json fern/openapi/openapi.yml static/index.html CHANGELOG.md
 git commit -m "release: v$NEW"
 git tag -a "v$NEW" -m "v$NEW"
 echo "Committed and tagged v$NEW."
@@ -38,7 +49,9 @@ echo "Committed and tagged v$NEW."
 if [ "${2:-}" = "--release" ]; then
   git push origin main --follow-tags
   NOTES=$(awk "/^## \[$NEW\]/{flag=1;next}/^## \[/{flag=0}flag" CHANGELOG.md)
-  gh release create "v$NEW" --title "v$NEW" --notes "$NOTES"
+  notes_file=$(mktemp)
+  printf '%s\n' "$NOTES" > "$notes_file"
+  gh release create "v$NEW" --title "v$NEW" --notes-file "$notes_file"
   echo "Pushed and published GitHub release v$NEW."
 else
   echo "Run: git push origin main --follow-tags   (or re-run with --release)"

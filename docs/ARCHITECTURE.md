@@ -7,7 +7,7 @@ the local `./uploads` directory. There is no database — file state lives on di
 (view mode, sort, sidebar) are persisted in `localStorage`.
 
 ```
-Browser (static/index.html: HTML+CSS+JS)
+Browser (static/index.html + app.css + app.js)
   │   REST (fetch)            WebSocket (/ws)
   ▼                              ▲
 Actix-web (src/main.rs) ─ broadcast::Sender fan-out ─┘
@@ -17,7 +17,7 @@ Actix-web (src/main.rs) ─ broadcast::Sender fan-out ─┘
 ```
 
 ## Components
-- **Web UI** (`static/index.html`, ~5370 lines): single Files view — collapsible sidebar folder tree,
+- **Web UI** (`static/index.html`, `static/app.css`, `static/app.js`): single Files view — collapsible sidebar folder tree,
   grid/list browser, drag-and-drop upload/move, right-click context menu, inline rename,
   multi-select with bulk ZIP download, search/filter/sort, in-browser text editor with syntax
   highlighting and markdown rendered preview, URL hash navigation. Dark-mode-first theme with
@@ -29,7 +29,9 @@ Actix-web (src/main.rs) ─ broadcast::Sender fan-out ─┘
   - **Live path bar**: editable address input in nav bar, Enter to navigate
   - **Sidebar toolbar**: show-files toggle, expand-all, collapse-all buttons
   - **Image lightbox**: full-screen viewer with keyboard arrow navigation
-  - **Autosave**: 2-second debounce autosave in the text editor
+  - **Autosave**: serialized 2-second debounce; closing flushes pending content and failed saves retain the editor
+  - **Quick access**: up to 12 pinned folders in browser storage, with cross-tab sync
+  - **Conveniences**: folder summary, Refresh, clear-all filters, and mobile folder navigation
   - **Duplicate**: context-menu option to clone any file or folder (appends `_1`, `_2`, …)
   - **Clipboard**: Ctrl/Cmd+C/X/V and context-menu Copy/Cut/Paste across folders (cut items dim
     until pasted; copy uses `POST /api/copy`, cut uses `POST /api/move`)
@@ -39,10 +41,12 @@ Actix-web (src/main.rs) ─ broadcast::Sender fan-out ─┘
   - **Storage footer**: sidebar shows live root totals from `/api/stats`, refreshed
     (debounced) on WebSocket events
   UI preferences (`viewMode`, `filterType`, `listSortCol`, `listSortDir`, `boxy_sidebar_expanded`,
-  `boxy_sidebar_collapsed`, `itemScale`, `sidebarShowFiles`) are persisted in `localStorage`.
-- **HTTP API** (`src/main.rs`, ~1680 lines): one async handler per endpoint; all mutations broadcast over WS.
+  `boxy_sidebar_collapsed`, `itemScale`, `sidebarShowFiles`, `sortMode`, `boxy_pins`) are persisted in `localStorage`.
+- **HTTP API** (`src/main.rs`): one async handler per endpoint; all mutations broadcast over WS.
 - **WebSocket** (`/ws`): each client subscribes to a `tokio::sync::broadcast` channel; every
   mutation sends `{ action, path }` to all clients. Lagged clients are logged, not dropped silently.
+- **Assets** (`src/assets.rs`): explicit allowlist serves embedded CSS/JS/fonts with cache revalidation.
+- **Archives** (`src/archive.rs`): shared recursive walker copies source files into anonymous disk-backed temporary ZIPs; one build at a time, nested symlinks skipped, duplicate basenames retained.
 - **Storage**: `tokio::fs` reads/writes under the upload root; filenames de-duped server-side
   (`name`, `name_1`, … then a uuid fallback).
 
@@ -52,14 +56,14 @@ Actix-web (src/main.rs) ─ broadcast::Sender fan-out ─┘
 - `GET /api/files?path=` — list a directory
 - `GET /api/search?q=` — recursive name search (depth-capped)
 - `GET /api/folders` — all folder paths (move dialog + sidebar tree)
-- `GET /api/download?path=` — download (`&download=true`) or inline preview (explicit MIME + nosniff)
+- `GET /api/download?path=` — download (`&download=true`) or inline preview (streamed with ranges, conditional requests, nosniff, and sandbox CSP)
 - `GET /api/thumb?path=` — cached image thumbnail (max edge 320px, JPEG; raster formats only,
-  sources >50 MB skipped; cache keyed on path + mtime under `BOX_THUMB_DIR`)
+  sources >50 MB skipped; cache keyed on path + nanosecond mtime + size under `BOX_THUMB_DIR`)
 - `GET /api/stats?path=` — recursive directory stats `{ files, folders, bytes }` (depth-capped)
 - `GET /api/content?path=` — read an editable text file (UTF-8 validated)
 - `POST /api/content` — save an editable text file `{ path, content }`
 - `POST /api/newfile` — create an empty editable file `{ path?, filename }`
-- `POST /api/upload?path=` — multipart upload (nested paths supported; `mtimes` field preserves dates)
+- `POST /api/upload?path=` — multipart upload (nested paths supported; `mtimes` field preserves dates; optional `original_name` text part preserves browser-escaped filenames)
 - `POST /api/folder` — create folder `{ name, path? }`
 - `POST /api/rename` — rename `{ path, new_name }`
 - `POST /api/move` — move `{ path, dest_dir? }`
@@ -83,11 +87,13 @@ Actix-web (src/main.rs) ─ broadcast::Sender fan-out ─┘
 - **Path safety:** `clean_relative_path` strips `.`/`..` and splits on `/` *and* `\`;
   `resolve_path_safe` canonicalises and verifies containment within the upload root (blocks symlink
   traversal). Every handler that touches user paths uses it.
-- **Input limits:** names capped at 255 chars, search query at 256; the upload `mtimes` metadata
+- **Input limits:** names capped at 255 UTF-8 bytes, search query at 256; the upload `mtimes` metadata
   field is byte-capped before JSON parsing.
 - **Recursion:** folder/search/stats and ZIP walks are depth-capped (`MAX_RECURSION_DEPTH = 64`).
 - **De-dupe:** the unique-filename loop is bounded, falling back to a uuid suffix.
 - **Upload safety:** `upload_file` streams chunks through a 256 KB buffered writer and tracks total written bytes against `max_upload_bytes`; exceeding the limit or write errors immediately purge the partial file from disk.
+- **Resource bounds:** at most four HTTP workers and four blocking threads per worker; two simultaneous thumbnail decodes with 128 MiB allocation and 16,384px dimension limits; one ZIP build. Stats cache is shared across workers, capped at 64 paths, expires after five seconds and is invalidated by each mutation. External filesystem changes become visible in stats after expiry/Refresh.
+- **Frontend requests:** superseded listings/searches are aborted and checked by request generation; live updates coalesce into 180ms file and 500ms tree refreshes. Hidden tabs defer live refreshes. Reconnect refreshes server state. Unchanged listings avoid DOM replacement. Grid thumbnails include a high-resolution file-version token in the URL.
 - **Middleware:** `Compress` + `PayloadConfig` + request `Logger`.
 
 ## Deployment

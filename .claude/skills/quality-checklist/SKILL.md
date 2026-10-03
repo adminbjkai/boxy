@@ -37,11 +37,11 @@ tldr calls .                   # Project-level call graph
 - [ ] Async operations properly awaited
 - [ ] No unnecessary clones
 
-## Frontend (static/index.html)
+## Frontend (static/index.html + app.js/app.css)
 
 ### Security
 - [ ] User content escaped with `escapeHtml()`
-- [ ] Attributes escaped with `escapeAttr()`
+- [ ] HTML attributes escaped with `htmlAttr()` and inline JS strings with `escapeAttr()`
 - [ ] No innerHTML with unescaped user data
 
 ### UX

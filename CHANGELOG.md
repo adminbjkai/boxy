@@ -5,7 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-03
+
+### Changed
+- Refreshed teal/neutral workspace with a clear folder heading, direct-folder totals, compact upload strip, and reduced decorative motion
+- Separated embedded markup, styles, and behavior into index.html, app.css, and app.js; consolidated static asset serving and ZIP creation into focused Rust modules
+- File downloads stream through NamedFile with byte ranges and conditional requests; ZIPs use anonymous disk-backed temporary files and buffered source copying
+- Resource bounds: two thumbnail decoders with allocation/dimension limits, one ZIP builder, at most four HTTP workers, shared mutation-invalidated stats cache
+- Live file/tree refreshes coalesce and hidden tabs defer updates; stale listings/searches are aborted and ignored
+
 ### Added
+- Pinned folders (up to 12, browser-local and cross-tab synchronized), Refresh, folder summaries, and one-click clear-all filters
+- Mobile folder access, touch-visible file actions, dialog focus containment/return, and accessible control labels
+- Vendored DOMPurify for safe Markdown previews; sandbox CSP on uploaded document responses
+- Isolated browser/API tests on port 18087 with temporary storage; strict formatting/lint and browser coverage in CI
+- Deployment backup, public/local verification, and automatic rollback on failure
 - "Paste from Clipboard" button in the drop zone for explicit, focus-independent clipboard reading via `navigator.clipboard.read()` (supporting images, binary files, and plain text)
 - Clipboard diagnostic overlay via `?pastedebug=1` URL query parameter to inspect clipboard data transfer items and MIME types
 - Real-time transfer speed and dynamic ETA indicator in the overall upload progress panel, plus TB formatting support
@@ -13,10 +27,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - Helper script `scripts/boxy-paste-mac.sh` to upload Finder-copied or selected files directly to Boxy from macOS via hotkey or CLI
 
 ### Fixed
+- Closing the editor flushes pending autosave; saves are serialized, stale loads cannot populate a different editor, and save failures retain content
+- Correct handling of quotes, ampersands, angle brackets, and encoded folder hashes; optional multipart original_name preserves exact browser upload filenames
+- Nested uploads reject existing symlinks escaping their target storage directory; ZIP recursion skips nested symlinks and preserves duplicate basenames
+- Bulk move/delete reports partial failures and retains failed selections for retry; folder creation surfaces API errors
+- Thumbnail URLs reflect source metadata; decoder cache identity uses high-resolution mtime and size
+- Release metadata sync covers npm lock, OpenAPI, and asset URLs; Docker build uses a current Rust toolchain and excludes local data/build output
 - App-enforced `BOX_MAX_UPLOAD_BYTES`: streaming uploads monitor written bytes and automatically purge partial files if the limit is exceeded, returning HTTP 413 Payload Too Large
 - Depth-capped ZIP archives: `download_zip` and `download_zip_multi` directory walks now enforce `MAX_RECURSION_DEPTH` (64)
 - Non-interfering keyboard shortcuts: Ctrl/Cmd+V now preserves native browser paste unless items are actively staged in Boxy's internal clipboard
 - E2e test suite: added assertion for `#pasteClipboardBtn` and restored Playwright browser headless shell dependencies
+
+### Removed
+- Duplicated per-asset handlers and separate ZIP walkers, duplicate rename request logic, repeated font-face declarations, and oversized bounce/tilt/idle animation rules
+- Broken Docs destination; app now links to GitHub documentation while historical docs hosting remains absent
 
 ## [1.5.1] - 2026-07-18
 
@@ -149,7 +173,8 @@ Everything shipped since the original v1.0.0 tag (56 commits, Jan–Jul 2026).
 Initial stable release: Rust (actix-web) file-sharing server with vanilla JS
 frontend — uploads, file management, websocket live updates, zip downloads.
 
-[Unreleased]: https://github.com/adminbjkai/boxy/compare/v1.5.1...HEAD
+[Unreleased]: https://github.com/adminbjkai/boxy/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/adminbjkai/boxy/compare/v1.5.1...v1.6.0
 [1.5.1]: https://github.com/adminbjkai/boxy/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/adminbjkai/boxy/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/adminbjkai/boxy/compare/v1.3.0...v1.4.0
