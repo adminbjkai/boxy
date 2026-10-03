@@ -1,7 +1,7 @@
 # Boxy Implementation Guide (AI Dev)
 
 **Audience:** Developers implementing UX and feature improvements
-**Last updated:** October 3, 2026 (v1.6.0)
+**Last updated:** October 3, 2026 (v1.6.1)
 
 ---
 

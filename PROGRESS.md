@@ -8,9 +8,9 @@ Download resource comparison: a 128 MiB sparse binary, throttled at 1 MiB/s, sam
 
 Verified: 27 Rust tests, 19 isolated browser/API tests, strict Clippy, formatting, JavaScript syntax, nginx configuration, and Fern (zero errors; only unauthenticated redirect-check warning). Screenshots regenerated for both themes and mobile.
 
-Production v1.6.0 is active and public/local health checks pass. Public CSS/JS hashes match the workspace; grid/list/filter controls and live WebSocket passed a read-only browser smoke test. Rollback executable: `/tmp/boxy-deploy-FdJzAm/boxy`.
+Production v1.6.1 is active and public/local health checks pass. Public CSS/JS/font CSS/sanitizer hashes match the workspace; grid/list/filter controls and live WebSocket passed a read-only browser smoke test. Rollback executable: `/tmp/boxy-deploy-XvRjsP/boxy`.
 
-GitHub v1.6.0 browser/version checks passed; Rust 1.99 exposed a macro-generated lint. Replaced the macro dependency with native boxed recursion. Release target: GitHub main and annotated tag v1.6.1, with release notes in CHANGELOG.md. No production user files were used as mutation-test fixtures. Historical work below
+Removed the async-recursion macro dependency after GitHub Rust 1.99 exposed a macro-generated lint; native boxed recursion passes strict Clippy on Rust 1.98 and 1.99. GitHub main, annotated tag v1.6.1, and the GitHub release are published, with release notes in CHANGELOG.md. Release CI: https://github.com/adminbjkai/boxy/actions/runs/37142432936. No production user files were used as mutation-test fixtures. Historical work below
 is retained as a record and does not describe the current pending task list.
 
 ---
