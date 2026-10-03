@@ -11,7 +11,7 @@ logo:
   href: https://boxy.bjk.ai
 
 announcement:
-  message: "Boxy v1.6.0 — pinned folders, a refreshed workspace, and lower-memory downloads."
+  message: "Boxy v1.6.1 — pinned folders, a refreshed workspace, and lower-memory downloads."
 
 navbar-links:
   - type: minimal

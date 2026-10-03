@@ -473,14 +473,13 @@ async fn duplicate_item(
     Ok(HttpResponse::Ok().json(serde_json::json!({ "path": rel })))
 }
 
-#[async_recursion::async_recursion]
 async fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
     tokio::fs::create_dir_all(dst).await?;
     let mut dir = tokio::fs::read_dir(src).await?;
     while let Some(entry) = dir.next_entry().await? {
         let dst_path = dst.join(entry.file_name());
         if entry.file_type().await?.is_dir() {
-            copy_dir_all(&entry.path(), &dst_path).await?;
+            Box::pin(copy_dir_all(&entry.path(), &dst_path)).await?;
         } else {
             tokio::fs::copy(entry.path(), dst_path).await?;
         }
@@ -666,7 +665,6 @@ async fn get_stats(
     Ok(HttpResponse::Ok().json(result))
 }
 
-#[async_recursion::async_recursion]
 async fn collect_stats(
     path: PathBuf,
     files: &mut u64,
@@ -682,7 +680,14 @@ async fn collect_stats(
             if let Ok(meta) = entry.metadata().await {
                 if meta.is_dir() {
                     *folders += 1;
-                    collect_stats(entry.path(), files, folders, bytes, depth + 1).await;
+                    Box::pin(collect_stats(
+                        entry.path(),
+                        files,
+                        folders,
+                        bytes,
+                        depth + 1,
+                    ))
+                    .await;
                 } else {
                     *files += 1;
                     *bytes += meta.len();
@@ -916,7 +921,6 @@ async fn list_all_folders(state: web::Data<AppState>) -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().json(folders))
 }
 
-#[async_recursion::async_recursion]
 async fn collect_folders(path: PathBuf, prefix: String, folders: &mut Vec<String>, depth: usize) {
     if depth >= MAX_RECURSION_DEPTH {
         return;
@@ -932,7 +936,7 @@ async fn collect_folders(path: PathBuf, prefix: String, folders: &mut Vec<String
                         format!("{}/{}", prefix, name)
                     };
                     folders.push(full_path.clone());
-                    collect_folders(entry.path(), full_path, folders, depth + 1).await;
+                    Box::pin(collect_folders(entry.path(), full_path, folders, depth + 1)).await;
                 }
             }
         }
@@ -987,7 +991,6 @@ async fn search_files(
     Ok(HttpResponse::Ok().json(results))
 }
 
-#[async_recursion::async_recursion]
 async fn collect_search_results(
     path: PathBuf,
     prefix: String,
@@ -1033,13 +1036,13 @@ async fn collect_search_results(
 
                 // Recurse into directories
                 if meta.is_dir() {
-                    collect_search_results(
+                    Box::pin(collect_search_results(
                         entry.path(),
                         full_path,
                         search_term,
                         results,
                         depth + 1,
-                    )
+                    ))
                     .await;
                 }
             }

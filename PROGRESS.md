@@ -1,4 +1,4 @@
-# Current work — v1.6.0 (October 3, 2026)
+# Current work — v1.6.1 (October 3, 2026)
 
 Completed implementation: workspace redesign and conveniences, embedded asset separation,
 streamed downloads/disk-backed ZIPs, thumbnail/runtime bounds, stats caching, safe editor
@@ -10,7 +10,7 @@ Verified: 27 Rust tests, 19 isolated browser/API tests, strict Clippy, formattin
 
 Production v1.6.0 is active and public/local health checks pass. Public CSS/JS hashes match the workspace; grid/list/filter controls and live WebSocket passed a read-only browser smoke test. Rollback executable: `/tmp/boxy-deploy-FdJzAm/boxy`.
 
-Release target: GitHub main and annotated tag v1.6.0, with release notes in CHANGELOG.md. No production user files were used as mutation-test fixtures. Historical work below
+GitHub v1.6.0 browser/version checks passed; Rust 1.99 exposed a macro-generated lint. Replaced the macro dependency with native boxed recursion. Release target: GitHub main and annotated tag v1.6.1, with release notes in CHANGELOG.md. No production user files were used as mutation-test fixtures. Historical work below
 is retained as a record and does not describe the current pending task list.
 
 ---

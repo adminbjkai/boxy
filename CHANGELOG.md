@@ -5,6 +5,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Fixed
+- Replaced the async-recursion macro dependency with native boxed async recursion, resolving Rust 1.99 strict-Clippy failures without changing folder/copy/search/stats behavior
+
 ## [1.6.0] - 2026-10-03
 
 ### Changed
